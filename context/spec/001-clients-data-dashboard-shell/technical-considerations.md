@@ -81,7 +81,8 @@ Config: `nest-cli.json` — `sourceRoot src`, `deleteOutDir`, `assets: ["clients
 |---|---|
 | `src/main.ts` | `NestFactory.create`, `setGlobalPrefix('api')`, `enableCors({ origin: 'http://localhost:5173', methods: ['GET'] })` in dev / `false` in production, `listen(PORT ?? 3000)`, top-level `await` |
 | `src/config.ts` | `API_CONFIG` token; pure `loadConfig(env)` → `{ port, isProduction, devSwitches: { enabled: NODE_ENV !== 'production', maxDelayMs: 30000 }, corsOrigin }` |
-| `src/app.module.ts` | imports `ClientsModule`, `HealthModule`; provides `API_CONFIG` |
+| `src/app.module.ts` | imports `ConfigModule`, `ClientsModule`, `HealthModule` |
+| `src/config.module.ts` | provides + exports `API_CONFIG` (slice-3 finding: `@UseInterceptors` instances resolve in the *controller's* module, so `ClientsModule` imports `ConfigModule` too; `overrideProvider(API_CONFIG)` still works) |
 | `src/clients/clients.module.ts` | binds `CLIENTS_REPOSITORY → JsonClientsRepository`, `CLIENTS_DATA_PATH → new URL('./data/clients.json', import.meta.url)` |
 | `src/clients/clients.controller.ts` | `GET /clients` → envelope; `@UseInterceptors(DevSwitchesInterceptor)` |
 | `src/clients/clients.service.ts` | `getClients()` pass-through (the seam for Phase 2's guard); `onApplicationBootstrap` runs the consistency report |
@@ -113,7 +114,7 @@ FSD layout after this spec:
 | `app/providers/query-provider.tsx` | `QueryClientProvider` with `createQueryClient()` |
 | `app/providers/error-boundary.tsx` | ~25-line class boundary rendering `ErrorPanel` with `retryLabel="Reload"` → `location.reload()` |
 | `app/styles/global.css` | import order: fontsource `opsz.css` → `tokens.css` → `reset.css` → body rules |
-| `pages/dashboard/ui/dashboard-page.tsx` | reads dev switches once (`useState(() => readDevSwitches(location.search))`), `useClientsQuery(switches)`, derives `view = data ? 'loaded' : isFetching ? 'loading' : 'error'` (after an error, `refetch()` keeps `status: 'error'` with `fetchStatus: 'fetching'` — `isPending` is false during Retry, so key off `isFetching && !data`), composes `<main><h1>Clients</h1><VisuallyHidden as="p" role="status">…</VisuallyHidden><div aria-busy={loading} className={grid}>cards \| skeleton \| ErrorPanel</div></main>` |
+| `pages/dashboard/ui/dashboard-page.tsx` | reads dev switches once (`useState(() => readDevSwitches(location.search))`), `useClientsQuery(switches)`, derives `view = data ? 'loaded' : isFetching ? 'loading' : 'error'` (slice-3 finding: in query-core 5.103.2 `refetch()` after an error with no data resets `status` to `'pending'` and `error` to `null` — `fetchState()` in `query.js` — so the earlier premise that `status` stays `'error'` during Retry was wrong; the derivation is correct either way because it keys off `data` and `isFetching`, never `status`), composes `<main><h1>Clients</h1><VisuallyHidden as="p" role="status">…</VisuallyHidden><div aria-busy={loading} className={grid}>cards \| skeleton \| ErrorPanel</div></main>` |
 | `pages/dashboard/ui/dashboard-page.module.css` | page grid `minmax(0,1fr)`, `max-width: 1440px; margin-inline: auto; padding: var(--space-6) var(--space-4)`, slots with `min-height: var(--card-chart-min-h \| --card-table-min-h)` |
 | `pages/dashboard/ui/chart-card-skeleton.tsx`, `table-card-skeleton.tsx` | `<span aria-hidden="true">` grey blocks in the chart's / table's positions; shimmer off under `prefers-reduced-motion`; deleted by 002/003 (each widget owns its skeleton) |
 | `entities/clients/index.ts` | public API: `useClientsQuery`, `clientsQueryOptions`, `readDevSwitches`, `formatMonth`, `formatPeriod`, `formatBranchCount`, types |
