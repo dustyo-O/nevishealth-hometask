@@ -40,8 +40,13 @@ A ticket is the **intent**, written short by the user; the spec is the **contrac
 <!-- harness:end -->
 
 ## Domain agents (`.claude/agents/`)
-<List them. `/awos:hire` creates one; every agent named in a `[Agent: …]` tag needs an entry in `harness.json → lanes` (owned dirs + gate).>
-`reviewer` (fallback second opinion) and `developer` (generic single-lane implementer) ship with the harness.
+Every agent named in a `[Agent: …]` tag has an entry in `harness.json → lanes` (owned dirs + gate); coverage report in `context/product/hired-agents.md`.
+- `react-frontend` — `apps/web/` (React 19, FSD, CSS Modules, TanStack Query, Recharts, the APG treegrid). Gate `pnpm check:web`.
+- `nest-backend` — `apps/api/`, `packages/contracts/` (NestJS REST API, JSON repository, consistency check, zod contract). Gate `pnpm check:api`.
+- `testing-expert` — `apps/web/e2e/`, `apps/api/test/` (spec-driven acceptance tests, Playwright + axe; test files only). Gate `pnpm check`.
+- `developer` — generic single-lane implementer for root-level/scaffold tasks (owns `./`, runs alone in its slice). Gate `pnpm check`.
+- `reviewer` — fallback second opinion when Codex is unavailable; never edits files.
+Gate scripts `check`, `check:web`, `check:api` live in the root `package.json` (lint + typecheck + unit + e2e for the scope).
 
 ## Conventions the gates enforce
 <Formatters, linters, test commands, branch naming, things never to touch (test accounts, prod).>

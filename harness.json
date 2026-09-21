@@ -22,7 +22,29 @@
       "owns": [
         "./"
       ],
-      "gate": ""
+      "gate": "pnpm check",
+      "_note": "repo scaffold / root-level tasks only; runs alone in its slice"
+    },
+    "react-frontend": {
+      "owns": [
+        "apps/web/"
+      ],
+      "gate": "pnpm check:web"
+    },
+    "nest-backend": {
+      "owns": [
+        "apps/api/",
+        "packages/contracts/"
+      ],
+      "gate": "pnpm check:api"
+    },
+    "testing-expert": {
+      "owns": [
+        "apps/web/e2e/",
+        "apps/api/test/"
+      ],
+      "gate": "pnpm check",
+      "_note": "test files and test config only; never production code"
     }
   }
 }
