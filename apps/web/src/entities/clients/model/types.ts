@@ -7,8 +7,8 @@ export type { TreeNode };
 
 /**
  * The development-only address switches the page forwards to the service (spec 001 FR6).
- * Kept as the raw strings from the address; the service parses them. Slice 3 adds
- * `readDevSwitches`; this slice always passes `{}`.
+ * Kept as the raw strings from the address; the service parses them. Read once per page load
+ * by `readDevSwitches` and carried in the query key, so Retry reuses them (tech doc D-6).
  */
 export type DevSwitches = {
   delay?: string;
