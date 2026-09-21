@@ -1,0 +1,85 @@
+# System Architecture Overview: Nevis Book-of-Business Dashboard
+
+_Specialist coverage for this stack is recorded in `context/product/hired-agents.md` (owned by `/awos:hire`)._
+
+_Inputs: `context/product/product-definition.md`, `context/product/roadmap.md` (Phase 1), owner's technical notes in `context/inbox/brief.md`. A local-only take-home: one repo, two apps, no cloud. Every choice below is sized for 6–8 hours and for the two things reviewers will read closely — the accessible tree table and the component boundaries._
+
+---
+
+## 1. Application & Technology Stack
+
+- **Repository shape:** pnpm workspace monorepo (Node 22, pnpm 10). `apps/web` (UI), `apps/api` (REST API), `packages/contracts` (the API's response types, shared by both so the wire shape is written once). One `pnpm dev` starts both; one `pnpm test` runs everything.
+- **Frontend framework:** React 19 + TypeScript (strict) on Vite 8. No SSR — a single authenticated-free dashboard page; client rendering keeps the build trivial and the tests fast.
+- **Frontend structure:** Feature-Sliced Design (`app / pages / widgets / features / entities / shared`), one slice per business concept, public API via `index.ts`, imports only downward. Enforced by ESLint (`@feature-sliced/eslint-config` or `eslint-plugin-boundaries`) so the "clear boundaries" claim is checked, not asserted.
+- **Styling:** CSS Modules + design tokens as CSS custom properties (`shared/styles/tokens.css`, values taken from the Figma variables: surface `#f8f6f1`-family background, purple / pink / plum channel colours, Inter Display). No Tailwind, no runtime CSS-in-JS.
+- **Server state:** TanStack Query v5 — `useQuery` for the clients tree gives loading / error / retry for free and makes the "honest states" requirement a hook call, not hand-rolled state.
+- **UI state:** React state only (expanded row ids live in the tree-grid hook). No global store — the page has one dataset and one interaction.
+- **Component library:** **none for the core; build the tree grid ourselves.** Evaluated: Radix has no table/treegrid primitive; React Aria's `Tree` is a single-column `role="tree"` of `div`s and its `Table` has no expandable rows. The expandable monthly table is exactly the component the brief grades ("composable, clear boundaries", "hierarchy reaches AT"), so it is hand-built to the WAI-ARIA APG **TreeGrid** pattern (`role="treegrid"` on a real `<table>`, rows with `aria-level` / `aria-expanded` / `aria-setsize` / `aria-posinset`, roving `tabindex`, ↑↓ between rows, → expand / ← collapse or go to parent, Home/End, Enter/Space toggle). _(Alternative kept in reserve: Radix `Collapsible`/`VisuallyHidden` for small helpers — adopted only if a concrete need appears.)_
+- **Keyboard navigation:** a small `useRovingTabIndex` hook inside the tree grid (~50 lines, fully covered by tests). Considered `react-aria`'s `useFocusManager`/`FocusScope` and `@radix-ui/react-roving-focus`; neither knows tree semantics (→/← as expand/collapse vs. move), so they would sit beside our own key handling rather than replace it.
+- **Charting:** Recharts 3 — `BarChart` with three stacked `Bar`s (`stackId`), `Legend`, `Tooltip`, `accessibilityLayer` on (keyboard-navigable tooltip). Data mapping is a pure function in the `entities` layer (`toMonthlySeries(tree)`), unit-tested independently of Recharts. A visually-hidden summary table backs the chart for screen readers.
+- **Backend framework:** NestJS (current major) in TypeScript. One module (`clients`), one controller (`GET /api/clients`), one service behind a `ClientsRepository` interface whose only implementation reads `data.json` — so Phase 3's live source is a new provider, not a rewrite. Optional `?delay=ms` / `?fail=1` query params on the endpoint in dev to demo loading and error states.
+- **Shared contracts:** `packages/contracts` exports the TypeScript types of the wire format (`ClientsTree`, `TreeNode { id, name, values: number[12] }`, `MONTHS` labels Feb 2024 – Jan 2025). Runtime validation with `zod` at the API boundary on the client (one schema, exported alongside the types).
+
+---
+
+## 2. Data & Persistence
+
+- **Primary data store:** a JSON file (`apps/api/src/clients/data/clients.json`, copied from `context/inbox/data.json`) loaded at boot. No database — the brief supplies a fixed payload; a DB would be ceremony.
+- **Data shape:** the supplied tree, structure unchanged: `Company → branches[] → employees[] → channels[]`, every node `{ id, name, values[12] }`. The API serves it as-is; naming stays the supplier's (`employees`), the UI labels it "Adviser".
+- **Consistency invariant:** the API checks on boot that every parent's `values` equal the sum of its children's, per month, and logs any discrepancy (Roadmap Phase 2 "Data Consistency Guard" — the check is cheap, so the log line ships in Phase 1; failing the request on discrepancy is the Phase 2 decision).
+- **Caching:** TanStack Query's in-memory cache on the client (`staleTime` long — the data changes monthly). No server cache; the payload is ~10 KB.
+- **Derived data on the client:** `entities/clients/model` owns the pure transforms — flatten tree to rows with level/parent, `toMonthlySeries` for the chart (company-level channel split = sum over the tree), month labels. Pure functions → Vitest.
+
+---
+
+## 3. Infrastructure & Deployment
+
+- **Runtime target:** local machine only. `pnpm i && pnpm dev` → Vite on `:5173` proxying `/api` to Nest on `:3000`. No Docker, no hosting (out of scope per the product definition).
+- **Build:** `pnpm build` produces `apps/web/dist` (static) and `apps/api/dist` (Node). Not deployed; exists so CI proves it compiles.
+- **CI:** one GitHub Actions workflow (`lint`, `typecheck`, `test`, `e2e` with Playwright's Chromium) on push and PR. The same commands are the harness gates in `harness.json`.
+- **Tooling:** TypeScript strict everywhere, ESLint 9 flat config (+ `jsx-a11y`, FSD boundaries), Prettier, `.nvmrc` = 22, `engines` pinned.
+
+---
+
+## 4. Testing & Quality
+
+- **Unit / component (Vitest + React Testing Library + `@testing-library/user-event`, jsdom):** tree-grid keyboard model (every key in the APG table), expand/collapse state, ARIA attributes per row, `toMonthlySeries` mapping, month labelling. `jest-axe` on the rendered table and chart.
+- **End-to-end (Playwright, `@playwright/test`):** runs against the Vite dev server with the API **mocked via `page.route('**/api/clients')`** using a fixture derived from `data.json` — deterministic and independent of Nest. Covers: expand/collapse by mouse and keyboard, the hierarchy as exposed to AT (`getByRole('treegrid')`, `row` with `aria-level`), loading and error → retry states, chart bars/legend present with correct segment count, and a 375 px viewport check for horizontal overflow. `@axe-core/playwright` audit on the dashboard.
+- **API (Jest via Nest CLI + supertest):** `GET /api/clients` returns the tree with 12 values per node; consistency check passes on the shipped data.
+- **Gates:** `pnpm lint && pnpm typecheck && pnpm test && pnpm e2e` — green before any lane reports done.
+
+---
+
+## 5. External Services, Observability & Security
+
+- **Authentication:** none (out of scope; everyone sees everything).
+- **External services:** none at runtime. Figma is a design-time input only (tokens, measurements).
+- **Logging:** Nest's built-in logger (request log + the consistency warnings). Client: a React error boundary around the dashboard rendering the same error UI as a failed fetch.
+- **Metrics / tracing:** none — local tool. Phase 3's live data source is where this would arrive.
+- **Security:** CORS limited to the Vite origin in dev; API is read-only; no secrets in the repo (the `.env` deny rules from the harness stay in force even though nothing needs one).
+
+---
+
+## 6. Frontend Layout (FSD) — the map lanes will work from
+
+```
+apps/web/src/
+  app/                 entry, providers (QueryClientProvider, ErrorBoundary), global styles, tokens
+  pages/dashboard/     the "Clients" page: composes the two widgets, owns the loading/error/retry states
+  widgets/
+    clients-chart/     Recharts stacked bar + legend + hidden summary table; takes MonthlySeries
+    clients-table/     the monthly tree table: binds entities data to the TreeGrid, row name cell (level, chevron, avatar)
+  features/
+    expand-row/        (only if a feature-level slice earns its keep; otherwise expansion state stays in TreeGrid)
+  entities/clients/    types re-exported from @contracts, `api` (fetch + zod parse), `queries` (TanStack), `model` (flatten, toMonthlySeries, MONTHS)
+  shared/
+    ui/tree-grid/      headless `useTreeGrid` + `useRovingTabIndex`, compound components TreeGrid / TreeGrid.Row / TreeGrid.Cell / TreeGrid.Toggle — no business knowledge
+    ui/                Button, VisuallyHidden, Spinner, ErrorMessage, Avatar
+    api/               http client, error type
+    styles/            tokens.css, reset
+apps/api/src/
+  clients/             clients.module, clients.controller (GET /api/clients), clients.service, clients.repository (interface + json impl), data/clients.json, consistency.ts
+packages/contracts/    types + zod schema for the wire format, MONTHS
+```
+
+**Boundary rules that reviewers can check:** `shared/ui/tree-grid` knows nothing about clients, months or channels (it takes rows with `id`, `parentId`, `level`, `hasChildren` and renders what it is given). `entities/clients` knows the data but no DOM. `widgets` are the only place the two meet. The API and the UI share one type definition and nothing else.
