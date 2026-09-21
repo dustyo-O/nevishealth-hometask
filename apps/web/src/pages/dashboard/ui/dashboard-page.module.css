@@ -33,7 +33,3 @@
   min-height: var(--line-height-body);
   padding: var(--space-4);
 }
-
-.message {
-  overflow-wrap: anywhere;
-}

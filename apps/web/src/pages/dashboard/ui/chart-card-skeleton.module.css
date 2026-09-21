@@ -1,0 +1,90 @@
+/* Chart card at 1440 (tokens.md): plot 1338×320 from 32 px below the card top, y-axis ticks to the
+   left, month labels beneath, legend centred at the bottom. The root is exactly the card's
+   min-height so the card measures the same while loading and once loaded (FR3-AC2). */
+.chart {
+  height: var(--card-chart-min-h);
+  padding: var(--space-6) var(--space-6) var(--space-4) var(--space-4);
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  column-gap: var(--space-4);
+  row-gap: var(--space-4);
+}
+
+.axisY {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.tick {
+  height: var(--font-size-footnote);
+}
+
+/* Bars: 24 px gaps at 1440 narrowing to 8 px on a phone, so twelve always fit the card. */
+.plot,
+.axisX {
+  display: flex;
+  gap: clamp(var(--space-2), 2%, var(--space-6));
+  min-width: 0;
+}
+
+.plot {
+  align-items: flex-end;
+}
+
+.bar,
+.label {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Roughly the mockup's stacked totals, 400 = the plot height. */
+.bar:nth-child(1) {
+  height: 62%;
+}
+.bar:nth-child(2) {
+  height: 66%;
+}
+.bar:nth-child(3) {
+  height: 70%;
+}
+.bar:nth-child(4) {
+  height: 74%;
+}
+.bar:nth-child(5) {
+  height: 79%;
+}
+.bar:nth-child(6) {
+  height: 83%;
+}
+.bar:nth-child(7) {
+  height: 88%;
+}
+.bar:nth-child(n + 8) {
+  height: 66%;
+}
+.bar:nth-child(12) {
+  height: 91%;
+}
+
+.axisX {
+  grid-column: 2;
+}
+
+.label {
+  height: var(--font-size-footnote);
+}
+
+.legend {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  gap: var(--space-4);
+}
+
+.legendItem {
+  width: 96px;
+  max-width: 25%;
+  height: var(--font-size-body);
+}

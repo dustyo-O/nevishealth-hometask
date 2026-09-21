@@ -1,0 +1,27 @@
+.panel {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: var(--space-4);
+  justify-items: start;
+  padding: var(--space-6) var(--space-4);
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  overflow-wrap: anywhere;
+}
+
+.text {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.message {
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.detail {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+}
