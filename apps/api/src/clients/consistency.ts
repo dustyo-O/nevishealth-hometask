@@ -41,8 +41,11 @@ export const findDiscrepancies = (company: TreeNode): Discrepancy[] => {
 };
 
 /** Every item in the tree, whichever list it hangs from — for the boot summary line. */
-export const countNodes = (node: TreeNode): number =>
-  1 + CHILD_KEYS.reduce((sum, key) => sum + (node[key] ?? []).reduce((s, c) => s + countNodes(c), 0), 0);
+export const countNodes = (node: TreeNode): number => {
+  let count = 1;
+  for (const key of CHILD_KEYS) for (const child of node[key] ?? []) count += countNodes(child);
+  return count;
+};
 
 /** The documented warning line: `"Company > Branch 1 > Anna Blackwood" 2024-04: parent 28, children sum 33`. */
 export const formatDiscrepancy = ({ path, month, expected, actual }: Discrepancy): string =>
