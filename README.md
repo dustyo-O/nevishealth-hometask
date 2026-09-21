@@ -63,15 +63,21 @@ the package):
 
 Playwright output (traces, screenshots) goes to `docs/screenshots/`, which is git-ignored.
 
-### Development switches _(arrive in slice 3)_
+### Development switches
 
-During development the page and the data service will honour two query switches so every state can
-be reached by address alone:
+During development the page and the data service honour two query switches, so every state can be
+reached by address alone (the page forwards them to `GET /api/clients`; Retry keeps them):
 
-- `?delay=<ms>` — the service answers after the delay (`http://localhost:5173/?delay=3000` shows
-  the loading state for at least three seconds);
-- `?fail=1` — the service answers with an error (`http://localhost:5173/?fail=1` shows the failed
-  state with a Retry button);
-- both together — wait, then fail.
+- `?delay=<ms>` — the service answers after the delay, capped at 30 000 ms
+  (`http://localhost:5173/?delay=3000` shows the loading skeleton for at least three seconds);
+- `?fail=1` — the service answers `500` (`http://localhost:5173/?fail=1` shows the failed state with a
+  Retry button within about three seconds — the page makes one automatic second attempt half a second
+  after the first failure, then shows the panel);
+- both together — wait, then fail (`?delay=3000&fail=1` shows the skeleton for about 6.5 s, then the
+  panel).
 
-The production builds ignore both switches.
+Each attempt is limited to 10 seconds, so a service that never answers shows the panel after about
+21 seconds ("Request timed out"); a stopped service shows it within three seconds ("Network error").
+
+The production builds ignore both switches (`vite build` drops the forwarding; the API only honours
+them when `NODE_ENV` is not `production`).
