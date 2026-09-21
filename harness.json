@@ -1,0 +1,28 @@
+{
+  "ticket_prefix": "NVS",
+  "tracker": {
+    "kind": "linear",
+    "team": "NVS",
+    "labels": {
+      "bug": "Bug",
+      "idea": "Improvement",
+      "feature": "Feature"
+    }
+  },
+  "review": {
+    "reviewer": "codex",
+    "effort": "low",
+    "context": [
+      "context/product/product-definition.md",
+      "context/product/architecture.md"
+    ]
+  },
+  "lanes": {
+    "developer": {
+      "owns": [
+        "./"
+      ],
+      "gate": ""
+    }
+  }
+}
