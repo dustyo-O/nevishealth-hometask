@@ -1,0 +1,64 @@
+/* Table at 1440 (tokens.md): rows 56 high, padding 16 left / 24 right, gap 16, name cell 264 px,
+   twelve month columns sharing the rest with right-aligned figures. Five rows share exactly the
+   card's min-height so the card measures the same while loading and once loaded (FR3-AC2). */
+.table {
+  height: var(--card-table-min-h);
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding-inline: var(--space-4) var(--space-6);
+  border-block-end: 1px solid var(--color-line);
+  /* Narrow viewports clip the trailing columns here, never widening the page (FR7). */
+  overflow: clip;
+}
+
+.row:last-child {
+  border-block-end: 0;
+}
+
+.name {
+  flex: none;
+  width: min(264px, 40%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Company at indent 0, its branches one level in (28 px per level). */
+.row:nth-child(n + 3) .name {
+  padding-inline-start: 28px;
+}
+
+.chevron {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.nameText {
+  width: 40%;
+  height: var(--font-size-body);
+}
+
+/* Equal auto margins give twelve equal columns with each block at its right edge. */
+.monthLabel,
+.figure {
+  flex: none;
+  margin-inline-start: auto;
+  height: var(--font-size-body);
+}
+
+.monthLabel {
+  width: 56px;
+}
+
+.figure {
+  width: 28px;
+}

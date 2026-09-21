@@ -1,7 +1,9 @@
 import { formatBranchCount, formatPeriod, useClientsQuery } from '@/entities/clients';
 import { Card } from '@/shared/ui/card';
 import { VisuallyHidden } from '@/shared/ui/visually-hidden';
+import { ChartCardSkeleton } from './chart-card-skeleton';
 import styles from './dashboard-page.module.css';
+import { TableCardSkeleton } from './table-card-skeleton';
 
 type View = 'loading' | 'loaded' | 'error';
 
@@ -31,10 +33,18 @@ export const DashboardPage = () => {
         ) : (
           <>
             <Card label="Clients chart" className={styles.chartSlot}>
-              {data ? <p className={styles.summary}>{formatPeriod(data.months)}</p> : null}
+              {data ? (
+                <p className={styles.summary}>{formatPeriod(data.months)}</p>
+              ) : (
+                <ChartCardSkeleton />
+              )}
             </Card>
             <Card label="Monthly detail" className={styles.tableSlot}>
-              {data ? <p className={styles.summary}>{formatBranchCount(data.company)}</p> : null}
+              {data ? (
+                <p className={styles.summary}>{formatBranchCount(data.company)}</p>
+              ) : (
+                <TableCardSkeleton />
+              )}
             </Card>
           </>
         )}

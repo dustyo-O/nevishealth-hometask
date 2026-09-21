@@ -14,6 +14,20 @@ const mockClientsOk = () =>
     .spyOn(globalThis, 'fetch')
     .mockImplementation(() => Promise.resolve(Response.json(clientsFixture())));
 
+type Deferred = { promise: Promise<Response>; resolve: (response: Response) => void };
+
+/** A fetch that stays pending until the test releases it — the loading state, held open. */
+const deferred = (): Deferred => {
+  let resolve: Deferred['resolve'] = () => undefined;
+  const promise = new Promise<Response>((r) => {
+    resolve = r;
+  });
+  return { promise, resolve };
+};
+
+const placeholderBlocksOf = (region: HTMLElement) =>
+  region.querySelectorAll('[aria-hidden="true"]');
+
 /** Real timers, the app's own defaults except an instant retry (tech doc §4). */
 const renderPage = () =>
   render(
@@ -25,6 +39,58 @@ const renderPage = () =>
 const busyContainerOf = (element: HTMLElement) => element.closest('[aria-busy]');
 
 const settle = () => act(() => new Promise<void>((resolve) => setTimeout(resolve, 20)));
+
+describe('DashboardPage — loading state (FR3)', () => {
+  it('shows the heading, the status text, the busy grid and two placeholder cards without text', () => {
+    const pending = deferred();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => pending.promise);
+    renderPage();
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Clients' })).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Loading clients…');
+    const chart = screen.getByRole('region', { name: 'Clients chart' });
+    const table = screen.getByRole('region', { name: 'Monthly detail' });
+    expect(screen.getAllByRole('region')).toHaveLength(2);
+    expect(busyContainerOf(chart)).toHaveAttribute('aria-busy', 'true');
+
+    // Grey blocks in the content's positions, hidden from assistive technology, nothing to read.
+    expect(placeholderBlocksOf(chart).length).toBeGreaterThan(0);
+    expect(placeholderBlocksOf(table).length).toBeGreaterThan(0);
+    expect(chart.textContent).toBe('');
+    expect(table.textContent).toBe('');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('replaces the placeholders in place when the figures arrive (FR3-AC2)', async () => {
+    const pending = deferred();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => pending.promise);
+    renderPage();
+    const chart = screen.getByRole('region', { name: 'Clients chart' });
+    const table = screen.getByRole('region', { name: 'Monthly detail' });
+
+    pending.resolve(Response.json(clientsFixture()));
+    await screen.findByText(PERIOD);
+
+    // The same two card nodes, now holding the summaries and no placeholder blocks.
+    expect(screen.getByRole('region', { name: 'Clients chart' })).toBe(chart);
+    expect(screen.getByRole('region', { name: 'Monthly detail' })).toBe(table);
+    expect(chart).toHaveTextContent(PERIOD);
+    expect(table).toHaveTextContent(BRANCHES);
+    expect(placeholderBlocksOf(chart)).toHaveLength(0);
+    expect(placeholderBlocksOf(table)).toHaveLength(0);
+    expect(busyContainerOf(chart)).toHaveAttribute('aria-busy', 'false');
+  });
+
+  it('has no accessibility violations while loading', async () => {
+    const pending = deferred();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => pending.promise);
+    const { container } = renderPage();
+    expect(screen.getByRole('status')).toHaveTextContent('Loading clients…');
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+});
 
 describe('DashboardPage — loaded state', () => {
   it('renders the Clients heading and the two named card regions', async () => {
