@@ -14,3 +14,6 @@ CLAUDE.md
 HARNESS.md
 harness.json
 .mcp.json
+
+# byte copy of context/inbox/data.json — must stay identical (spec 001 FR2)
+apps/api/src/clients/data/clients.json
