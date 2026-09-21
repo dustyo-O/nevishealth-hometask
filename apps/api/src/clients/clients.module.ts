@@ -1,10 +1,13 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '../config.module.js';
 import { ClientsController } from './clients.controller.js';
 import { CLIENTS_REPOSITORY } from './clients.repository.js';
 import { ClientsService } from './clients.service.js';
 import { CLIENTS_DATA_PATH, JsonClientsRepository } from './json-clients.repository.js';
 
 @Module({
+  // ConfigModule: the DevSwitchesInterceptor on ClientsController injects API_CONFIG from here.
+  imports: [ConfigModule],
   controllers: [ClientsController],
   providers: [
     ClientsService,
