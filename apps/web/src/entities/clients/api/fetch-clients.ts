@@ -1,7 +1,7 @@
 import { ClientsResponseSchema } from '@nevis/contracts';
 import { UnexpectedShapeError, getJson } from '@/shared/api';
 import type { ClientsData, DevSwitches } from '../model/types';
-import { buildClientsUrl } from './clients-url';
+import { buildClientsUrl } from './build-clients-url';
 
 export type FetchClientsOptions = {
   switches?: DevSwitches;

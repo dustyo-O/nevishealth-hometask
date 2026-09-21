@@ -1,4 +1,4 @@
-export { CLIENTS_PATH, buildClientsUrl } from './api/clients-url';
+export { CLIENTS_PATH, buildClientsUrl } from './api/build-clients-url';
 export { fetchClients, type FetchClientsOptions } from './api/fetch-clients';
 export { formatMonth } from './model/format-month';
 export { formatBranchCount, formatPeriod } from './model/summaries';

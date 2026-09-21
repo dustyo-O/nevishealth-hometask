@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildClientsUrl } from './clients-url';
+import { buildClientsUrl } from './build-clients-url';
 
 describe('buildClientsUrl', () => {
   it('is the bare endpoint without switches', () => {
