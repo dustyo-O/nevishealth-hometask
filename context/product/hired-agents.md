@@ -54,6 +54,6 @@ _Both pre-date this run (harness-kit). The registry returned no hooks for "forma
 | developer | `./` (scaffold / root-level; runs alone in its slice) | `pnpm check` |
 | react-frontend | `apps/web/` | `pnpm check:web` |
 | nest-backend | `apps/api/`, `packages/contracts/` | `pnpm check:api` |
-| testing-expert | `apps/web/e2e/`, `apps/api/test/` (test files only) | `pnpm check` |
+| testing-expert | `apps/web/e2e/`, `apps/api/test/acceptance/` (test files only) | `pnpm check` |
 
 _Tasks-time rule that follows from the ownership: `packages/contracts` is defined by `nest-backend` in an earlier slice than the frontend work that imports it; `react-frontend` reports `BLOCKED: needs packages/contracts/…` rather than editing it._
