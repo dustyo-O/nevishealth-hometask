@@ -1,0 +1,31 @@
+{
+  "name": "nevis-dashboard",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.18.0",
+  "engines": {
+    "node": ">=22.22.2 <23"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel --stream --filter './apps/*' dev",
+    "build": "pnpm -r build",
+    "check:api": "pnpm -r --filter @nevis/contracts --filter @nevis/api run check",
+    "check:web": "pnpm --filter @nevis/web check",
+    "check": "prettier --check . && pnpm check:api && pnpm check:web",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@conarti/eslint-plugin-feature-sliced": "^2.0.1",
+    "@eslint/js": "^10.0.1",
+    "@tanstack/eslint-plugin-query": "^5.103.2",
+    "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.8",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.70.1"
+  }
+}
