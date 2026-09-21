@@ -6,7 +6,7 @@
         "repo": "provectus/awos"
       }
     },
-    "mattpocock-skills": {
+    "mattpocock": {
       "source": {
         "source": "github",
         "repo": "mattpocock/skills"
@@ -14,7 +14,8 @@
     }
   },
   "enabledPlugins": {
-    "mattpocock-skills@mattpocock-skills": true
+    "mattpocock-skills@mattpocock": true,
+    "awos@awos-marketplace": true
   },
   "permissions": {
     "allow": [
