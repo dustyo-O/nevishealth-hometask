@@ -1,0 +1,172 @@
+# Technical Specification: Clients Data & Dashboard Shell
+
+- **Functional Specification:** `context/spec/001-clients-data-dashboard-shell/functional-spec.md`
+- **Status:** In Review
+- **Author(s):** Alexander Shleyko (lead); specialist consultations quoted verbatim in `consults/nest-backend-api-sections-20260921-185844.md` and `consults/react-frontend-web-sections-20260921-185845.md` — every version and option name below was verified there (npm view, unpacked `.d.ts`, official docs, a throwaway workspace that was built, run and tested)
+
+---
+
+## 1. High-Level Technical Approach
+
+Three packages in one pnpm workspace, created in this spec's slice 0: `packages/contracts` (the wire types + one zod schema, exported as TypeScript source), `apps/api` (NestJS 12, one `clients` module serving `GET /api/clients` from a JSON file behind a repository interface, plus `GET /api/health`), and `apps/web` (React 19 on Vite 8, Feature-Sliced Design, one `DashboardPage` with three states driven by a single TanStack Query). Vitest is the one test runner everywhere; Playwright e2e runs against Vite only with the API mocked; GitHub Actions runs the same `pnpm check` that is the harness gate.
+
+Decisions taken here that amended `context/product/architecture.md` (applied 2026-09-21): **§4 "Jest via Nest CLI + supertest" → "Vitest + supertest"** (D-1); §1 Shared contracts gains `MONTHS`, `childrenOf` and the "TS source, no build" rule (D-2); §3 Tooling "ESLint 9" → "ESLint 10", TypeScript pinned to 6.0.x (D-3).
+
+### Decisions and assumptions
+
+D-1, D-2 and D-9 confirmed by the owner on 2026-09-21 (architecture amended the same day). Owner's convention, applies everywhere: **prefer `type` aliases over `interface`**.
+
+| # | Decision | Why | Alternative rejected |
+|---|---|---|---|
+| D-1 | **NestJS 12.0.4 (ESM) + Vitest 5 + supertest 7** for the API | Nest 12 ships ESM-only; Jest can `require()` ESM only on Node ≥ 24.9 — reproduced failing on Node 22. Vitest is Nest 12's own `ts-esm` template default and the web runner already; one runner, one config style, `@nestjs/testing` unchanged. Proven end-to-end in the consult (build, boot, curl, 6/6 tests). | Nest 11.2.5 (CJS) + Jest 30: works on Node 22 but is the previous major and forces a CJS/dual build of contracts. |
+| D-2 | **`packages/contracts` exports TypeScript source** (`"exports": {".": "./src/index.ts"}`, `"type": "module"`, no build step) | Vite/Vitest transpile linked TS; `tsc` under `nodenext` type-checks it; `nest build` leaves the import untouched; `node dist/main.js` loads the `.ts` through Node's built-in type stripping (default since 22.18; verified silent on 22.23.2). No "build contracts first" anywhere, no stale `dist`, lanes never wait on each other. Guarded by `engines.node ">=22.22.2 <23"`, `.npmrc engine-strict=true`, `erasableSyntaxOnly: true` in contracts, never `--preserve-symlinks`. | Built `dist` + `types`: adds a prebuild to `dev`, editors and fresh clones; tsconfig `paths`: two resolution mechanisms to keep in sync and none at runtime. |
+| D-3 | **TypeScript `~6.0.3` pinned workspace-wide; ESLint 10.11 with `pnpm-workspace.yaml → peerDependencyRules.allowedVersions: { "eslint-plugin-jsx-a11y>eslint": "10" }`** | TS `latest` is 7.0.2 (native compiler, no JS API — typescript-eslint peer is `<6.1.0`, Nest CLI depends on `~6.0.2`). ESLint 9 is EOL since 2026-08-06; `jsx-a11y@6.10.2` declares peer `^9` but uses none of the APIs ESLint 10 removed (verified by grep of its `lib/`). | ESLint 9 (EOL); oxlint (would replace the a11y rule set we depend on). |
+| D-4 | One recursive `TreeNode` type with three optional child keys, **hand-written `type` alias + `z.ZodType<TreeNode>`-annotated schema** (types over interfaces — owner's convention); `values: number[]` validated `.length(12)`; `months: z.array(z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/)).length(12)` | The spec's wrong-shape rule is exactly: months/company missing, item without id/name, values not 12 numbers; a level-typed union would reject documents the spec calls valid and the data has no discriminator. The explicit type prevents `.d.ts` erosion to `any[]` (observed with inferred lazy schemas). | Discriminated union by level; a 12-tuple type (fights `noUncheckedIndexedAccess`). |
+| D-5 | Dev switches as a **NestInterceptor on `ClientsController` only**, gated once by `NODE_ENV !== 'production'` read in `loadConfig`; `delay` clamped to `[0, 30000]`, garbage → 0; "production build" = `pnpm build && NODE_ENV=production node dist/main` | Returns `next.handle()` before touching the query when disabled — that is "ignore entirely". A `ParseIntPipe` in the controller would run in production and turn `?delay=abc` into a 400 (reproduced). Health stays instant for CI readiness. | Middleware (no DI, awkward tests); guard (wrong semantics). |
+| D-6 | Web: **app-wide `QueryClient` defaults** `{ retry: 1, retryDelay: 500, staleTime: Infinity, gcTime: Infinity, refetchOnWindowFocus: false, refetchOnReconnect: false, networkMode: 'always' }`; the query key includes the dev switches | The policy is the spec's, not one query's; tests inject `retryDelay: 0`. `networkMode: 'online'` (default) would *pause* the query when `navigator.onLine` is false — skeleton forever instead of the spec's "Network error" panel. Key-in-switches makes Retry reuse them (review F3). | Per-query options; re-reading `location` in the fetcher. |
+| D-7 | **Placeholders live in `pages/dashboard`**, summaries in `entities/clients/model`; no widget stubs | A one-line `<p>` in a `Card` is not a widget; a fake `widgets/clients-chart/index.ts` would be a contract 002/003 immediately rewrite. Summary strings are data → string, so they are pure and unit-tested in `entities`. | Widget stubs. |
+| D-8 | Fonts **self-hosted** via `@fontsource-variable/inter@5.3.0` (`opsz.css`); "Inter Display" = the opsz 32 end of Inter 4, reached automatically at 35 px with `font-optical-sizing: auto` | No network in e2e/CI or on a reviewer's machine; deterministic screenshots. | Google Fonts link; system fallback only. |
+| D-9 | Playwright has two projects: `chromium` against `pnpm dev` (mocked routes) and **`prod` against `vite build && vite preview`** for FR6-AC4 (switches ignored in the production build) | The only honest proof that `import.meta.env.DEV` is dead in the bundle. Costs ~10 s per `pnpm check:web`. | Unit test with `vi.stubEnv('DEV', false)` only + README note (kept as well, but not as the sole proof). |
+| D-10 | **Assumption:** page container `max-width: 1440px; margin-inline: auto` above 1440 (design shows 1440 only) | Nothing in the brief says fluid; centred is the conservative reading. | Fluid. |
+| D-11 | **Assumption:** on Retry the `<h1 tabIndex={-1}>` receives focus (the Retry button unmounts under the keyboard user); the error announcement itself moves no focus (FR4-AC9 holds) | Otherwise focus falls to `<body>`. | Leave focus on `<body>`. |
+| D-12 | **Assumption:** `formatBranchCount` singular for one branch ("Company · 1 branch") | Spec covers 0, 2, 3 only. | "1 branches". |
+| D-13 | **Assumption:** the 21-second hang e2e (FR4-AC3) runs as written with `test.slow()`; the request timeout is not shortened by an env flag | The spec's number is the behaviour under test; one slow test is cheaper than a second build flavour. | `VITE_REQUEST_TIMEOUT_MS` override in e2e. |
+
+---
+
+## 2. Proposed Solution & Implementation Plan (The "How")
+
+### 2.1 Workspace (slice 0 — `developer` lane, runs alone)
+
+| Path | Responsibility |
+|---|---|
+| `pnpm-workspace.yaml` | `packages: [apps/*, packages/*]`; `onlyBuiltDependencies` (run `pnpm approve-builds` once — pnpm 10 blocks dependency lifecycle scripts; expect `@parcel/watcher`, `unrs-resolver`); `peerDependencyRules.allowedVersions` (D-3); optional `catalog: { typescript: 6.0.3 }` |
+| `package.json` (root) | `packageManager pnpm@10.18.0`; `engines.node ">=22.22.2 <23"` (jsdom 30 needs ≥ 22.22.2; type stripping ≥ 22.18); scripts `dev: pnpm -r --parallel --stream --filter './apps/*' dev`, `build: pnpm -r build`, `check:api: pnpm -r --filter @nevis/contracts --filter @nevis/api run check` (topological: contracts first), `check:web: pnpm --filter @nevis/web check`, `check: prettier --check . && pnpm check:api && pnpm check:web`; devDeps `typescript ~6.0.3`, `prettier 3.9.x`, `eslint 10.x` + shared plugins |
+| `.npmrc` | `engine-strict=true` |
+| `.nvmrc` | `22.23` |
+| `.prettierrc` | `singleQuote`, `trailingComma: all`, `printWidth: 100` |
+| `eslint.config.js` (root, shared) | ESM, `defineConfig` from `eslint/config`: `@eslint/js` recommended → `typescript-eslint` `recommendedTypeChecked` with `parserOptions.projectService: true` → per-app blocks (§2.4) → `eslint-config-prettier` last. `apps/api` block **disables** `consistent-type-imports` (an `import type` of an injected class turns Nest's DI metadata into `Object`) |
+| `.github/workflows/ci.yml` | on push + PR: `pnpm/action-setup`, `actions/setup-node` (node from `.nvmrc`, `cache: pnpm`), `pnpm install --frozen-lockfile`, `pnpm exec playwright install --with-deps chromium` (cache `~/.cache/ms-playwright` keyed on the Playwright version), `pnpm check` |
+| `README.md` | "How to run" (`pnpm install`, `pnpm dev`, addresses `:5173` / `:3000`), "How to test" (`pnpm check`, per-app scripts, the dev switches `?delay=` / `?fail=1`); assumptions/next-steps sections are the Ship-Ready feature's |
+| `.gitignore` | `node_modules`, `dist`, `apps/web/e2e/{test-results,playwright-report}`, `docs/screenshots/` |
+
+### 2.2 `packages/contracts` (`nest-backend` lane)
+
+`package.json`: `name @nevis/contracts`, `private`, `type: module`, `exports: { ".": "./src/index.ts" }`, `sideEffects: false`, `dependencies.zod ^4.6.5`, scripts `typecheck`, `lint`, `test`, `check`. `tsconfig.json`: `target ES2023`, `module` + `moduleResolution nodenext`, `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `isolatedModules`, `verbatimModuleSyntax`, `erasableSyntaxOnly`, `noEmit`, `skipLibCheck`, `include ["src"]` (TS 6 defaults: set `types` explicitly; no `baseUrl`).
+
+`src/index.ts` exports:
+
+| Export | Shape |
+|---|---|
+| `MONTHS` | `as const` tuple `'2024-02' … '2025-01'` (12); `type Month` |
+| `type TreeNode` | `{ id: string; name: string; values: number[]; branches?: TreeNode[] \| undefined; employees?: …; channels?: … }` (recursive alias; the `\| undefined` is required under `exactOptionalPropertyTypes`) |
+| `type ClientsResponse` | `{ months: string[]; company: TreeNode }` |
+| `TreeNodeSchema: z.ZodType<TreeNode>` (explicit annotation; never `z.infer` for the recursive node) | `z.object({ id: z.string(), name: z.string(), values: z.array(z.number()).length(12), branches: z.array(z.lazy(() => TreeNodeSchema)).optional(), employees: …, channels: … })` — zod 4 `z.number()` rejects NaN/±Infinity; unknown keys are stripped (tests compare the raw body) |
+| `ClientsResponseSchema` | `{ months: z.array(z.string().regex(/^\d{4}-(0[1-9]\|1[0-2])$/)).length(12), company: TreeNodeSchema }` |
+| `CHILD_KEYS`, `childrenOf(node)` | `['branches','employees','channels'] as const`; first present non-empty list in that order, `[]` for a leaf — the **one** definition of "children" shared by the API's consistency check and the web's future flatten (a 6-line deviation from "types + one schema", recorded in architecture §1 on approval) |
+
+Convention for every package: `type` aliases, not `interface`, including component props (`type CardProps = …`) and the Nest repository contract (`type ClientsRepository = { load(): Promise<ClientsResponse> }` implemented by the class via `implements`).
+
+`src/index.test.ts` (Vitest): accepts the shipped envelope; rejects 11 values / missing id / missing name / missing months / missing company; accepts missing **and** empty child lists; `MONTHS` is 12 entries; `childrenOf` order; `expectTypeOf<TreeNode['branches']>().not.toBeAny()`.
+
+### 2.3 `apps/api` (`nest-backend` lane)
+
+`package.json`: `name @nevis/api`, `type: module`; deps `@nestjs/{common,core,platform-express} ^12.0.4` (Express 5.2, `cors` 2.8), `reflect-metadata ^0.2.2`, `rxjs ^7.8`, `@nevis/contracts workspace:*`; devDeps `@nestjs/{cli,schematics,testing} ^12`, `vitest ^5.0.1`, `vite ^8.3`, `supertest ^7.2.2`, `@types/{supertest,express,node@22}`, `typescript ~6.0.3`. Scripts: `dev: nest start --watch`, `build: nest build`, `start: node dist/main`, `start:prod: NODE_ENV=production node dist/main`, `lint`, `typecheck: tsc -p tsconfig.json --noEmit`, `test: vitest run`, `test:e2e: vitest run test/`, `check: pnpm lint && pnpm typecheck && pnpm test`.
+
+Config: `nest-cli.json` — `sourceRoot src`, `deleteOutDir`, `assets: ["clients/data/*.json"]` (copies the JSON into `dist/`); `tsconfig.json` — Nest 12 `ts-esm` template values (`module`/`moduleResolution nodenext`, `resolvePackageJsonExports`, `emitDecoratorMetadata`, `experimentalDecorators`, `isolatedModules`, `target ES2023`, `strictPropertyInitialization false`) + `strict`, `noUncheckedIndexedAccess`, `types ["node"]`, `include ["src","test","vitest.config.ts"]`; **not** `verbatimModuleSyntax`; relative imports end in `.js`; `tsconfig.build.json` — `rootDir src`, `include ["src"]`, excludes specs; `vitest.config.ts` — `test.include ['src/**/*.spec.ts','test/**/*.e2e-spec.ts']`, `testTimeout 15000`, no globals.
+
+| File | Responsibility |
+|---|---|
+| `src/main.ts` | `NestFactory.create`, `setGlobalPrefix('api')`, `enableCors({ origin: 'http://localhost:5173', methods: ['GET'] })` in dev / `false` in production, `listen(PORT ?? 3000)`, top-level `await` |
+| `src/config.ts` | `API_CONFIG` token; pure `loadConfig(env)` → `{ port, isProduction, devSwitches: { enabled: NODE_ENV !== 'production', maxDelayMs: 30000 }, corsOrigin }` |
+| `src/app.module.ts` | imports `ClientsModule`, `HealthModule`; provides `API_CONFIG` |
+| `src/clients/clients.module.ts` | binds `CLIENTS_REPOSITORY → JsonClientsRepository`, `CLIENTS_DATA_PATH → new URL('./data/clients.json', import.meta.url)` |
+| `src/clients/clients.controller.ts` | `GET /clients` → envelope; `@UseInterceptors(DevSwitchesInterceptor)` |
+| `src/clients/clients.service.ts` | `getClients()` pass-through (the seam for Phase 2's guard); `onApplicationBootstrap` runs the consistency report |
+| `src/clients/clients.repository.ts` | `type ClientsRepository = { load(): Promise<ClientsResponse> }`; `CLIENTS_REPOSITORY` symbol |
+| `src/clients/json-clients.repository.ts` | `fs.readFile(CLIENTS_DATA_PATH)` in `onModuleInit`; returns `{ months: [...MONTHS], company }` |
+| `src/clients/consistency.ts` | pure `findDiscrepancies(company): Discrepancy[]` — depth-first; `kids = childrenOf(node)`; leaf → nothing; else per month `sum ≠ node.values[i]` → `{ path: string[], month, expected, actual }`; integer `!==`; never throws, never mutates |
+| `src/clients/dev-switches.interceptor.ts` | D-5; async `intercept`: disabled → `next.handle()` untouched; else clamp+sleep, then `fail === '1'` → `InternalServerErrorException('Failing on purpose (?fail=1)')` |
+| `src/clients/data/clients.json` | byte copy of `context/inbox/data.json` |
+| `src/health/health.module.ts`, `health.controller.ts` | `GET /health` → `{ status: 'ok' }`; no terminus; switches never apply |
+| `test/` | e2e specs + `fixtures/{broken,childless,no-branches}.json` (see §4); acceptance tests by `testing-expert` go to `test/acceptance/` so two lanes never edit one file |
+
+**API contract.** `GET /api/clients` → `200 application/json` `{ "months": ["2024-02", …, "2025-01"], "company": <clients.json verbatim> }` (`months` = the `MONTHS` constant attached by the repository; a Phase 3 provider knows its own window). No cache headers. Errors are Nest's default body: `?fail=1` → `500 { "message": "Failing on purpose (?fail=1)", "error": "Internal Server Error", "statusCode": 500 }`; unknown path → `404`. `GET /api/health` → `200 { "status": "ok" }`. Consistency warnings: `Logger('ConsistencyCheck').warn(...)` one line per discrepancy, format `"Company > Branch 1 > Anna Blackwood" 2024-04: parent 28, children sum 33` (path = names from root; pass a string — Nest 12's logger treats a trailing object as structured params), then one `log` with the count. Shipped data: 44 nodes, 0 discrepancies (verified).
+
+### 2.4 `apps/web` (`react-frontend` lane; `e2e/` owned by `testing-expert`)
+
+`package.json`: `name @nevis/web`; deps `react`/`react-dom` 19.3, `@tanstack/react-query ^5.103`, `zod` (via contracts), `@nevis/contracts workspace:*`, `@fontsource-variable/inter ^5.3`; devDeps `vite ^8.3`, `@vitejs/plugin-react ^6.1`, `vitest ^5.0.1`, `jsdom ^30.1`, `@testing-library/{react@16.3,dom@10.4,user-event,jest-dom@7}`, `jest-axe ^11` + `@types/jest-axe`, `@playwright/test ^1.63`, `@axe-core/playwright ^4.13`, `typescript ~6.0.3`, eslint plugins (below). Scripts: `dev: vite`, `build: tsc -b && vite build`, `preview: vite preview`, `lint: eslint . --max-warnings 0`, `typecheck: tsc -b`, `test: vitest run`, `e2e: playwright test -c e2e/playwright.config.ts`, `check: pnpm lint && pnpm typecheck && pnpm test && pnpm e2e`.
+
+Config: `vite.config.ts` (one file, `/// <reference types="vitest/config" />`) — `plugins: [react()]`; `server: { port: 5173, strictPort: true, proxy: { '/api': 'http://localhost:3000' } }`; `resolve.alias '@' → src`; `build.target` default (`baseline-widely-available`); `test: { environment: 'jsdom', environmentOptions.jsdom.url: 'http://localhost:5173/', setupFiles: ['./src/test/setup.ts'], include: ['src/**/*.test.{ts,tsx}'] (**required** — Vitest's default glob would swallow `e2e/*.spec.ts`), globals: false, restoreMocks: true }`. `tsconfig.json` → references `tsconfig.app.json` (`target es2022`, `lib ES2023/DOM/DOM.Iterable`, `module esnext`, `moduleResolution bundler`, `jsx react-jsx`, `strict`, `noUncheckedIndexedAccess`, `verbatimModuleSyntax`, `isolatedModules`, `skipLibCheck`, `noEmit`, `types ["vite/client"]`, `paths {"@/*": ["./src/*"]}`, `include ["src"]`) and `tsconfig.node.json`. `src/test/setup.ts`: `import '@testing-library/jest-dom/vitest'`, `expect.extend(toHaveNoViolations)`, `afterEach(cleanup)`; `src/test/jest-dom.d.ts`: the one-line `declare module 'vitest' { interface Matchers<R, T> extends TestingLibraryMatchers<unknown, R> {} }` shim (Vitest 5 changed `Assertion<R, T>`; testing-library/jest-dom#738 open).
+
+Lint block for web: `eslint-plugin-react-hooks` 7 `configs.flat.recommended`, `eslint-plugin-jsx-a11y` 6.10 `flatConfigs.recommended`, `eslint-plugin-react-refresh` `configs.vite()`, `@tanstack/eslint-plugin-query` `flat/recommended`, **`@conarti/eslint-plugin-feature-sliced@2.0.1`** (`featureSliced()`; flat-config only, published 2026-09-18) with rules `layers-slices` (imports only downward `shared → entities → features → widgets → pages → app`, no same-layer cross-slice), `public-api` (other slices only via their `index`), `absolute-relative` (cross-layer `@/…`, intra-slice relative), `no-cross-segment-reexport`, `import-order`; `ignoreFiles: ['**/*.test.*', 'src/test/**']`. Rejected: `@feature-sliced/eslint-config` (eslintrc-only, last release 2024), `steiger` (maintained but a separate CLI, not ESLint), `eslint-plugin-boundaries` (generic; every matcher hand-written).
+
+FSD layout after this spec:
+
+| Path | Responsibility |
+|---|---|
+| `index.html` | `<html lang="en">`, `<title>Clients</title>`, `#root` |
+| `src/app/main.tsx`, `app/app.tsx` | `createRoot`; `<QueryProvider><ErrorBoundary><DashboardPage/></ErrorBoundary></QueryProvider>` |
+| `app/providers/query-provider.tsx` | `QueryClientProvider` with `createQueryClient()` |
+| `app/providers/error-boundary.tsx` | ~25-line class boundary rendering `ErrorPanel` with `retryLabel="Reload"` → `location.reload()` |
+| `app/styles/global.css` | import order: fontsource `opsz.css` → `tokens.css` → `reset.css` → body rules |
+| `pages/dashboard/ui/dashboard-page.tsx` | reads dev switches once (`useState(() => readDevSwitches(location.search))`), `useClientsQuery(switches)`, derives `view = data ? 'loaded' : isFetching ? 'loading' : 'error'` (after an error, `refetch()` keeps `status: 'error'` with `fetchStatus: 'fetching'` — `isPending` is false during Retry, so key off `isFetching && !data`), composes `<main><h1>Clients</h1><VisuallyHidden as="p" role="status">…</VisuallyHidden><div aria-busy={loading} className={grid}>cards \| skeleton \| ErrorPanel</div></main>` |
+| `pages/dashboard/ui/dashboard-page.module.css` | page grid `minmax(0,1fr)`, `max-width: 1440px; margin-inline: auto; padding: var(--space-6) var(--space-4)`, slots with `min-height: var(--card-chart-min-h \| --card-table-min-h)` |
+| `pages/dashboard/ui/chart-card-skeleton.tsx`, `table-card-skeleton.tsx` | `<span aria-hidden="true">` grey blocks in the chart's / table's positions; shimmer off under `prefers-reduced-motion`; deleted by 002/003 (each widget owns its skeleton) |
+| `entities/clients/index.ts` | public API: `useClientsQuery`, `clientsQueryOptions`, `readDevSwitches`, `formatMonth`, `formatPeriod`, `formatBranchCount`, types |
+| `entities/clients/api/dev-switches.ts` | `readDevSwitches(search)` = `import.meta.env.DEV ? pick(URLSearchParams, ['delay','fail']) : {}` — the gate is the branch itself (statically replaced by Vite; the `false` branch and `pick` are dropped by the `oxc` minifier); unit-tested under `vi.stubEnv('DEV', true/false)` |
+| `entities/clients/api/clients-url.ts` | `buildClientsUrl(switches)` → `/api/clients[?delay=&fail=]` |
+| `entities/clients/api/fetch-clients.ts` | `getJson(buildClientsUrl(switches), { signal })` → `ClientsResponseSchema.safeParse` → data or `throw new UnexpectedShapeError({ cause })` |
+| `entities/clients/queries/clients-query.ts` | `clientsQueryOptions(switches)` = `queryOptions({ queryKey: ['clients', switches], queryFn: ({ signal }) => fetchClients({ switches, signal }) })`; `useClientsQuery` |
+| `entities/clients/model/format-month.ts` | `Intl.DateTimeFormat('en', { month: 'short', year: 'numeric', timeZone: 'UTC' })` on `Date.UTC(y, m-1, 1)` → `"Feb 2024"` |
+| `entities/clients/model/summaries.ts` | `formatPeriod(months)` → `"12 months · Feb 2024 – Jan 2025"` (U+00B7, U+2013 exactly); `formatBranchCount(company)` → `"Company · 3 branches"` (D-12) |
+| `shared/api/errors.ts` | `ApiError { kind, detail }` → `NetworkError` "Network error", `HttpError{status}` "Request failed with status N", `TimeoutError` "Request timed out", `UnexpectedShapeError` "Unexpected data shape"; `describeError(unknown)` |
+| `shared/api/http.ts` | `getJson(url, { signal, timeoutMs = 10_000 })`: fetch with `accept: application/json`; `TypeError` → NetworkError; `!ok` → HttpError; abort with `reason.name === 'TimeoutError'` → TimeoutError; other aborts (TanStack cancelling on unmount) rethrown; JSON `SyntaxError` → UnexpectedShapeError. Timeout via an own `withTimeout(signal, ms)` (composite `AbortController` + `setTimeout`, abort reason `DOMException('Request timed out','TimeoutError')`) rather than `AbortSignal.any` (Safari 17.4+, outside Vite 8's default target) — and it runs under fake timers |
+| `shared/api/query-client.ts`, `config.ts` | `createQueryClient(overrides?)` with the D-6 defaults; `REQUEST_TIMEOUT_MS = 10_000`, `RETRY_DELAY_MS = 500` |
+| `shared/ui/{card,skeleton,error-panel,visually-hidden,button}/` | `Card { label, className, children }` → `<section aria-label>`; `Skeleton { className }`; `ErrorPanel { message, detail, onRetry, retryLabel? }` → `<section aria-labelledby><div role="alert"><p id>{message}</p><p>{detail}</p></div><Button>Retry</Button></section>` (alert on the text block only; no `autoFocus`); `VisuallyHidden { as? }`; `Button` = native `<button type="button">` with `ButtonHTMLAttributes` pass-through and a `:focus-visible` ring |
+| `shared/lib/cx.ts` | className joiner |
+| `shared/styles/tokens.css`, `reset.css` | §2.5 |
+
+Live region: persistent `role="status"` (polite) rendered before the busy container, text `"Loading clients…"` only while loading — a node that exists before its text changes announces reliably, and it sits outside `aria-busy` because AT may suppress content inside a busy region. Layout shift: loading and loaded render the **same two `Card` shells in the same grid slots** with the design heights (430 / 280 px) as `min-height`; the summary `<p>` reserves one body line-height.
+
+### 2.5 Tokens and styling
+
+`shared/styles/tokens.css` (`:root`), from `context/inbox/design/tokens.md`: `--color-bg #f7f5ed`, `--color-surface #fff`, `--color-text #141413`, `--color-text-muted rgba(20,20,19,.6)`, `--color-text-inverse #fff`, `--color-line rgba(20,20,19,.08)`, `--color-line-dotted rgba(20,20,19,.16)`, `--color-skeleton: var(--color-line)` (proposal — not in Figma), `--font-family-sans 'Inter Variable', Inter, system-ui, sans-serif`, `--font-size-title 35px` / `--line-height-title 1.25`, `--font-size-body 14px` / `--line-height-body 20px`, `--font-size-footnote 12px` / `--line-height-footnote 16px`, `--font-weight-regular 400`, `--font-numeric "lnum" 1, "tnum" 1` (for 002's cells), `--radius-card 8px`, `--space-2 8px`, `--space-4 16px`, `--space-6 24px`, `--card-chart-min-h 430px`, `--card-table-min-h 280px`, `--focus-ring 2px solid var(--color-text)`, `--focus-ring-offset 2px`. Channel series colours are **not** set here — 003 fetches them from Figma and appends (see §3). Reset: border-box, margin 0, `button { font: inherit; color: inherit }`, `img, svg { display: block; max-width: 100% }`, `:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-ring-offset) }`. CSS Modules with camelCase class names (no `localsConvention`), joined with `cx()`; sizes only via classes, never `style={{}}`.
+
+375 px guarantee: container `width: 100%` with 16 px gutters; one-column grid `minmax(0, 1fr)`; cards `width: 100%; min-width: 0; overflow: clip`; text `overflow-wrap: anywhere`; the only fixed values are heights; no `overflow-x: hidden` on the document, so the e2e `scrollWidth` assertion measures the truth.
+
+---
+
+## 3. Impact and Risk Analysis
+
+- **System dependencies.** Specs 002 (table) and 003 (chart) consume `entities/clients` (query hook, `childrenOf`, `formatMonth`) and the `Card` slots; they replace the page's placeholder `<p>`s and skeleton files with widgets. `testing-expert` depends on the Playwright config and fixture fixed here. `harness.json` gates (`pnpm check[:web|:api]`) are defined by slice 0.
+- **R1 — three-package TypeScript wiring** (grill R1): resolved by D-2; residual risk is a developer on Node 22.12–22.17 hitting `ERR_UNKNOWN_FILE_EXTENSION` from `node dist/main.js` → `engines` + `engine-strict` + `.nvmrc` + one README line. Contracts must stay *erasable* TS (`erasableSyntaxOnly`).
+- **R2 — Nest in a workspace** (grill R2): resolved by the consult's throwaway build; residual: decorator metadata is fragile in ESM/strict tooling — `verbatimModuleSyntax` or a `consistent-type-imports` autofix turns `ClientsService` into `import type` and DI silently resolves `Object`, surfacing only at boot → rule off for `apps/api`, the e2e boot test guards it.
+- **R3 — Playwright in CI** (grill R3): e2e needs only Vite (mocked routes); Chromium install cached; the `prod` project adds a `vite build` (~10 s) per `check:web` (D-9).
+- **R4 — skeleton fidelity**: heights are the design's; inner shapes are guesses until 002/003 → fixed there.
+- **R5 — dev switches in production**: proven twice — unit (`vi.stubEnv('DEV', false)`) and the `prod` Playwright project capturing the real request URL.
+- **New — fresh majors**: TypeScript 6.0 defaults (`types: []`, `rootDir: .`, `strict`) change what `tsc -b` checks → every tsconfig key written explicitly. Vitest 5.0.1 is 18 days old → jest-dom type shim; if the RTL/jest-axe chain misbehaves, fall back to `vitest@4.1.11` (same Vite 8 peer) rather than debug a fresh major in the budget. ESLint 10 + two-year-old `jsx-a11y` works via the peer override; if it breaks, the replacement is oxlint's a11y rules, not ESLint 9.
+- **New — timing semantics**: `networkMode`, `fetchStatus` and `retryDelay` are where a green test can hide the wrong state → RTL tests assert **fetch call counts**, not only text.
+- **New — consistency AC wording**: breaking a *middle* node yields two correct warnings (it vs. children, parent vs. it); the "one warning" fixture must break a **leaf** (a channel) or the **root**.
+- **Design inputs still to fetch from Figma before 002/003** (not this spec): channel series colours + legend order; hover colours; avatar style; chart card inner padding (plot 1338 in 1408 → 35 px). Confirm behaviour above 1440 px (D-10) and that "Placeholder"/`Test Founders Grotesk` in the header are ignorable.
+
+---
+
+## 4. Testing Strategy
+
+One runner (Vitest 5) for unit, component and API e2e; Playwright for the browser. Every acceptance criterion in the functional spec maps to at least one test below; `testing-expert` writes the acceptance layer in `apps/web/e2e/` and `apps/api/test/acceptance/` after the lanes, with RED validation.
+
+| Layer | Files | Proves (functional spec ACs) |
+|---|---|---|
+| contracts unit | `packages/contracts/src/index.test.ts` | schema accepts the envelope, rejects 11 values / missing id, name, months, company; leaf rule (missing **and** empty lists); `MONTHS`; `childrenOf`; no `any` erosion |
+| api unit | `src/clients/consistency.spec.ts` | `[]` on shipped data; exactly one entry for a leaf-broken copy (`month: '2024-04'`); two for a middle-broken copy (documents semantics); input unchanged — FR2-AC5/6 |
+| api unit | `src/clients/dev-switches.interceptor.spec.ts` | disabled → passes through, never reads the query; `fail=1` → 500; delay with fake timers; cap; garbage → 0 — FR2-AC7–10 |
+| api e2e (supertest) | `test/clients.e2e-spec.ts` | 200 + `ClientsResponseSchema.safeParse(body).success`; `months` = `MONTHS`; `company` deep-equals the data file; every node 12 values; `?fail=1` → 500 body; `?delay=3000` ≥ 3 s; `?delay=3000&fail=1` → 500 after ≥ 3 s; production gate via `overrideProvider(API_CONFIG)` (`enabled: false`): `?fail=1` → 200, `?delay=10000` → 200 in < 1 s — FR2-AC1/2/7/8/9/10 (the real-build proof of AC10 is a shell smoke: `NODE_ENV=production node dist/main & curl '…?fail=1'`) |
+| api e2e | `test/fixtures.e2e-spec.ts` | childless fixture → 200, schema valid, no `employees` on that branch; no-branches → 200; broken → `vi.spyOn(Logger.prototype,'warn')` called once with `/Anna Blackwood.*2024-04/`, data still served; shipped data → never called — FR2-AC3/5/6 (`@nestjs/testing` installs a no-op `TestingLogger`; the spy still observes) |
+| api e2e | `test/health.e2e-spec.ts` | `{ status: 'ok' }` — FR2-AC4 |
+| web unit | `shared/api/http.test.ts`, `entities/clients/api/*.test.ts`, `model/*.test.ts`, `shared/api/query-client.test.ts` | error taxonomy (mocked `fetch`: TypeError, 500, timeout at 10 ms, bad JSON, foreign abort rethrown); parse failure → shape error, missing `branches` resolves — FR4-AC7/8; `readDevSwitches` under DEV true/false; `buildClientsUrl`; `formatMonth`, `formatPeriod` exact, `formatBranchCount` 3/2/0 — FR5-AC1–3; query defaults equal the spec numbers — FR4, FR5-AC4 |
+| web component (RTL, mocked `fetch`, `createQueryClient({ retryDelay: 0 })`, real timers) | `pages/dashboard/ui/dashboard-page.test.tsx` | loading: `role=status` text, `aria-busy`, heading, two cards, no skeleton text — FR3-AC1; success: summaries, `aria-busy=false` — FR3-AC2, FR5; failure: `role=alert` message + detail, Retry button, fetch called exactly twice — FR4-AC1; Retry persisting → skeleton then panel — FR4-AC4; Retry recovering → loaded — FR4-AC5; `?fail=1` forwarded to both attempts and to Retry — FR4-AC6, FR6-AC2; Tab reaches Retry, Enter/Space refetch — FR4-AC9; `jest-axe` in all three states. Rejected MSW: one endpoint, four responses, taxonomy already covered |
+| web e2e (Playwright, `e2e/`, `page.route('**/api/clients**')` with a mutable mode `ok \| 500 \| shape \| hang`, `webServer` = Vite only) | `loading.spec` (3 s handler delay → skeleton < 1 s, status text, `aria-busy`, then loaded, no navigation — FR3-AC1/2, FR6-AC1); `error.spec` (500 → panel < 3 s — FR4-AC1; `shape` → "Unexpected data shape" — FR4-AC7; `route.abort('connectionrefused')` → "Network error" — FR4-AC2); `retry.spec` (persisting → ≤ 2 s — FR4-AC4; flip to `ok` + Retry → loaded, URL unchanged — FR4-AC5; keyboard — FR4-AC9); `timeout.spec` (`hang` → "Request timed out" after ≈ 20.5 s, `test.slow()` — FR4-AC3); `viewport-375.spec` (`scrollWidth ≤ 375` in three states, Retry visible — FR7); `a11y.spec` (`AxeBuilder` violations empty per state); `prod/switches.spec` on `vite preview :4173` (`/?fail=1&delay=10000` → captured request URL has no query, content prompt — FR6-AC4) |
+| scaffold (manual + CI) | — | FR1-AC1 `pnpm install && pnpm dev` then open `:5173`; FR1-AC2 `pnpm check` green; FR1-AC3 the workflow's status on the PR; FR1-AC4 README sections present |
+
+Gates: `pnpm check:api` (contracts + api: lint, typecheck, test), `pnpm check:web` (lint, typecheck, test, e2e), `pnpm check` (prettier + both). Screenshots from e2e go to `docs/screenshots/` (git-ignored).

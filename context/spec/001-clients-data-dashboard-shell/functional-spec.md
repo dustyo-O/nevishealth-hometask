@@ -3,7 +3,7 @@
 - **Roadmap Item:** Phase 1 — Clients Data & Dashboard Shell: serve the client data from a small read-only service, and a single "Clients" page that loads it with honest loading and error states.
 - **Status:** Draft
 - **Author:** Alexander Shleyko
-- **Sources:** `context/inbox/clients-data-dashboard-shell.md` (grill decisions D1–D14), `context/product/product-definition.md`, `context/inbox/brief.md`
+- **Sources:** `context/inbox/clients-data-dashboard-shell.md` (grill decisions D1–D14), `context/product/product-definition.md`, `context/product/architecture.md` (§1–2 amended 2026-09-21 for the month-list document), `context/inbox/brief.md`
 
 ---
 
@@ -31,21 +31,23 @@ A developer can install and start the entire project (the page and the data serv
 
 ### FR2 — The clients data service
 
-The client figures are published by the project's own data service at a fixed local address, as one document with two parts: the list of the twelve months the figures cover (February 2024 to January 2025, in order), and the company tree exactly as it was supplied — Company, its branches, each branch's advisers, each adviser's acquisition channels, every item carrying its name and its twelve monthly figures. The service is read-only; nothing can be changed through it.
+The client figures are published by the project's own data service at a fixed local address, as one document with two parts: the list of the twelve months the figures cover (February 2024 to January 2025, in order), and the company tree exactly as it was supplied — Company, its branches, each branch's advisers, each adviser's acquisition channels, every item carrying its name and its twelve monthly figures. A branch may have no advisers and an adviser may have no channels: a missing or empty list beneath an item is valid, and that item is simply the end of its line. The document is of the wrong shape only when the month list or the company is missing, an item lacks its identifier or its name, or an item's figures are not exactly twelve numbers. The service is read-only; nothing can be changed through it.
 
 When it starts, the service checks the data it is about to serve: wherever an item's monthly figure does not equal the sum of the items beneath it, it prints a warning naming the item and the month. It still serves the data.
 
-For development and demonstration only, the service can be asked to respond slowly or to fail on purpose by adding `delay` (milliseconds) or `fail=1` to the address. These switches do nothing in the production build.
+For development and demonstration only, the service can be asked to respond slowly or to fail on purpose by adding `delay` (milliseconds) or `fail=1` to the address; with both present, the service waits for the delay and then fails. These switches do nothing in the production build.
 
 - **Acceptance Criteria:**
   - [ ] When a tester opens `http://localhost:3000/api/clients` (browser or curl), then they receive one document containing `months` — twelve month identifiers from `2024-02` to `2025-01` in order — and `company` — the company tree.
   - [ ] When a tester compares the `company` part with the supplied dataset (`context/inbox/data.json`), then the names, order, nesting and every figure are identical, and the item nesting is Company → branches → advisers (`employees`) → channels, each item with an identifier, a name and exactly twelve figures.
+  - [ ] Given a test dataset in which one branch has no advisers and one adviser has no channels, when a tester opens the data address, then the document is served with those items simply carrying no list beneath them.
   - [ ] When a tester opens `http://localhost:3000/api/health`, then they see a document reporting status "ok".
   - [ ] When the service starts with the delivered dataset, then it prints no data warnings.
   - [ ] Given a test dataset in which one item's monthly figure does not equal the sum of the items beneath it, when the service starts with it, then it prints one warning for that item and month, and the data is still served.
   - [ ] When a tester opens `http://localhost:3000/api/clients?fail=1` during development, then they receive an error response instead of the data.
   - [ ] When a tester opens `http://localhost:3000/api/clients?delay=3000` during development, then the response arrives no earlier than 3 seconds after the request.
-  - [ ] When the production build of the service is asked with `?fail=1` or `?delay=3000`, then it responds with the data in under 1 second, as if the switches were not there.
+  - [ ] When a tester opens `http://localhost:3000/api/clients?delay=3000&fail=1` during development, then an error response arrives no earlier than 3 seconds after the request.
+  - [ ] When the production build of the service is asked with `?fail=1`, then it returns the normal data document; when it is asked with `?delay=10000`, then the data document arrives without the 10-second wait (the switch is not honoured).
 
 ### FR3 — Loading state
 
@@ -57,14 +59,17 @@ While the figures are being fetched, the page shows the design's layout in place
 
 ### FR4 — Failed state
 
-If the figures cannot be loaded — the data service is unreachable, answers with an error, or answers with a document that does not have the expected shape — the page tries once more on its own, and if that also fails, replaces the two cards with a single error panel: the message "We couldn't load the clients data.", one short line of detail, and a "Retry" button. The error appears within 2 seconds of the failure. Retry fetches the figures again: the placeholders show while it works, then either the loaded content or the error panel again. Nothing else on the page is lost.
+If the figures cannot be loaded — the data service is unreachable, answers with an error, does not answer within 10 seconds, or answers with a document that does not have the expected shape — the page tries once more on its own, starting within half a second of the first failure, and if that also fails, replaces the two cards with a single error panel: the message "We couldn't load the clients data.", one short line of detail, and a "Retry" button. The error appears within 2 seconds of the second attempt failing — so within 3 seconds of opening the page when the service fails at once, and at most about 21 seconds when the service never answers (two 10-second waits). Retry fetches the figures again with the same address switches the page was opened with (changing a switch means changing the address, which reloads the page): the placeholders show while it works, then either the loaded content or the error panel again. Nothing else on the page is lost.
 
 - **Acceptance Criteria:**
-  - [ ] Given the data service fails on purpose (development switch `fail=1`), when the user opens the page, then within 2 seconds they see, in place of the two cards, "We couldn't load the clients data.", a detail line naming the failure (e.g. "Request failed with status 500"), and a "Retry" button.
-  - [ ] Given the data service is stopped, when the user opens the page, then within 2 seconds they see the same error panel with a detail line such as "Network error".
+  - [ ] Given the data service fails on purpose (development switch `fail=1`), when the user opens the page, then within 3 seconds they see, in place of the two cards, "We couldn't load the clients data.", a detail line naming the failure (e.g. "Request failed with status 500"), and a "Retry" button.
+  - [ ] Given the data service is stopped, when the user opens the page, then within 3 seconds they see the same error panel with a detail line such as "Network error".
+  - [ ] Given the data service accepts the request but never answers (test double), when the user opens the page, then the placeholders stay for about 20 seconds and the error panel then appears with a detail line such as "Request timed out".
   - [ ] Given the error panel is showing and the problem persists, when the user clicks Retry, then the placeholder cards appear while it retries and the same error panel returns within 2 seconds.
-  - [ ] Given the error panel is showing and the problem has been fixed (the service is back, or the failure switch removed), when the user clicks Retry, then the loaded content appears without a page reload.
+  - [ ] Given the error panel is showing because the data service was stopped, when the service is started again and the user clicks Retry, then the loaded content appears without a page reload.
+  - [ ] Given the page was opened with `?fail=1` and shows the error panel, when the user clicks Retry, then the request fails again in the same way (the switch travels with Retry) — only opening the address without the switch clears it.
   - [ ] Given the data service answers with a document of the wrong shape (e.g. an item with eleven figures instead of twelve), when the user opens the page, then they see the error panel with the detail "Unexpected data shape".
+  - [ ] Given a test dataset in which a branch has no advisers, when the user opens the page, then the loaded content appears — a missing level beneath an item is not a wrong shape.
   - [ ] When the error panel appears, then a screen reader announces the message without the user moving focus, and pressing Tab reaches the Retry button, and pressing Enter or Space on it retries.
 
 ### FR5 — Loaded state (honest placeholders)
@@ -74,16 +79,18 @@ When the figures have loaded, the page shows the "Clients" heading and the two c
 - **Acceptance Criteria:**
   - [ ] When the figures have loaded, then the page shows the "Clients" heading, a chart card reading "12 months · Feb 2024 – Jan 2025", and a table card reading "Company · 3 branches".
   - [ ] Given a test dataset with a different number of branches (e.g. two), when the figures load, then the table card reads "Company · 2 branches".
+  - [ ] Given a test dataset whose company has no branches at all, when the figures load, then the table card reads "Company · 0 branches" and no error is shown.
   - [ ] When the page has loaded, then it does not fetch the figures again on its own (switching to another tab and back triggers no new loading state); only Retry or reloading the page does.
 
 ### FR6 — Demonstration switches on the page
 
-During development, the page forwards the two switches from its own address to the data service, so a reviewer can see any state by address alone: `http://localhost:5173/?delay=3000` shows the loading state for at least three seconds; `http://localhost:5173/?fail=1` shows the failed state. The production build ignores both. The README documents them.
+During development, the page forwards the two switches from its own address to the data service, so a reviewer can see any state by address alone: `http://localhost:5173/?delay=3000` shows the loading state for at least three seconds; `http://localhost:5173/?fail=1` shows the failed state; `?delay=3000&fail=1` shows the loading state for three seconds and then the failed state. The production build ignores both. The README documents them.
 
 - **Acceptance Criteria:**
   - [ ] When a reviewer opens `http://localhost:5173/?delay=3000` in development, then the placeholder cards stay for at least 3 seconds before the content appears.
   - [ ] When a reviewer opens `http://localhost:5173/?fail=1` in development, then the error panel appears.
-  - [ ] When the production build of the page is opened with `?fail=1` or `?delay=3000`, then the figures load normally as if the switches were not there.
+  - [ ] When a reviewer opens `http://localhost:5173/?delay=3000&fail=1` in development, then the placeholder cards stay for at least 3 seconds and the error panel then appears.
+  - [ ] When the production build of the page is opened with `?fail=1`, then the loaded content appears and no error panel is shown; when it is opened with `?delay=10000`, then the loaded content appears without a 10-second wait.
 
 ### FR7 — Nothing breaks at 375 px
 
