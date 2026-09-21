@@ -25,8 +25,15 @@ export default defineConfig({
   },
   projects: [
     {
+      // One warm-up load, so the dev project's 1-second budgets do not measure Vite's first compile.
+      name: 'setup',
+      testMatch: 'warm-up.setup.ts',
+      use: { ...devices['Desktop Chrome'], baseURL: DEV_URL },
+    },
+    {
       name: 'chromium',
-      testIgnore: 'prod/**',
+      dependencies: ['setup'],
+      testIgnore: ['prod/**', 'warm-up.setup.ts'],
       use: { ...devices['Desktop Chrome'], baseURL: DEV_URL },
     },
     {
