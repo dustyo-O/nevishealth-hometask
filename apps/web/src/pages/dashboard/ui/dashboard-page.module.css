@@ -27,3 +27,13 @@
 .tableSlot {
   min-height: var(--card-table-min-h);
 }
+
+/* One body line reserved inside the card, so the summary lands without moving anything. */
+.summary {
+  min-height: var(--line-height-body);
+  padding: var(--space-4);
+}
+
+.message {
+  overflow-wrap: anywhere;
+}
