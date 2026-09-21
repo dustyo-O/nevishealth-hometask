@@ -15,7 +15,7 @@ Three ideas carry the whole thing:
 
 1. **Interrogate before you specify.** `grill-me` (Matt Pocock's skill) forces every branch of the idea to be decided *before* a spec exists. The output is a list of decisions, not prose. Cheapest bugs to fix are the ones that never became a requirement.
 2. **A vendor never reviews itself.** The lead model (Claude) writes the spec and directs the code; **Codex** reviews both (`bin/harness/second-opinion.sh`). The same model has the same blind spots at write time and review time — a different model has different ones. The reviewer runs in its own herdr pane (`NNN review-spec codex`) next to the lanes, so the second opinion is as visible as the first. Every finding gets a written verdict (`accepted / rejected: why / deferred: ticket`) in `reviews/TRIAGE.md`. Silence is not a verdict. Everyday setting is Codex on `low` effort — cheap, fast, catches the obvious.
-3. **A fleet, not a tree.** Claude subagents cannot spawn subagents and are invisible from outside their session — so the swarm does not use them. `bin/harness/lanes.py` turns `tasks.md` into lanes; `bin/harness/swarm.sh` gives every lane its own git worktree, its own **herdr pane**, and a **full `claude` session** with a written brief. The lead is just another session in another pane: it launches siblings, `herdr agent wait`s for them, reads their panes, merges towards the spec, runs the gates, keeps the ledger. `/harness:lead` runs that loop over the whole backlog and stops only for a human step or a red gate. Slices stay sequential (AWOS puts the riskiest unknown first for a reason); lanes inside a slice are parallel and own disjoint directories.
+3. **A fleet, not a tree.** Claude subagents cannot spawn subagents and are invisible from outside their session — so the swarm does not use them. `bin/harness/lanes.py` turns `tasks.md` into lanes; `bin/harness/swarm.sh` gives every lane its own git worktree, its own **herdr pane**, and a **full `claude` session** with a written brief. The lead is just another session in another pane: it launches siblings, `herdr agent wait`s for them, reads their panes, merges towards the spec, runs the gates, keeps the ledger. `/harness:lead` runs that loop over the whole backlog and stops only for a human step or a red gate. Slices stay sequential (AWOS puts the riskiest unknown first for a reason); lanes inside a slice are parallel and own disjoint directories. The same rule covers **consultations**: where an AWOS command would spawn a specialist subagent (`/awos:tech`, `/awos:tasks`, `/awos:implement`, brownfield explorations), `bin/harness/consult.sh <agent> <slug>` runs that specialist as an interactive `claude --agent` session in its own pane (auto permission mode, like a lane) and the session writes its answer to `consults/` — so you can watch it, type into it, kill it, and the lead quotes it instead of paraphrasing it.
 
 Under it all is **AWOS** (`.awos/`, `/awos:*`): product-definition → roadmap → spec → tech → tasks → implement → verify. The harness adds stages 0, 2, 4(parallel), 5 on top and changes nothing underneath.
 
@@ -57,11 +57,14 @@ HARNESS.md                         ← you are here
 .claude/agents/                    ← your domain agents (/awos:hire) + reviewer (fallback), developer (generic)
 harness.json                       ← ticket prefix, tracker, lanes → owned dirs + gate, reviewer defaults
 bin/harness/second-opinion.sh      ← cross-vendor review; HARNESS_REVIEWER=codex|claude|<cmd>
+bin/harness/consult.sh             ← specialist consultation as an interactive session in a pane, auto mode (replaces every Agent(...) call in AWOS commands)
+bin/harness/_pane.sh               ← shared: opens every lane/review/consult pane NEXT TO THE LEAD'S PANE ($HERDR_PANE_ID), never focus-stealing, wherever the human is looking
 bin/harness/lanes.py               ← tasks.md → parallel lanes (deterministic, dumb on purpose)
 bin/harness/swarm.sh               ← launch | status | wait | merge | clean — worktrees + herdr panes + real sessions
 context/spec/NNN-*/lanes/          ← per-run briefs, pane ids, logs (gitignored)
 context/inbox/<slug>.md            ← grill output, input to /awos:spec
 context/spec/NNN-*/reviews/        ← raw reviews + TRIAGE.md
+context/spec/NNN-*/consults/       ← specialist answers + the prompts they got (committed; the lead quotes them)
 ```
 
 ## Setup on a fresh machine
@@ -96,6 +99,7 @@ Without herdr everything still runs: `HARNESS_NO_HERDR=1` makes lanes headless (
 |---|---|---|
 | `NNN <lane>` | `swarm.sh launch` | `swarm.sh clean NNN` (after merge) — or `swarm.sh panes NNN` to close only panes |
 | `NNN review-* codex` | `second-opinion.sh` | itself, 3 s after the review file lands (`HARNESS_KEEP_REVIEW_PANE=1` to keep) |
+| `NNN consult <agent> <slug>` | `consult.sh` | itself, 3 s after the answer lands (`HARNESS_KEEP_PANE=1` to keep) |
 | any | — | click into it, `Ctrl+B` then `x`; or `herdr pane close <id>` (ids: `herdr pane list`) |
 
 A lane session's `claude` stays interactive after its final report so you can read it or type into it; the pane says so and closes itself 20 s after `claude` exits (`/exit` in the session, or Ctrl+C to keep the shell).

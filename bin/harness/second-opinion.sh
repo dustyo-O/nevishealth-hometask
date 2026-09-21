@@ -93,24 +93,14 @@ CODE
 if [ "$dry" = 1 ]; then cat "$prompt_file"; exit 0; fi
 
 # ---------- run the reviewer ----------
-have_herdr() { [ -z "${HARNESS_NO_HERDR:-}" ] && command -v herdr >/dev/null 2>&1; }
-pane_ids() { herdr api snapshot 2>/dev/null | python3 -c 'import json,sys
-def walk(o):
-    if isinstance(o,dict):
-        if "pane_id" in o: yield o["pane_id"]
-        for v in o.values(): yield from walk(v)
-    elif isinstance(o,list):
-        for v in o: yield from walk(v)
-print("\n".join(sorted(set(walk(json.load(sys.stdin))))))'; }
+. "$(dirname "${BASH_SOURCE[0]}")/_pane.sh"   # harness_have_herdr, harness_open_pane
 # Run a review command either in a visible herdr pane (then wait for the output file) or inline.
 in_pane_or_inline() {   # $1 = label, $2 = shell command that writes $out
   local label="$1" command="$2" timeout="${HARNESS_REVIEW_TIMEOUT:-1800}"
-  if have_herdr; then
-    local before after pane
-    before=$(pane_ids); herdr pane split --direction down >/dev/null 2>&1 || herdr pane split --direction right >/dev/null
-    sleep 0.5; after=$(pane_ids); pane=$(comm -13 <(echo "$before") <(echo "$after") | head -1)
+  if harness_have_herdr; then
+    local pane
+    pane=$(harness_open_pane "$label" down)
     if [ -n "$pane" ]; then
-      herdr pane rename "$pane" "$label" >/dev/null 2>&1 || true
       herdr pane run "$pane" "cd '$root' && $command; echo; echo 'REVIEW WRITTEN → $out'"
       echo "second-opinion: reviewing in herdr pane $pane ($label); waiting up to ${timeout}s for $out" >&2
       local waited=0
