@@ -1,0 +1,14 @@
+@import '@fontsource-variable/inter/opsz.css';
+@import '@/shared/styles/tokens.css';
+@import '@/shared/styles/reset.css';
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  font-weight: var(--font-weight-regular);
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+}

@@ -1,0 +1,13 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# ESLint 9 is EOL; eslint-plugin-jsx-a11y 6.10 still declares peer `eslint ^9` but uses none of the
+# APIs ESLint 10 removed (tech doc D-3). Silence the peer warning instead of pinning an EOL major.
+peerDependencyRules:
+  allowedVersions:
+    'eslint-plugin-jsx-a11y>eslint': '10'
+
+# pnpm 10 blocks dependency lifecycle scripts; filled in by `pnpm approve-builds` (see below).
+onlyBuiltDependencies:
+  - unrs-resolver

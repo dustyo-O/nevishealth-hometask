@@ -1,0 +1,16 @@
+# generated / vendored
+node_modules
+dist
+pnpm-lock.yaml
+docs/screenshots
+apps/web/e2e/test-results
+apps/web/e2e/playwright-report
+# harness + product docs are managed by their own tooling, not by the code formatter
+context
+.claude
+.awos
+bin
+CLAUDE.md
+HARNESS.md
+harness.json
+.mcp.json
