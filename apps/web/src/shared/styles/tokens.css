@@ -1,0 +1,37 @@
+/* Design tokens — values from context/inbox/design/tokens.md (Figma variables, Mockup 2). */
+:root {
+  /* colour */
+  --color-bg: #f7f5ed;
+  --color-surface: #fff;
+  --color-text: #141413;
+  --color-text-muted: rgba(20, 20, 19, 0.6);
+  --color-text-inverse: #fff;
+  --color-line: rgba(20, 20, 19, 0.08);
+  --color-line-dotted: rgba(20, 20, 19, 0.16);
+  --color-skeleton: var(--color-line); /* proposal — not in Figma */
+
+  /* type — Inter 4 with the optical-size axis: 35 px renders as "Inter Display" automatically */
+  --font-family-sans: 'Inter Variable', Inter, system-ui, sans-serif;
+  --font-size-title: 35px;
+  --line-height-title: 1.25;
+  --font-size-body: 14px;
+  --line-height-body: 20px;
+  --font-size-footnote: 12px;
+  --line-height-footnote: 16px;
+  --font-weight-regular: 400;
+  --font-numeric: 'lnum' 1, 'tnum' 1; /* tabular figures for every numeric cell (002) */
+
+  /* shape & space */
+  --radius-card: 8px;
+  --space-2: 8px;
+  --space-4: 16px;
+  --space-6: 24px;
+
+  /* design heights at 1440, kept as minimums at every width */
+  --card-chart-min-h: 430px;
+  --card-table-min-h: 280px;
+
+  /* focus */
+  --focus-ring: 2px solid var(--color-text);
+  --focus-ring-offset: 2px;
+}
