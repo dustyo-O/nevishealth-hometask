@@ -1,6 +1,7 @@
 // Build-and-boot smoke: proves the BUILT api starts under NODE_ENV=production, answers
-// /api/health, and serves /api/clients from the asset-copied JSON in a shape the contract
-// accepts (tech doc §2.3, review 2 F3). Slice 3 adds the dev-switch assertions here.
+// /api/health, serves /api/clients from the asset-copied JSON in a shape the contract accepts
+// (tech doc §2.3, review 2 F3), and ignores the dev switches `?fail=1` / `?delay=` — the only
+// proof of FR2-AC10 against the real production build.
 // Importing @nevis/contracts from this plain Node process is itself part of the proof: the
 // source-exported .ts loads under type stripping outside any bundler.
 import { deepStrictEqual } from 'node:assert/strict';
@@ -14,6 +15,9 @@ const appDir = fileURLToPath(new URL('..', import.meta.url));
 const DATA_FILE = new URL('../src/clients/data/clients.json', import.meta.url);
 const HEALTH_TIMEOUT_MS = 10_000;
 const POLL_INTERVAL_MS = 100;
+/** `?delay=10000` must not be honoured; a real 10 s wait fails this bound by a wide margin. */
+const IGNORED_DELAY_MS = 10_000;
+const IGNORED_DELAY_BOUND_MS = 2_000;
 
 const freePort = () =>
   new Promise((resolve, reject) => {
@@ -66,6 +70,39 @@ const checkClients = async (base) => {
   return body;
 };
 
+/** FR2-AC10: under NODE_ENV=production the switches are just unknown query parameters. */
+const checkSwitchesIgnored = async (base, expected) => {
+  const failed = await fetch(`${base}/api/clients?fail=1`);
+  if (failed.status !== 200) {
+    throw new Error(`/api/clients?fail=1 answered ${failed.status} in production, expected 200`);
+  }
+  deepStrictEqual(
+    await failed.json(),
+    expected,
+    '/api/clients?fail=1 in production differs from the normal document',
+  );
+
+  const start = performance.now();
+  const delayed = await fetch(`${base}/api/clients?delay=${IGNORED_DELAY_MS}`);
+  const elapsedMs = performance.now() - start;
+  if (delayed.status !== 200) {
+    throw new Error(
+      `/api/clients?delay=${IGNORED_DELAY_MS} answered ${delayed.status}, expected 200`,
+    );
+  }
+  if (elapsedMs >= IGNORED_DELAY_BOUND_MS) {
+    throw new Error(
+      `/api/clients?delay=${IGNORED_DELAY_MS} took ${elapsedMs.toFixed(0)} ms in production — the switch was honoured`,
+    );
+  }
+  deepStrictEqual(
+    await delayed.json(),
+    expected,
+    `/api/clients?delay=${IGNORED_DELAY_MS} in production differs from the normal document`,
+  );
+  return elapsedMs;
+};
+
 const port = await freePort();
 const base = `http://127.0.0.1:${port}`;
 const child = spawn(process.execPath, ['dist/main.js'], {
@@ -99,10 +136,12 @@ try {
   if (!/\[ConsistencyCheck\] .*0 discrepancies/.test(output)) {
     throw new Error(`boot log does not report 0 discrepancies for the shipped data:\n${output}`);
   }
-  const { company } = await checkClients(base);
+  const body = await checkClients(base);
+  const ignoredDelayMs = await checkSwitchesIgnored(base, body);
   console.log(
     `smoke: dist/main.js booted on :${port} under NODE_ENV=production, /api/health ok, contracts loaded, ` +
-      `/api/clients valid and equal to the data file (${company.branches.length} branches), 0 discrepancies`,
+      `/api/clients valid and equal to the data file (${body.company.branches.length} branches), 0 discrepancies, ` +
+      `?fail=1 → 200 data, ?delay=${IGNORED_DELAY_MS} answered in ${ignoredDelayMs.toFixed(0)} ms (switches ignored)`,
   );
 } catch (error) {
   console.error(`smoke: FAILED — ${error instanceof Error ? error.message : String(error)}`);
