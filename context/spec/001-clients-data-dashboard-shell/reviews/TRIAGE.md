@@ -22,3 +22,12 @@ Reviewer verdict: **SHIP WITH FIXES** — all five fixes applied; no blockers; n
 | F4 | minor | accepted | "Without the content shifting" (FR3-AC2) had no measurement in any test. | technical-considerations.md §4 `loading.spec` captures both cards' bounding boxes while loading and after, must match within 1 px at 1440 and 375 |
 
 Reviewer verdict: **SHIP WITH FIXES** — all four applied; no blockers; no user decision required.
+
+## Code review 2026-09-22 — `code-codex-20260922-1152.md` (codex, effort low, base main)
+
+| # | severity | verdict | rationale | applied in |
+|---|---|---|---|---|
+| F1 | major (spec compliance) | accepted | FR2 says an item "carries more than one kind of list beneath it … never two of these at once"; the schema counted only non-empty lists (review 2's "populated" wording), so `employees: […]` + `channels: []` passed. Spec is the contract; strict reading loses nothing in the supplied data. Owner may overrule by amending FR2 instead. | Slice 5 — nest-backend: `TreeNodeSchema.superRefine` counts defined child keys, contracts test flipped; react-frontend: `fetch-clients.test.ts` rejection case |
+| F2 | major (spec compliance, FR3-AC1) | accepted | The `role="status"` node mounted with "Loading clients…" already present; live regions announce changes, so the first announcement is unreliable. | Slice 5 — react-frontend: mount the status region empty, set the text after mount (effect), RTL asserts empty on first paint then text; screen-reader confirmation is the owner's `[User]` step |
+
+Reviewer verdict: **SHIP WITH FIXES** — both applied via Slice 5; no rejection; no user decision required (F1 overrulable).
