@@ -41,6 +41,8 @@ Only the name opens and closes the row. Clicking a figure does nothing; those ce
 
 Rows can be open independently: opening one branch never closes another, and any number can be open at once.
 
+If closing a row hides whatever the user's outline is on — a row or a figure somewhere inside it — the outline moves to the row that was just closed, so the keyboard user is never left with nothing selected.
+
 Rows slide in when they appear and slide out when they disappear. A viewer whose system is set to reduce motion sees them appear and disappear immediately instead.
 
 - **Acceptance Criteria:**
@@ -49,6 +51,8 @@ Rows slide in when they appear and slide out when they disappear. A viewer whose
   - [ ] Given Branch 1 is open and Anna Blackwood inside it is open, when the user closes Branch 1, then both the advisers and Anna's channels disappear; when the user opens Branch 1 again, then Anna's row is shown closed.
   - [ ] Given Branch 1 is open, when the user opens Branch 2, then Branch 1 stays open.
   - [ ] When the user clicks a monthly figure in any row, then nothing opens, closes or changes.
+  - [ ] Given the outline is on one of Anna Blackwood's channel figures inside an open Branch 1, when the user closes Branch 1 by clicking its name, then the outline moves to the Branch 1 row.
+  - [ ] Given the outline is on an adviser row inside an open Branch 1, when the user closes Branch 1, then the outline moves to the Branch 1 row and pressing Down moves it to Branch 2.
   - [ ] When a row opens or closes, then the affected rows slide in or out; given the viewer's system is set to reduce motion, when a row opens or closes, then the rows appear or disappear without movement.
 
 ### FR3 — Operating the table from the keyboard
@@ -56,20 +60,26 @@ Rows slide in when they appear and slide out when they disappear. A viewer whose
 The whole table is one stop in the page's tab order: pressing Tab moves into the table once, and pressing Tab again leaves it. Inside, the arrow keys move and open:
 
 - Up and Down move between the rows that are currently visible, skipping anything hidden inside a closed row.
-- Right on a closed row opens it; Right on a row that is already open moves into that row's first monthly figure.
+- Right on a closed row opens it; Right on a row that is already open — or on a row with nothing beneath it — moves into that row's first monthly figure.
 - Left on an open row closes it; Left on a closed row — or one that cannot open — moves to the row it belongs to, one level up.
 - Home moves to the Company row, End to the last visible row.
 - Enter or Space opens or closes the current row.
 
-Once the user is on a figure, Left and Right move along that row's months, Left from the first figure returns to the row's name, and Up and Down move to the same month in the row above or below. Whatever the user is on carries a visible outline, and moving to a figure that is out of view brings it into view sideways without moving the page up or down.
+Once the user is on a figure, Left and Right move along that row's months, Left from the first figure returns to the row's name, and Up and Down move to the same month in the row above or below. Home and End move to that row's first and last month. Enter and Space do nothing on a figure — a row is opened and closed from its name, never from its figures.
+
+Movement stops at the edges rather than wrapping: Up on the Company row, Down on the last visible row, Right on the last month and Left on the row's name all leave the outline where it is. Whatever the user is on carries a visible outline, and moving to a figure that is out of view brings it into view sideways without moving the page up or down.
 
 - **Acceptance Criteria:**
   - [ ] When the user presses Tab from the page heading, then the outline appears on the Company row, and pressing Tab again moves out of the table entirely.
   - [ ] Given the outline is on the Company row, when the user presses Down then Right, then the outline is on Branch 1 and Branch 1 has opened to show its advisers.
   - [ ] Given the outline is on an open Branch 1, when the user presses Right, then the outline moves to Branch 1's figure for February 2024.
+  - [ ] Given the outline is on a row with nothing beneath it (an acquisition channel), when the user presses Right, then the outline moves to that row's figure for February 2024.
   - [ ] Given the outline is on Branch 1's figure for February 2024, when the user presses Right twice then Left once, then the outline is on the figure for March 2024.
   - [ ] Given the outline is on Branch 1's figure for February 2024, when the user presses Left, then the outline returns to Branch 1's name.
   - [ ] Given the outline is on Branch 1's figure for June 2024, when the user presses Down, then the outline moves to the June 2024 figure of the row beneath.
+  - [ ] Given the outline is on Branch 1's figure for June 2024, when the user presses Home, then the outline moves to that row's February 2024 figure, and pressing End moves it to January 2025.
+  - [ ] Given the outline is on any figure, when the user presses Enter or Space, then nothing opens or closes and the outline stays where it is.
+  - [ ] Given the outline is on the last visible row's figure for January 2025, when the user presses Down and then Right, then the outline stays on that same figure.
   - [ ] Given the outline is on an open Branch 1, when the user presses Left, then Branch 1 closes; when the user presses Left again, then the outline moves to the Company row.
   - [ ] Given the outline is on any row, when the user presses Enter, then the row opens if it can, and pressing Space closes it again.
   - [ ] Given the outline is on a row deep in the table, when the user presses Home, then the outline moves to the Company row, and pressing End moves it to the last visible row.
@@ -94,12 +104,14 @@ When a row opens or closes, the reader says so as part of announcing the row —
 
 An adviser's row carries a circle with that adviser's initials before the name — the design shows a photograph there, and the data holds no photographs, so initials stand in. The circle is decoration: a screen reader passes over it and reads the name.
 
-A name too long for its column is shortened with an ellipsis on a single line, so every row keeps the same height; the full name is still available by hovering over it and is what a screen reader reads.
+A name too long for its column is shortened with an ellipsis on a single line, so every row keeps the same height; the full name appears when the user hovers over it **or moves the outline onto it**, and it is what a screen reader reads. On a touch screen there is no hover and no outline, so a tapped name opens its row rather than revealing itself — with the names in this data none is ever shortened, at either width, so nothing is hidden in practice.
 
 - **Acceptance Criteria:**
   - [ ] When the user opens Branch 1, then each adviser row shows a circle with that adviser's initials — "AB" for Anna Blackwood — followed by the name.
   - [ ] When a screen reader reads an adviser row, then it reads the adviser's name without mentioning the circle.
   - [ ] Given a name is wider than the first column, when the user looks at the row, then the name is shortened with an ellipsis on one line and the row is the same height as every other row; when the user hovers over it, then the full name appears.
+  - [ ] Given a name is wider than the first column, when the user moves the outline onto that name with the keyboard, then the full name appears.
+  - [ ] When the table shows the supplied data at 375 px and at 1440 px, then no name is shortened, because the first column is wide enough for every name at every level.
 
 ### FR6 — Narrow screens
 
@@ -152,7 +164,7 @@ If the company has no branches at all, the table shows the Company row alone wit
 ### Assumptions to challenge
 
 - _(assumption)_ Figures appear exactly as recorded, with no thousands separators and no totals calculated from the rows beneath.
-- _(assumption)_ After a row opens or closes, the user stays where they were; nothing jumps into the newly revealed rows.
+- _(assumption)_ After a row opens or closes, the user stays where they were; nothing jumps into the newly revealed rows — except when closing a row would hide the outline, which moves it to the row just closed (FR2).
 - _(assumption)_ The card grows as rows open, and the page scrolls; the table never scrolls up and down inside its own box.
 
 ---
