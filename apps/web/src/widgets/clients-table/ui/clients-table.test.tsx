@@ -459,6 +459,13 @@ describe('ClientsTable — operating the real table from the keyboard (FR3)', ()
     await press(user, '{ArrowDown}');
     expect(document.activeElement).toBe(rowNamed('Branch 1'));
     expect(rowNamed('Branch 1')).toHaveAttribute('aria-expanded', 'false');
+
+    // Nor does a click on a name take the outline with it: it opens and closes, and the keyboard
+    // stays where the keyboard put it (the FR2-AC6/AC7 negative case).
+    await clickName(user, 'Branch 3');
+    await clickName(user, 'Branch 2');
+    expect(document.activeElement).toBe(rowNamed('Branch 1'));
+    expect(tabStops()).toEqual([rowNamed('Branch 1')]);
   });
 
   it('follows focus that arrives by other means than its own keys (code review F1)', async () => {

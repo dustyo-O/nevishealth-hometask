@@ -1,4 +1,4 @@
-import type { MouseEvent, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { cx } from '../../../lib/cx';
 import { useTreeGridContext, useTreeGridRowContext } from '../model/context';
 import styles from './tree-grid.module.css';
@@ -9,15 +9,6 @@ export type TreeGridCellProps = {
   className?: string;
   children?: ReactNode;
 };
-
-/**
- * A figure is focusable, because the keyboard walks the months — and so, left alone, a click
- * would focus it too, without the grid's cursor knowing: the next key would then act on the
- * stale cursor, and Enter could close the Company row (code review F1). A figure is no click
- * target (FR2-AC5), so the pointer leaves focus where it was. The name cell is not touched: its
- * click is the toggle, and focusing its row is what the keyboard would do there too.
- */
-const keepFocus = (event: MouseEvent) => event.preventDefault();
 
 /**
  * One figure. `role="treegrid"` replaces the implicit association a plain table would give, so
@@ -34,7 +25,6 @@ export const TreeGridCell = ({ colIndex, className, children }: TreeGridCellProp
       className={cx(styles.cell, className)}
       tabIndex={activeColIndex === colIndex ? 0 : -1}
       data-col-index={colIndex}
-      onMouseDown={keepFocus}
     >
       {children}
     </td>

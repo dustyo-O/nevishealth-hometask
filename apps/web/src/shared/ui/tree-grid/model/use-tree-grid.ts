@@ -98,8 +98,8 @@ export const useTreeGrid = ({
     if (!rows.some((row) => row.id === cursor.rowId)) return;
     const target = document.getElementById(ids.cellId(cursor.rowId, cursor.colIndex));
     if (target === null) return;
-    // Focus that arrived on its own — a click on a name, a script — has already been placed and
-    // scrolled by the browser; the cursor has only caught up with it (see `handleFocus`).
+    // Focus that arrived on its own — a script, an assistive technology — has already been placed
+    // and scrolled by the browser; the cursor has only caught up with it (see `handleFocus`).
     if (target === document.activeElement) return;
     target.focus({ preventScroll: true });
     target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -156,10 +156,10 @@ export const useTreeGrid = ({
     );
   }, []);
 
-  // The defence behind the figures' `mousedown` guard (code review F1): focus can reach an
-  // element of the grid by means other than its own keys — a click on a name, a script, an
-  // assistive technology moving focus — and the next key must act on what has focus, never on a
-  // cursor the user cannot see. So the cursor follows focus. Rows on their way out (D-8) are
+  // The defence behind the rows' `mousedown` guard (code review F1): focus can still reach an
+  // element of the grid by means other than its own keys — a script, an assistive technology
+  // moving focus — and the next key must act on what has focus, never on a cursor the user
+  // cannot see. So the cursor follows focus. Rows on their way out (D-8) are
   // `inert` and cannot take focus; one that is no longer in `rows` is ignored all the same.
   const handleFocus = useCallback((event: FocusEvent<HTMLElement>) => {
     const target = event.target;
