@@ -149,8 +149,10 @@ resume)
   [ -f "$brief" ] || { echo "no brief at $brief" >&2; exit 1; }
   perms="${HARNESS_LANE_PERMS:-auto}"
   launch="cd '$wt' && claude --permission-mode $perms \"\$(cat '$root/$brief')\"; echo; echo 'LANE SESSION ENDED — this pane closes in 20s (Ctrl+C to keep it)'; sleep 20"
-  case "$pane" in -|headless) pane="";; esac
-  if [ -n "$pane" ] && herdr pane get "$pane" >/dev/null 2>&1; then :; else pane=$(harness_open_pane "$num $lane" right); fi
+  # Always a FRESH pane: the recorded one usually still holds the finished session's REPL, and
+  # `pane run` would type the shell command into that prompt instead of a shell. Close it first.
+  case "$pane" in -|headless|"") ;; *) herdr pane close "$pane" >/dev/null 2>&1 || true; sleep 1;; esac
+  pane=$(harness_open_pane "$num $lane" right)
   [ -n "$pane" ] || { echo "could not open a pane for $lane" >&2; exit 1; }
   herdr pane run "$pane" "$launch"
   echo "resumed $lane in $wt (pane $pane) — git status there is untouched, the session judges its own leftovers"
