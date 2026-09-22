@@ -1,10 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  formatBranchCount,
-  formatPeriod,
-  readDevSwitches,
-  useClientsQuery,
-} from '@/entities/clients';
+import { ClientsTable } from '@/widgets/clients-table';
+import { formatPeriod, readDevSwitches, useClientsQuery } from '@/entities/clients';
 import { describeError } from '@/shared/api';
 import { Card } from '@/shared/ui/card';
 import { ErrorPanel } from '@/shared/ui/error-panel';
@@ -92,11 +88,7 @@ export const DashboardPage = () => {
               )}
             </Card>
             <Card label="Monthly detail" className={styles.tableSlot}>
-              {data ? (
-                <p className={styles.summary}>{formatBranchCount(data.company)}</p>
-              ) : (
-                <TableCardSkeleton />
-              )}
+              {data ? <ClientsTable /> : <TableCardSkeleton />}
             </Card>
           </>
         )}
