@@ -44,6 +44,20 @@ export default defineConfig({
       testMatch: 'prod/**',
       use: { ...devices['Desktop Chrome'], baseURL: PROD_URL },
     },
+    // Spec 002 D-15: the monthly table in Safari's engine — the one the owner's VoiceOver check
+    // runs on. Every table spec, not only the sticky and scroll ones D-15 named: the first run
+    // found a WebKit-only defect in opening and closing (slice 5 ledger). Opt-in
+    // (`E2E_WEBKIT=1`, after `pnpm exec playwright install webkit`): CI installs Chromium only.
+    ...(process.env.E2E_WEBKIT
+      ? [
+          {
+            name: 'webkit',
+            dependencies: ['setup'],
+            testMatch: /table-.*\.spec\.ts$/,
+            use: { ...devices['Desktop Safari'], baseURL: DEV_URL },
+          },
+        ]
+      : []),
   ],
   webServer: [
     {

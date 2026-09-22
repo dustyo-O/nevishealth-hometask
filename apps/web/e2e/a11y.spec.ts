@@ -1,5 +1,6 @@
 // @layer: e2e
 // @spec: 001-clients-data-dashboard-shell
+// @spec: 002-monthly-detail-table
 //
 // The shell's basic accessibility (FR3, FR4): an axe audit of every state, at desktop and at
 // 375 px, finds nothing at all.
@@ -12,6 +13,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { installClientsDouble, type ClientsMode } from './support/clients-double';
+import { press, shippedClients, tabIntoTable, toggleByName } from './support/table';
 import {
   clientsPage,
   expectTableLoaded,
@@ -20,7 +22,12 @@ import {
   type ClientsPage,
 } from './support/clients-page';
 
-type State = { name: string; mode: ClientsMode; settled: (ui: ClientsPage) => Promise<void> };
+type State = {
+  name: string;
+  mode: ClientsMode;
+  body?: unknown;
+  settled: (ui: ClientsPage) => Promise<void>;
+};
 
 const STATES: State[] = [
   {
@@ -46,15 +53,30 @@ const STATES: State[] = [
     // treegrid — its levels, its row headers and the `headers` on every figure.
     settled: (ui) => expectTableLoaded(ui),
   },
+  {
+    // Spec 002: all four levels on screen — an open branch, an adviser with her avatar, her
+    // channels — with the outline on a figure, so the roving tab stop is a cell, not a row.
+    name: 'opened table',
+    mode: 'ok',
+    body: shippedClients(),
+    settled: async (ui) => {
+      await expectTableLoaded(ui);
+      await toggleByName(ui, 'Branch 1');
+      await toggleByName(ui, 'Anna Blackwood');
+      const page = ui.table.page();
+      await tabIntoTable(page, ui);
+      await press(page, 'ArrowDown', 'ArrowDown', 'ArrowRight');
+    },
+  },
 ];
 
 for (const [viewportName, viewport] of Object.entries(VIEWPORT)) {
   test.describe(`at ${viewport.width} px (${viewportName})`, () => {
     test.use({ viewport });
 
-    for (const { name, mode, settled } of STATES) {
+    for (const { name, mode, body, settled } of STATES) {
       test(`the ${name} state has no axe violations`, { tag: '@regression' }, async ({ page }) => {
-        await installClientsDouble(page, { mode });
+        await installClientsDouble(page, body === undefined ? { mode } : { mode, body });
         const ui = clientsPage(page);
 
         await page.goto('/');
