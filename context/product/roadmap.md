@@ -27,6 +27,13 @@ _The highest priority features that form the core foundation of the product — 
   - [ ] **Nothing Breaks at 375 px:** The page stays usable and nothing overflows down to a 375 px wide viewport (full responsiveness is not a goal).
   - [ ] **README for Reviewers:** How to run and test in two commands, every assumption and open question with its reasoning (including where we think the brief, design or data was wrong and what we changed in the data), and what we would do next.
 
+- [ ] **Component Review — the last thing before the work is sent**
+  - [ ] **Read Every Component As A Reviewer Would:** with all three features built, go through the components once against the brief's own criterion — "composable, with clear boundaries" — and judge each on whether it is concise, does one thing, and would be understood by someone meeting it for the first time. This is deliberately last: duplication and the wrong seams are only visible once the table and the chart both exist.
+  - [ ] **Split What Is Doing Two Jobs:** a component that renders *and* decides, or that is large enough to need scrolling to understand, gets split — the reusable part into `shared/ui`, the feature-specific part staying with its widget. Anything in `shared` that turns out to be used once and shaped by one caller is not shared; move it back.
+  - [ ] **Lift Complex Logic Into Hooks:** stateful or intricate behaviour living inside a component moves into a named hook that can be read and tested on its own, leaving the component to describe what appears on screen.
+  - [ ] **Remove What Nothing Uses:** code kept alive only by its own tests goes, along with those tests.
+  - [ ] **A Second Opinion On The Component APIs Specifically:** the cross-vendor reviewer reads the public surface of every slice — the props, the exports, the boundaries — rather than the diff, and its findings are triaged in writing like any other review. Whatever is not worth doing now becomes a line in the README's "what I would do next".
+
 ---
 
 ### Phase 2
