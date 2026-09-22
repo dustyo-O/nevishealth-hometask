@@ -1,4 +1,4 @@
-/* The chevron slot, the (slice 2) avatar and the name on one line, 8 px apart — the indent is
+/* The chevron slot, the adviser's circle and the name on one line, 8 px apart — the indent is
    the row header's own padding, so this row starts wherever its level puts it. */
 .name {
   display: flex;
@@ -7,11 +7,46 @@
   min-width: 0;
 }
 
+.avatar {
+  --avatar-size: var(--table-avatar-size);
+}
+
+/* The anchor the reveal is positioned against. It takes the rest of the cell whatever its text
+   measures, so promoting the label to an overlay never moves the row around it. */
+.nameSlot {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
 /* One line, shortened with an ellipsis, so every row keeps the same height (FR5-AC3). */
 .label {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/*
+ * D-13: the same element promoted to an overlay, so a name too long for its column can be read
+ * whole. `title` covers the pointer, but it never appears on keyboard focus, and FR5-AC4 asks
+ * for it there too — hence CSS as well as the attribute. The background follows the row's own,
+ * which the grid publishes as `--tree-grid-name-bg`, so the scrolled months cannot show through
+ * the overlay while it sits above them. The rows carry focus from slice 3 onwards.
+ */
+.name:hover .label,
+th:focus-visible .label,
+tr:focus-visible .label {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  overflow: visible;
+  width: max-content;
+  padding-inline-end: var(--table-cell-pad-inline-end);
+  background: var(--tree-grid-name-bg, var(--color-surface));
 }
 
 /* Tabular figures, so the digits line up down the column (design tokens). */

@@ -3,9 +3,11 @@ import {
   flattenVisibleRows,
   formatMonth,
   readDevSwitches,
+  toInitials,
   useClientsQuery,
   type ClientsData,
 } from '@/entities/clients';
+import { Avatar } from '@/shared/ui/avatar';
 import { TreeGrid, useExpandedIds } from '@/shared/ui/tree-grid';
 import { VisuallyHidden } from '@/shared/ui/visually-hidden';
 import styles from './clients-table.module.css';
@@ -69,7 +71,16 @@ const ClientsGrid = ({ data }: ClientsGridProps) => {
             <span className={styles.name}>
               {/* Reserved on every row, open, closed or leaf, so the names line up. */}
               <TreeGrid.Toggle />
-              <span className={styles.label}>{row.name}</span>
+              {/* The design photographs advisers; the data holds no photographs (FR5-AC1). A
+                  channel's extra step of indent takes this slot's place, so the two line up. */}
+              {row.kind === 'adviser' ? (
+                <Avatar initials={toInitials(row.name)} seed={row.id} className={styles.avatar} />
+              ) : null}
+              <span className={styles.nameSlot}>
+                <span className={styles.label} title={row.name}>
+                  {row.name}
+                </span>
+              </span>
             </span>
           </TreeGrid.RowHeader>
           {months.map((month, colIndex) => (

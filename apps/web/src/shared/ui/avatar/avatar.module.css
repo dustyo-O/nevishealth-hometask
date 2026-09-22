@@ -1,0 +1,18 @@
+/* Initials on a light tint: near-black text on an 88 %-lightness hue keeps the contrast safe
+   wherever the wheel lands (D-12 — measured; white on a saturated hue failed axe). */
+.avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  inline-size: var(--avatar-size, 24px);
+  block-size: var(--avatar-size, 24px);
+  border-radius: 50%;
+  background: hsl(var(--avatar-hue), var(--color-avatar-s), var(--color-avatar-l));
+  color: var(--color-avatar-fg);
+  font-size: calc(var(--avatar-size, 24px) / 2);
+  line-height: 1;
+  /* Two capitals in a 20 px circle: the lining figures token would widen them needlessly. */
+  letter-spacing: -0.02em;
+  user-select: none;
+}

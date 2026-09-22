@@ -158,7 +158,14 @@ const clickName = async (user: UserEvent, name: string) => {
   await user.click(screen.getByRole('rowheader', { name }));
 };
 
-const visibleNames = () => screen.getAllByRole('rowheader').map((header) => header.textContent);
+/**
+ * The names as a screen reader reads them down the table: the adviser's circle is `aria-hidden`
+ * decoration, so it is no part of a row's name however much text it happens to hold (FR5-AC2).
+ */
+const visibleNames = () =>
+  screen
+    .getAllByRole('rowheader')
+    .map((header) => header.querySelector('[class*="label"]')?.textContent);
 
 /**
  * The shipped shape, from the shared fixture: Company → three branches, one of them with an
@@ -284,5 +291,49 @@ describe('ClientsTable — opening and closing a row with the mouse (FR2)', () =
     await clickName(user, 'Anna Blackwood');
 
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+const avatarIn = (name: string) => rowNamed(name).querySelector('[class*="avatar"]');
+
+describe('ClientsTable — reading a row (FR5)', () => {
+  it('puts an adviser’s initials before the name and nobody else’s (FR5-AC1)', async () => {
+    mockClients(clientsFixture());
+    const user = userEvent.setup();
+    renderTable();
+    await screen.findByRole('treegrid');
+
+    await clickName(user, 'Branch 1');
+    await clickName(user, 'Anna Blackwood');
+
+    expect(avatarIn('Anna Blackwood')).toHaveTextContent('AB');
+    // The design shows a photograph on advisers only: not on the company, a branch or a channel.
+    expect(avatarIn('Company')).toBeNull();
+    expect(avatarIn('Branch 1')).toBeNull();
+    expect(avatarIn('Branch 3')).toBeNull();
+    expect(avatarIn('Referral')).toBeNull();
+  });
+
+  it('lets a screen reader read the name and pass over the circle (FR5-AC2)', async () => {
+    mockClients(clientsFixture());
+    const user = userEvent.setup();
+    renderTable();
+    await screen.findByRole('treegrid');
+
+    await clickName(user, 'Branch 1');
+
+    expect(avatarIn('Anna Blackwood')).toHaveAttribute('aria-hidden', 'true');
+    // The row's name is the adviser's, not "AB Anna Blackwood".
+    expect(screen.getByRole('rowheader', { name: 'Anna Blackwood' })).toBeInTheDocument();
+  });
+
+  it('carries the full name for a pointer, however the column shortens it (FR5-AC3)', async () => {
+    mockClients(clientsFixture());
+    renderTable();
+    await screen.findByRole('treegrid');
+
+    const label = rowNamed('Branch 1').querySelector('[class*="label"]');
+    expect(label).toHaveAttribute('title', 'Branch 1');
+    expect(label).toHaveTextContent('Branch 1');
   });
 });
