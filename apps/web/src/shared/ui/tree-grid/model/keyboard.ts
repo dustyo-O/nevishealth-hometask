@@ -7,8 +7,9 @@ import { ROW_COL_INDEX, type TreeGridCursor, type TreeGridRow } from './types';
  *   nothing wraps (FR3-AC10), and saying so as a cursor rather than as `null` is what lets the
  *   caller swallow the key. An arrow that fell through to the browser would scroll the months
  *   sideways under a stationary outline, and Space would scroll the page (FR3-AC9).
- * - `{ toggle }` — open or close that row. The cursor does not move with it; where it ends up
- *   depends on rows this pure function has not seen yet (D-10).
+ * - `{ toggle }` — open or close that row, which only Enter and Space ever ask for. The cursor
+ *   does not move with it; where it ends up depends on rows this pure function has not seen
+ *   yet (D-10).
  * - `null` — not the grid's key. Tab above all, which is how the outline leaves (FR3-AC1).
  */
 export type TreeGridKeyResult = { cursor: TreeGridCursor } | { toggle: string } | null;
@@ -26,7 +27,10 @@ export const reduceKey = (
   cursor: TreeGridCursor,
   key: string,
   rows: readonly TreeGridRow[],
-  expandedIds: ReadonlySet<string>,
+  // Unread since the arrows stopped toggling (owner's decision 2026-09-22): no rule left in the
+  // model asks whether a row is open. Kept in the signature because it is the hook's documented
+  // call (tech doc §2.1) and this lane does not get to narrow that contract on its own.
+  _expandedIds: ReadonlySet<string>,
   columnCount: number,
 ): TreeGridKeyResult => {
   const index = rows.findIndex((candidate) => candidate.id === cursor.rowId);
@@ -57,16 +61,16 @@ export const reduceKey = (
 
     case 'ArrowRight':
       if (!onRow) return cursor.colIndex >= lastColIndex ? stay : at(row.id, cursor.colIndex + 1);
-      // A closed row opens; an open one — or one with nothing to open — hands the outline on to
-      // its figures (FR3-AC2/AC3/AC4).
-      if (row.hasChildren && !expandedIds.has(row.id)) return { toggle: row.id };
+      // Into the figures, whatever state the row is in — open, closed, or with nothing to open
+      // (FR3-AC2/AC3/AC4). It used to expand a closed row, which made its meaning depend on a
+      // state a screen-reader user cannot see coming; the owner found exactly that confusing.
       return columnCount > 0 ? at(row.id, 0) : stay;
 
     case 'ArrowLeft': {
       // From the first month back to the name, which `colIndex - 1` already spells (FR3-AC6).
       if (!onRow) return at(row.id, cursor.colIndex - 1);
-      if (row.hasChildren && expandedIds.has(row.id)) return { toggle: row.id };
-      // Closed, or nothing to close: up a level. The root has nowhere to go (FR3-AC15).
+      // Up a level, whatever state the row is in — it never closes one (FR3-AC12/AC13). The
+      // root has nowhere above it to go, so the outline stays (FR3-AC11).
       const { parentId } = row;
       if (parentId === null) return stay;
       return rows.some((candidate) => candidate.id === parentId)
@@ -88,8 +92,9 @@ export const reduceKey = (
 
     case 'Enter':
     case ' ':
-      // On a figure, nothing — a row is opened and closed from its name, never from its
-      // figures (FR3-AC9) — and on a row with nothing beneath it, nothing either (FR1-AC4).
+      // The only two keys that change the table's shape at all. On a figure, nothing — a row is
+      // opened and closed from its name, never from its figures (FR3-AC9) — and on a row with
+      // nothing beneath it, nothing either (FR3-AC15).
       return onRow && row.hasChildren ? { toggle: row.id } : stay;
 
     default:
