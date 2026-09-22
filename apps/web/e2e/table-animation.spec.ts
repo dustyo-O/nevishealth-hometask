@@ -29,8 +29,8 @@ type Motion = {
 };
 
 /** Clicks the row's name and reports the motion one frame later. */
-const clickAndWatch = (page: Page, ui: ClientsPage, name: string): Promise<Motion> =>
-  nameOf(ui, name).evaluate(async (th) => {
+const clickAndWatch = (ui: ClientsPage, name: string): Promise<Motion> =>
+  nameOf(ui, name).evaluate(async (th: HTMLElement) => {
     const table = th.closest('table')!;
     th.click();
     await new Promise((resolve) => requestAnimationFrame(resolve));
@@ -75,7 +75,7 @@ test.describe('with motion', () => {
       const ui = await openTable(page);
       await rest(page);
 
-      const opening = await clickAndWatch(page, ui, 'Branch 1');
+      const opening = await clickAndWatch(ui, 'Branch 1');
       const arriving = opening.animations.filter((a) => BRANCH_1_ADVISERS.includes(a.row as never));
       expect(arriving.map((a) => a.row).sort()).toEqual([...BRANCH_1_ADVISERS].sort());
       for (const a of arriving) {
@@ -90,7 +90,7 @@ test.describe('with motion', () => {
       await settled(ui);
       await rest(page);
 
-      const closing = await clickAndWatch(page, ui, 'Branch 1');
+      const closing = await clickAndWatch(ui, 'Branch 1');
       const departing = closing.animations.filter((a) => a.leaving);
       expect(departing.map((a) => a.row).sort()).toEqual([...BRANCH_1_ADVISERS].sort());
       for (const a of departing) expect(a.transforms.at(-1)).toMatch(/translateY\(-\d/);
@@ -138,12 +138,12 @@ test.describe('with reduced motion', () => {
       const ui = await openTable(page);
       await rest(page);
 
-      const opening = await clickAndWatch(page, ui, 'Branch 1');
+      const opening = await clickAndWatch(ui, 'Branch 1');
       expect(opening.animations).toEqual([]);
       await expect(rowOf(ui, 'Anna Blackwood')).toBeVisible();
       await rest(page);
 
-      const closing = await clickAndWatch(page, ui, 'Branch 1');
+      const closing = await clickAndWatch(ui, 'Branch 1');
       expect(closing.animations).toEqual([]);
       // Gone with the render that closed them — nothing lingers a frame later.
       expect(closing.leaving).toEqual([]);
