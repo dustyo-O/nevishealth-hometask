@@ -52,6 +52,18 @@ describe('fetchClients', () => {
     });
   });
 
+  it('rejects an item defining two kinds of list even when the extra one is empty (FR2, code review F1)', async () => {
+    // "Never two of these at once": the empty `channels` is still a second kind of list.
+    const body = clientsFixture();
+    body.company.branches = [
+      makeNode('b1', 'Branch 1', { employees: [makeNode('e1', 'Anna Blackwood')], channels: [] }),
+    ];
+    respondWith(body);
+
+    await expect(fetchClients()).rejects.toBeInstanceOf(UnexpectedShapeError);
+    await expect(fetchClients()).rejects.toMatchObject({ detail: 'Unexpected data shape' });
+  });
+
   it('rejects a body without the month list', async () => {
     respondWith({ company: clientsFixture().company });
 
