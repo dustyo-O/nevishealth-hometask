@@ -1,4 +1,5 @@
 import { render, waitFor } from '@testing-library/react';
+import { StrictMode } from 'react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TreeGridRow } from '../model/types';
 import type { TreeGrid as TreeGridComponent } from './tree-grid';
@@ -229,6 +230,33 @@ describe('TreeGrid — rows slide in and out (FR2-AC8, D-16)', () => {
     await waitFor(() => {
       for (const row of departing) expect(row.isConnected).toBe(false);
     });
+  });
+});
+
+describe('TreeGrid — mounted twice, as React does in development', () => {
+  it('animates an arriving row once, having registered the library once', async () => {
+    const { rerender } = render(
+      <StrictMode>
+        <Grid open={false} />
+      </StrictMode>,
+    );
+    await measured();
+
+    rerender(
+      <StrictMode>
+        <Grid open />
+      </StrictMode>,
+    );
+
+    const arriving = await waitFor(() => {
+      const row = rowNamed('one');
+      expect(animationFor(row)).toBeDefined();
+      return row;
+    });
+    // A second registration would answer the same insertion a moment later and cancel the slide
+    // that the first one had just started — measured in Chrome: the row never moved.
+    await measured();
+    expect(started.filter((animation) => animation.effect.target === arriving)).toHaveLength(1);
   });
 });
 

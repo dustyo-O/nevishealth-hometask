@@ -49,14 +49,24 @@ const keyframesFor = (
  * length of the animation carrying an `aria-level` and an `aria-posinset` that are no longer
  * true, and a screen reader's virtual cursor can land on a row that is logically gone.
  * `pointer-events: none` (which the library applies itself) and `tabindex="-1"` do neither.
+ *
+ * It gives up its ids on the way out for the same reason. Re-opening a row inside the ~250 ms
+ * its old rows take to leave puts two elements with the same id in the document, and
+ * `document.getElementById` — which the keyboard resolves the element to focus by (D-9/D-11) —
+ * answers with the one that comes first, which may be the departing one. Measured in Chrome
+ * 153: closing and re-opening a row quickly and then pressing Down left the outline nowhere,
+ * focus still on the row before it while the grid's single `tabindex="0"` had moved on, because
+ * `focus()` on an `inert` element does nothing at all.
  */
-const hideFromAssistiveTech = (el: Element) => {
+const retireLeavingRow = (el: Element) => {
   el.setAttribute('aria-hidden', 'true');
   el.setAttribute('inert', '');
+  el.removeAttribute('id');
+  for (const descendant of el.querySelectorAll('[id]')) descendant.removeAttribute('id');
 };
 
 export const slideRows: AutoAnimationPlugin = (el, action, box, nextBox) => {
-  if (action === 'remove') hideFromAssistiveTech(el);
+  if (action === 'remove') retireLeavingRow(el);
   return new KeyframeEffect(el, keyframesFor(action, box, nextBox), TIMING);
 };
 

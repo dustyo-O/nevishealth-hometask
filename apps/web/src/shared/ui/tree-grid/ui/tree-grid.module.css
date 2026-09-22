@@ -53,6 +53,19 @@
   border-block-end: none;
 }
 
+/* A row on its way out is lifted out of the table's flow by the animation library
+   (`position: absolute`, so that the rows below can close the gap while it slides away), and an
+   absolutely positioned `<tr>` is blockified: its cells drop out of the fixed column layout and
+   the figures jam against each other for the length of the animation — measured in Chrome 153, a
+   month cell 34 px wide against the 88 px of the row above it. The row is handed the table's own
+   layout back for as long as it is still on screen; the library sets its measured width inline,
+   so `fixed` puts every column back exactly where it was. `[inert]` is the mark the motion
+   plugin puts on a leaving row (D-15a). */
+.table tbody tr[inert] {
+  display: table;
+  table-layout: fixed;
+}
+
 /* D-3: pinned in both `thead` and `tbody`, each with an opaque background — the months are
    unpositioned, so `z-index: 2` is enough to keep them from showing through. */
 .nameCell {

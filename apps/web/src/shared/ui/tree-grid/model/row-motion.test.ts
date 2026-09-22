@@ -79,13 +79,27 @@ describe('slideRows (D-16)', () => {
     expect(el).toHaveAttribute('inert');
   });
 
+  it('makes a departing row give up its ids, so it cannot answer for the row replacing it', () => {
+    const el = row();
+    el.id = 'grid-row-b1';
+    el.innerHTML = '<th id="grid-row-b1-name">Branch 1</th><td id="grid-cell-b1-0">147</td>';
+
+    slideRows(el, 'remove', box(112));
+
+    expect(el.hasAttribute('id')).toBe(false);
+    expect([...el.querySelectorAll('[id]')]).toHaveLength(0);
+  });
+
   it('leaves an arriving row in the accessibility tree — it is here to stay', () => {
     const el = row();
+
+    el.id = 'grid-row-b1';
 
     slideRows(el, 'add', box(112));
 
     expect(el).not.toHaveAttribute('aria-hidden');
     expect(el).not.toHaveAttribute('inert');
+    expect(el).toHaveAttribute('id', 'grid-row-b1');
   });
 });
 
