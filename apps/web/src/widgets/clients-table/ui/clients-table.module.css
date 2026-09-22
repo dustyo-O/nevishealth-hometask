@@ -1,0 +1,20 @@
+/* The chevron slot, the (slice 2) avatar and the name on one line, 8 px apart — the indent is
+   the row header's own padding, so this row starts wherever its level puts it. */
+.name {
+  display: flex;
+  align-items: center;
+  gap: var(--table-chevron-gap);
+  min-width: 0;
+}
+
+/* One line, shortened with an ellipsis, so every row keeps the same height (FR5-AC3). */
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Tabular figures, so the digits line up down the column (design tokens). */
+.figure {
+  font-feature-settings: var(--font-numeric);
+}

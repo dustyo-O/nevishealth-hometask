@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -8,6 +8,7 @@ import { DashboardPage } from './dashboard-page';
 import { clientsFixture, makeNode } from '@/test/fixtures/clients';
 
 const PERIOD = '12 months · Feb 2024 – Jan 2025';
+/** The placeholder spec 001 shipped in the table card; spec 002 puts the table there instead. */
 const BRANCHES = 'Company · 3 branches';
 const MESSAGE = "We couldn't load the clients data.";
 const STATUS_500 = 'Request failed with status 500';
@@ -55,8 +56,13 @@ const deferred = (): Deferred => {
   return { promise, resolve };
 };
 
+/**
+ * The grey `Skeleton` blocks, by the component's own class. `[aria-hidden]` alone no longer
+ * says "placeholder": spec 002's table reserves an equally decorative slot for each row's
+ * chevron, and counting those as placeholders would call a fully loaded table "still loading".
+ */
 const placeholderBlocksOf = (region: HTMLElement) =>
-  region.querySelectorAll('[aria-hidden="true"]');
+  region.querySelectorAll('[aria-hidden="true"][class*="skeleton" i]');
 
 /** Real timers, the app's own defaults except an instant retry (tech doc §4). */
 const renderPage = () =>
@@ -134,7 +140,7 @@ describe('DashboardPage — loading state (FR3)', () => {
     expect(screen.getByRole('region', { name: 'Clients chart' })).toBe(chart);
     expect(screen.getByRole('region', { name: 'Monthly detail' })).toBe(table);
     expect(chart).toHaveTextContent(PERIOD);
-    expect(table).toHaveTextContent(BRANCHES);
+    expect(within(table).getByRole('treegrid')).toBeInTheDocument();
     expect(placeholderBlocksOf(chart)).toHaveLength(0);
     expect(placeholderBlocksOf(table)).toHaveLength(0);
     expect(busyContainerOf(chart)).toHaveAttribute('aria-busy', 'false');
@@ -167,7 +173,25 @@ describe('DashboardPage — loaded state', () => {
     expect(screen.getAllByRole('region')).toHaveLength(2);
   });
 
-  it('fetches once and shows the summaries computed from the loaded data (FR5-AC1)', async () => {
+  it('puts the monthly table in the table card, in place of the summary (002 FR1-AC1, FR7)', async () => {
+    mockClientsOk();
+    renderPage();
+    await screen.findByText(PERIOD);
+
+    const table = screen.getByRole('region', { name: 'Monthly detail' });
+    const grid = within(table).getByRole('treegrid');
+    expect(
+      within(grid)
+        .getAllByRole('rowheader')
+        .map((header) => header.textContent),
+    ).toEqual(['Company', 'Branch 1', 'Branch 2', 'Branch 3']);
+
+    // The placeholder line spec 001 shipped is gone, and the chart card is untouched.
+    expect(screen.queryByText(BRANCHES)).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Clients chart' })).toHaveTextContent(PERIOD);
+  });
+
+  it('fetches once and shows the chart summary and the table, both from the loaded data (FR5-AC1)', async () => {
     const fetchMock = mockClientsOk();
     renderPage();
 
@@ -176,7 +200,7 @@ describe('DashboardPage — loaded state', () => {
     expect(await screen.findByText(PERIOD)).toBeVisible();
 
     expect(chart).toHaveTextContent(PERIOD);
-    expect(table).toHaveTextContent(BRANCHES);
+    expect(within(table).getByRole('treegrid')).toBeInTheDocument();
     expect(busyContainerOf(chart)).toHaveAttribute('aria-busy', 'false');
     expect(busyContainerOf(table)).toBe(busyContainerOf(chart));
     expect(screen.getByRole('status')).toBeEmptyDOMElement();
@@ -364,7 +388,7 @@ describe('DashboardPage — failed state (FR4)', () => {
     await user.click(retry);
 
     expect(await screen.findByText(PERIOD)).toBeVisible();
-    expect(screen.getByText(BRANCHES)).toBeVisible();
+    expect(screen.getByRole('treegrid')).toBeVisible();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: 'Clients' })).toBe(heading);
     expect(fetchMock).toHaveBeenCalledTimes(3);
