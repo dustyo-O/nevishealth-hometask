@@ -1,14 +1,33 @@
 // @layer: e2e
 // @spec: 001-clients-data-dashboard-shell
+// @spec: 002-monthly-detail-table
 //
 // The shell's basic accessibility (FR3, FR4): an axe audit of every state, at desktop and at
-// 375 px, finds nothing.
+// 375 px, finds nothing at all.
+//
+// At 375 the months scroll, and axe asks a scroll container for keyboard access
+// (`scrollable-region-focusable`). Slice 1 could not answer it and the case was `test.fixme`d;
+// spec 002's roving `tabindex` answers it properly, because the row the outline is on is a real
+// tab stop inside the scroller. The scroller itself must never be given a `tabindex` — that
+// would be a second stop in the page and contradict FR3-AC1.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { installClientsDouble, type ClientsMode } from './support/clients-double';
-import { clientsPage, TEXT, VIEWPORT, type ClientsPage } from './support/clients-page';
+import { press, shippedClients, tabIntoTable, toggleByName } from './support/table';
+import {
+  clientsPage,
+  expectTableLoaded,
+  TEXT,
+  VIEWPORT,
+  type ClientsPage,
+} from './support/clients-page';
 
-type State = { name: string; mode: ClientsMode; settled: (ui: ClientsPage) => Promise<void> };
+type State = {
+  name: string;
+  mode: ClientsMode;
+  body?: unknown;
+  settled: (ui: ClientsPage) => Promise<void>;
+};
 
 const STATES: State[] = [
   {
@@ -30,8 +49,23 @@ const STATES: State[] = [
   {
     name: 'loaded',
     mode: 'ok',
+    // Since spec 002 FR7 the lower card holds the table itself, so the audit runs over the real
+    // treegrid — its levels, its row headers and the `headers` on every figure.
+    settled: (ui) => expectTableLoaded(ui),
+  },
+  {
+    // Spec 002: all four levels on screen — an open branch, an adviser with her avatar, her
+    // channels — with the outline on a figure, so the roving tab stop is a cell, not a row.
+    name: 'opened table',
+    mode: 'ok',
+    body: shippedClients(),
     settled: async (ui) => {
-      await expect(ui.tableCard).toHaveText(TEXT.branches);
+      await expectTableLoaded(ui);
+      await toggleByName(ui, 'Branch 1');
+      await toggleByName(ui, 'Anna Blackwood');
+      const page = ui.table.page();
+      await tabIntoTable(page, ui);
+      await press(page, 'ArrowDown', 'ArrowDown', 'ArrowRight');
     },
   },
 ];
@@ -40,9 +74,9 @@ for (const [viewportName, viewport] of Object.entries(VIEWPORT)) {
   test.describe(`at ${viewport.width} px (${viewportName})`, () => {
     test.use({ viewport });
 
-    for (const { name, mode, settled } of STATES) {
+    for (const { name, mode, body, settled } of STATES) {
       test(`the ${name} state has no axe violations`, { tag: '@regression' }, async ({ page }) => {
-        await installClientsDouble(page, { mode });
+        await installClientsDouble(page, body === undefined ? { mode } : { mode, body });
         const ui = clientsPage(page);
 
         await page.goto('/');
@@ -62,7 +96,7 @@ test('the loading announcement is a polite live region that exists before it spe
   const ui = clientsPage(page);
 
   await page.goto('/');
-  await expect(ui.tableCard).toHaveText(TEXT.branches);
+  await expectTableLoaded(ui);
 
   // Still in the document once loaded, silent — so its next text change is announced.
   await expect(ui.status).toHaveCount(1);

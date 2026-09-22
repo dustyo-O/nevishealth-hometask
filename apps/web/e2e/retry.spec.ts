@@ -6,7 +6,13 @@
 // reload. Keyboard: Tab reaches Retry, Enter or Space retries.
 import { expect, test } from '@playwright/test';
 import { installClientsDouble, queriesOf } from './support/clients-double';
-import { clientsPage, isSameDocument, markDocument, TEXT } from './support/clients-page';
+import {
+  clientsPage,
+  expectTableLoaded,
+  isSameDocument,
+  markDocument,
+  TEXT,
+} from './support/clients-page';
 
 /** FR4-AC4: "the same error panel returns within 3 seconds" of clicking Retry. */
 const PANEL_BUDGET_MS = 3000;
@@ -58,7 +64,7 @@ test(
     await ui.retry.click();
 
     await expect(ui.chartCard).toHaveText(TEXT.period);
-    await expect(ui.tableCard).toHaveText(TEXT.branches);
+    await expectTableLoaded(ui);
     await expect(ui.alert).toHaveCount(0);
     await expect(ui.grid).toHaveAttribute('aria-busy', 'false');
     expect(page.url()).toBe(urlBefore);
@@ -88,7 +94,7 @@ test(
 
     // Changing a switch means changing the address.
     await page.goto('/');
-    await expect(ui.tableCard).toHaveText(TEXT.branches);
+    await expectTableLoaded(ui);
     await expect(ui.alert).toHaveCount(0);
     expect(queriesOf(double).at(-1)).toBe('');
   },
@@ -135,8 +141,10 @@ test('Retry after a recovery does not reappear: the loaded page has no Retry but
 
   double.mode = 'ok';
   await ui.retry.click();
-  await expect(ui.tableCard).toHaveText(TEXT.branches);
+  await expectTableLoaded(ui);
 
   await expect(ui.retry).toHaveCount(0);
+  // Still no button anywhere: slice 1's table reserves the chevron's place without drawing a
+  // control in it, so the loaded page offers nothing to press (spec 002 §2.4).
   await expect(page.getByRole('button')).toHaveCount(0);
 });

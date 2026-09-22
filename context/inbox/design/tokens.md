@@ -25,3 +25,17 @@ Table cells use `font-feature-settings: "lnum" 1, "tnum" 1` (tabular figures) �
 - Level indent: Company 0, Branch 28 px, Adviser 56 px, Attribute (channel) 84 px (28 px per level, inside the 264 px name cell). Chevron 16×16, gap 8 to the name; collapsed = the down chevron rotated −90°; adviser rows carry a 20 px avatar before the name.
 - Chart (`1:2814`): plot area 1338×320, y-axis labels 0–400 in 100 steps (footnote font), dotted grid lines, 12 columns 87.5 px wide with 24 px gaps, legend centred beneath (8 px swatch + label, body font).
 - Chevron icon: `icon-chevron-down.svg` (downloaded here; Figma asset URLs expire in 7 days).
+
+## Row states — measured from the owner's export of Figma node `0:1533` ("Row"), 2026-09-22
+
+`row-hover-states.png` in this folder (the Figma MCP is capped at 6 calls/month on a Collab seat, so the frame was exported by hand and its pixels decoded).
+
+| State | Row background | Token |
+|---|---|---|
+| Default | fully transparent — the card's white shows through | none |
+| **Hover** | `rgba(26,26,26,0.039)` as exported = 4 % of the text colour | `--color-row-hover: rgba(20, 20, 19, 0.04)` — exactly half `--color-line` |
+| **Opened** | identical to default | none — opening changes only the chevron's rotation, never the row's fill |
+| Row bottom border | `rgba(26,26,26,0.078)` | confirms `--color-line: rgba(20, 20, 19, 0.08)`, 1 px at the row's bottom |
+
+The design has no focus treatment for rows (it shows mouse states only), and no avatar colour to copy — the design uses photographs, and spec 002 D9 replaces them with initials. Both are ours to define: keep them as named tokens (`--color-row-hover`, `--focus-ring`, `--color-avatar-*`) so they stay one-line swaps.
+

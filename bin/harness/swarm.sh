@@ -4,6 +4,7 @@
 #
 #   bin/harness/swarm.sh launch <NNN> [--slice N] [--dry-run]   # worktrees + briefs + panes
 #   bin/harness/swarm.sh status <NNN>                            # agent_status per lane
+#   bin/harness/swarm.sh resume <NNN> <lane>                     # restart a lane whose session died (kept worktree)
 #   bin/harness/swarm.sh wait   <NNN> [--timeout 45m]            # block until every lane is done/blocked, dump logs
 #   bin/harness/swarm.sh merge  <NNN>                            # merge lane branches in plan order (no-ff), stop on conflict
 #   bin/harness/swarm.sh clean  <NNN>                            # close lane panes + remove worktrees (branches stay)
@@ -15,7 +16,7 @@
 #      that still blocks is waiting on something the classifier would not sign off — answer it in the pane.
 #      HARNESS_NO_HERDR=1  run lanes headless with `claude -p` + nohup instead of herdr panes
 set -euo pipefail
-cmd="${1:?launch|status|wait|merge|clean|panes}"; num="${2:?spec number}"; shift 2
+cmd="${1:?launch|resume|status|wait|merge|clean|panes}"; num="${2:?spec number}"; shift 2
 root="$(git rev-parse --show-toplevel)"; cd "$root"
 cfg() { python3 -c 'import json,sys,pathlib
 p=pathlib.Path("harness.json"); c=json.loads(p.read_text()) if p.exists() else {}
@@ -54,7 +55,10 @@ for l in s["lanes"]:
   [ -n "$ticket" ] || ticket=$(grep -oE "$prefix-[0-9]+" "$spec_dir/tasks.md" | head -1 || echo "$num")
   base_branch=$(git rev-parse --abbrev-ref HEAD)
   [ "$base_branch" = "main" ] && { echo "lead is on main — create feat/$ticket-… first"; exit 1; }
-  : > "$state/slice-$slice_n.tsv"
+  # Keep any lanes already launched for this slice: a slice is often relaunched for a follow-up
+  # task (a lane that came back BLOCKED, a task added mid-slice). Truncating here orphaned the
+  # first launch's panes and worktrees, because `clean` only knows what this file lists.
+  prev="$state/slice-$slice_n.tsv"; [ -f "$prev" ] || : > "$prev"
   printf '%s\n' "$lanes" | while IFS=$'\t' read -r lane agent owns tasks gate_cmd; do
     [ -z "$lane" ] && continue
     branch="lane/$num-s$slice_n-$lane"; wt="$wt_root/$num-s$slice_n-$lane"
@@ -88,7 +92,14 @@ for l in s["lanes"]:
 
   perms="${HARNESS_LANE_PERMS:-auto}"
   tmp="$state/slice-$slice_n.tsv.new"; : > "$tmp"
-  while IFS=$'\t' read -r lane agent branch wt _; do
+  while IFS=$'\t' read -r lane agent branch wt prev_pane; do
+    if [ -d "$wt" ]; then
+      # Already launched for this slice: keep its row (pane id included) so `clean` and `resume`
+      # can still find it — dropping it here is what emptied the file on the second relaunch.
+      printf '%s\t%s\t%s\t%s\t%s\n' "$lane" "$agent" "$branch" "$wt" "${prev_pane:--}" >> "$tmp"
+      echo "lane $lane already running for slice $slice_n (worktree $wt) — skipping; `resume` restarts it" >&2
+      continue
+    fi
     git worktree add -B "$branch" "$wt" "$base_branch" >/dev/null
     brief="$state/s$slice_n-$lane.md"
     launch="cd '$wt' && claude --permission-mode $perms \"\$(cat '$root/$brief')\"; echo; echo 'LANE SESSION ENDED — this pane closes in 20s (Ctrl+C to keep it)'; sleep 20"
@@ -116,6 +127,41 @@ status)
       n=$(git -C "$wt" log --oneline "$(git merge-base "$branch" HEAD 2>/dev/null || echo HEAD)..$branch" 2>/dev/null | wc -l | tr -d ' ')
       printf '%-24s %-22s pane=%-10s status=%-8s commits=%s\n' "$lane" "$agent" "$pane" "$st" "$n"
     done < "$f"; done ;;
+# ------------------------------------------------------------------ resume
+# A lane session can die with its worktree intact (a dropped API connection, a killed pane). The work
+# on disk is worth more than a clean restart, so resume runs a fresh session in the SAME worktree with
+# the same brief — append a "RESUME" section to the brief first if the lane should know what it left.
+resume)
+  lane="${1:?lane name, e.g. react-frontend}"
+  # Newest slice first, and only a lane whose worktree still exists: the same lane name appears in
+  # every slice's file, and the older entries point at worktrees `clean` has already removed.
+  row=""; slice_n=""
+  for f in $(ls "$state"/slice-*.tsv 2>/dev/null | sort -t- -k2 -rn); do
+    cand=$(grep -h "^$lane	" "$f" 2>/dev/null | tail -1) || true
+    [ -z "$cand" ] && continue
+    cand_wt=$(printf '%s' "$cand" | cut -f4)
+    [ -d "$cand_wt" ] || continue
+    row="$cand"; slice_n=$(basename "$f" | sed 's/slice-\([0-9]*\)\.tsv/\1/'); break
+  done
+  [ -z "$row" ] && { echo "no resumable lane '$lane' for spec $num (no launched lane with a worktree still on disk) — relaunch the slice instead" >&2; exit 1; }
+  IFS=$'\t' read -r _ agent branch wt pane <<< "$row"
+  brief="$state/s$slice_n-$lane.md"
+  [ -f "$brief" ] || { echo "no brief at $brief" >&2; exit 1; }
+  perms="${HARNESS_LANE_PERMS:-auto}"
+  launch="cd '$wt' && claude --permission-mode $perms \"\$(cat '$root/$brief')\"; echo; echo 'LANE SESSION ENDED — this pane closes in 20s (Ctrl+C to keep it)'; sleep 20"
+  # Always a FRESH pane: the recorded one usually still holds the finished session's REPL, and
+  # `pane run` would type the shell command into that prompt instead of a shell. Close it first.
+  case "$pane" in -|headless|"") ;; *) herdr pane close "$pane" >/dev/null 2>&1 || true; sleep 1;; esac
+  pane=$(harness_open_pane "$num $lane" right)
+  [ -n "$pane" ] || { echo "could not open a pane for $lane" >&2; exit 1; }
+  herdr pane run "$pane" "$launch"
+  # Write the new pane id back, or `wait` and `clean` keep watching the pane we just closed.
+  awk -F'\t' -v lane="$lane" -v pane="$pane" 'BEGIN{OFS="\t"} $1==lane{$5=pane} {print}' \
+    "$state/slice-$slice_n.tsv" > "$state/slice-$slice_n.tsv.new" \
+    && mv "$state/slice-$slice_n.tsv.new" "$state/slice-$slice_n.tsv"
+  echo "resumed $lane in $wt (pane $pane) — git status there is untouched, the session judges its own leftovers"
+  echo "next: bin/harness/swarm.sh wait $num" ;;
+
 # ------------------------------------------------------------------ wait
 wait)
   timeout="45m"; [ "${1:-}" = "--timeout" ] && timeout="$2"

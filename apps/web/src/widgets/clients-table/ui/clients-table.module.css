@@ -1,0 +1,75 @@
+/* The chevron slot, the adviser's circle and the name on one line, 8 px apart — the indent is
+   the row header's own padding, so this row starts wherever its level puts it. */
+.name {
+  display: flex;
+  align-items: center;
+  gap: var(--table-chevron-gap);
+  min-width: 0;
+}
+
+.avatar {
+  --avatar-size: var(--table-avatar-size);
+}
+
+/* The anchor the reveal is positioned against. It takes the rest of the cell whatever its text
+   measures, so promoting the label to an overlay never moves the row around it. It also keeps
+   its height when the label leaves the flow: stretched to the line, and never shorter than one
+   line of text. Without that it collapses to 0 px the moment the label turns absolute, the
+   overlay's `inset-block: 0` gives it no height to paint its background on, and the month figure
+   behind shows through the name ("Anna Blackwood25", found at 375 on 2026-09-22). */
+.nameSlot {
+  position: relative;
+  flex: 1;
+  align-self: stretch;
+  min-width: 0;
+  min-block-size: 1lh;
+}
+
+/* One line, shortened with an ellipsis, so every row keeps the same height (FR5-AC3). */
+.label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * D-13: the same element promoted to an overlay, so a name too long for its column can be read
+ * whole. `title` covers the pointer, but it never appears on keyboard focus, and FR5-AC4 asks
+ * for it there too — hence CSS as well as the attribute. The background follows the row's own,
+ * which the grid publishes as `--tree-grid-name-bg`, so the scrolled months cannot show through
+ * the overlay while it sits above them. The rows carry focus from slice 3 onwards.
+ *
+ * Whole, and inside what can be seen (code review F2): on one line at `max-content`, a name
+ * wider than the scrollport ran on past its right edge and was clipped there — at 375 the long
+ * fixture's reveal spanned x 84…559 against a scrollport ending at 359. So it is capped at the
+ * room between its own start and the scrollport's visible end, and wraps within it. The name
+ * cell is sticky at the scrollport's start, so that room is the container's width (`100cqi`,
+ * the scroller) less the part of the name column in front of this slot, which is the column's
+ * width less the slot's own (`100%` — the slot is the containing block, and ends where the
+ * cell does). No per-level arithmetic, so the indent, chevron and avatar can change freely.
+ * Centred on the row and at least its slot's height, so a wrapped name grows equally up and
+ * down and its background stays under every line; the row's own height never changes (FR5).
+ */
+.name:hover .label,
+th:focus-visible .label,
+tr:focus-visible .label {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 0;
+  z-index: 1;
+  overflow: visible;
+  width: max-content;
+  max-inline-size: calc(100cqi - var(--table-name-col-w) + 100%);
+  min-block-size: 100%;
+  padding-inline-end: var(--table-cell-pad-inline-end);
+  translate: 0 -50%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  background: var(--tree-grid-name-bg, var(--color-surface));
+}
+
+/* Tabular figures, so the digits line up down the column (design tokens). */
+.figure {
+  font-feature-settings: var(--font-numeric);
+}

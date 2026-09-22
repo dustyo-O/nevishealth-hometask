@@ -76,6 +76,21 @@ export default defineConfig([
       pluginQuery.configs['flat/recommended'],
     ],
     languageOptions: { globals: globals.browser },
+    rules: {
+      // jsx-a11y's allowlist for <table> is ['grid'], but WAI-ARIA also permits `treegrid`
+      // (APG: Treegrid pattern) — spec 002's Monthly Detail Table is one. The plugin's list is
+      // incomplete, not the markup: https://www.w3.org/WAI/ARIA/apg/patterns/treegrid/
+      'jsx-a11y/no-noninteractive-element-to-interactive-role': [
+        'error',
+        {
+          table: ['grid', 'treegrid'],
+          ul: ['listbox', 'menu', 'menubar', 'radiogroup', 'tablist', 'tree', 'treegrid'],
+          ol: ['listbox', 'menu', 'menubar', 'radiogroup', 'tablist', 'tree', 'treegrid'],
+          li: ['menuitem', 'option', 'row', 'tab', 'treeitem'],
+          td: ['gridcell'],
+        },
+      ],
+    },
   },
   {
     // Tests sit next to their subject and may reach across layers; `ignoreFiles` is matched
