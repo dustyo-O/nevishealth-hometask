@@ -1,7 +1,10 @@
 /* The months' scrollport. `overflow-y: hidden` keeps the card growing downwards as rows open
    (FR6-AC5); the scroll padding is what stops a cell moved into view from landing under the
-   sticky name column — measured, one line, D-7. */
+   sticky name column — measured, one line, D-7. It is also a size container, so anything drawn
+   inside the sticky column can measure itself against the width the user can actually see
+   (`cqi`) rather than the table's, which on a phone is four times wider. */
 .scroller {
+  container-type: inline-size;
   overflow-x: auto;
   overflow-y: hidden;
   scroll-padding-inline-start: var(--table-name-col-w);

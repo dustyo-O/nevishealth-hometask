@@ -39,19 +39,33 @@
  * for it there too — hence CSS as well as the attribute. The background follows the row's own,
  * which the grid publishes as `--tree-grid-name-bg`, so the scrolled months cannot show through
  * the overlay while it sits above them. The rows carry focus from slice 3 onwards.
+ *
+ * Whole, and inside what can be seen (code review F2): on one line at `max-content`, a name
+ * wider than the scrollport ran on past its right edge and was clipped there — at 375 the long
+ * fixture's reveal spanned x 84…559 against a scrollport ending at 359. So it is capped at the
+ * room between its own start and the scrollport's visible end, and wraps within it. The name
+ * cell is sticky at the scrollport's start, so that room is the container's width (`100cqi`,
+ * the scroller) less the part of the name column in front of this slot, which is the column's
+ * width less the slot's own (`100%` — the slot is the containing block, and ends where the
+ * cell does). No per-level arithmetic, so the indent, chevron and avatar can change freely.
+ * Centred on the row and at least its slot's height, so a wrapped name grows equally up and
+ * down and its background stays under every line; the row's own height never changes (FR5).
  */
 .name:hover .label,
 th:focus-visible .label,
 tr:focus-visible .label {
   position: absolute;
-  inset-block: 0;
+  inset-block-start: 50%;
   inset-inline-start: 0;
   z-index: 1;
-  display: flex;
-  align-items: center;
   overflow: visible;
   width: max-content;
+  max-inline-size: calc(100cqi - var(--table-name-col-w) + 100%);
+  min-block-size: 100%;
   padding-inline-end: var(--table-cell-pad-inline-end);
+  translate: 0 -50%;
+  white-space: normal;
+  overflow-wrap: anywhere;
   background: var(--tree-grid-name-bg, var(--color-surface));
 }
 

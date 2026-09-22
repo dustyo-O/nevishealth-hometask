@@ -24,6 +24,7 @@ export const TreeGridCell = ({ colIndex, className, children }: TreeGridCellProp
       headers={`${columnHeaderId(colIndex)} ${rowHeaderId(row.id)}`}
       className={cx(styles.cell, className)}
       tabIndex={activeColIndex === colIndex ? 0 : -1}
+      data-col-index={colIndex}
     >
       {children}
     </td>

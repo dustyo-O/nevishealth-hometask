@@ -1,4 +1,12 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FocusEvent,
+  type KeyboardEvent,
+} from 'react';
 import { treeGridIds } from './ids';
 import { reduceKey } from './keyboard';
 import { ROW_COL_INDEX, type TreeGridCursor, type TreeGridRow } from './types';
@@ -26,7 +34,10 @@ export type TreeGridApi = {
   /** Opens or closes a row, remembering which — a collapse may have to recover from it (D-10). */
   toggle: (id: string) => void;
   /** For the `<table>`: the keyboard model of FR3, attached once and stable for its lifetime. */
-  gridProps: { onKeyDown: (event: KeyboardEvent<HTMLElement>) => void };
+  gridProps: {
+    onKeyDown: (event: KeyboardEvent<HTMLElement>) => void;
+    onFocus: (event: FocusEvent<HTMLElement>) => void;
+  };
 };
 
 /**
@@ -87,6 +98,9 @@ export const useTreeGrid = ({
     if (!rows.some((row) => row.id === cursor.rowId)) return;
     const target = document.getElementById(ids.cellId(cursor.rowId, cursor.colIndex));
     if (target === null) return;
+    // Focus that arrived on its own — a script, an assistive technology — has already been placed
+    // and scrolled by the browser; the cursor has only caught up with it (see `handleFocus`).
+    if (target === document.activeElement) return;
     target.focus({ preventScroll: true });
     target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 
@@ -142,12 +156,35 @@ export const useTreeGrid = ({
     );
   }, []);
 
+  // The defence behind the rows' `mousedown` guard (code review F1): focus can still reach an
+  // element of the grid by means other than its own keys — a script, an assistive technology
+  // moving focus — and the next key must act on what has focus, never on a cursor the user
+  // cannot see. So the cursor follows focus. Rows on their way out (D-8) are
+  // `inert` and cannot take focus; one that is no longer in `rows` is ignored all the same.
+  const handleFocus = useCallback((event: FocusEvent<HTMLElement>) => {
+    const target = event.target;
+    const rowId = target.closest('tr')?.dataset.rowId;
+    if (rowId === undefined) return;
+    const colIndex =
+      target instanceof HTMLTableRowElement ? ROW_COL_INDEX : Number(target.dataset.colIndex);
+    if (Number.isNaN(colIndex)) return;
+    if (!latest.current.rows.some((row) => row.id === rowId)) return;
+
+    hasMovedRef.current = true;
+    setCursor((previous) =>
+      previous.rowId === rowId && previous.colIndex === colIndex ? previous : { rowId, colIndex },
+    );
+  }, []);
+
   const activeColIndexOf = useCallback(
     (rowId: string) => (rowId === cursor.rowId ? cursor.colIndex : null),
     [cursor],
   );
 
-  const gridProps = useMemo(() => ({ onKeyDown: handleKeyDown }), [handleKeyDown]);
+  const gridProps = useMemo(
+    () => ({ onKeyDown: handleKeyDown, onFocus: handleFocus }),
+    [handleKeyDown, handleFocus],
+  );
 
   return { cursor, activeColIndexOf, toggle, gridProps };
 };

@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   type CSSProperties,
+  type FocusEventHandler,
   type KeyboardEventHandler,
   type ReactNode,
   type UIEvent,
@@ -33,6 +34,8 @@ export type TreeGridProps = {
    * its ~570 cells: a keystroke reaches it by bubbling from whichever one has focus.
    */
   onKeyDown?: KeyboardEventHandler<HTMLTableElement>;
+  /** From `useTreeGrid` too: keeps its cursor on whatever gained focus, however it got there. */
+  onFocus?: FocusEventHandler<HTMLTableElement>;
 };
 
 /**
@@ -49,6 +52,7 @@ export const TreeGrid = ({
   children,
   className,
   onKeyDown,
+  onFocus,
 }: TreeGridProps) => {
   const context = useMemo(() => treeGridIds(id), [id]);
 
@@ -89,6 +93,7 @@ export const TreeGrid = ({
           className={styles.table}
           style={{ '--tree-grid-columns': columnCount } as CSSProperties}
           onKeyDown={onKeyDown}
+          onFocus={onFocus}
         >
           {head}
           <tbody ref={rowsRef}>{children}</tbody>
