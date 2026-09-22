@@ -12,6 +12,7 @@ import {
   scrollWidthOf,
   TEXT,
   VIEWPORT,
+  expectChartLoaded,
 } from './support/clients-page';
 
 test.use({ viewport: VIEWPORT.phone });
@@ -60,7 +61,7 @@ test(
 );
 
 test(
-  'FR7: loaded — no horizontal scroll, the period readable and every row name on screen',
+  'FR7: loaded — no horizontal scroll, the chart inside its card and every row name on screen',
   { tag: '@regression' },
   async ({ page }) => {
     await installClientsDouble(page);
@@ -72,10 +73,9 @@ test(
     expect(await scrollWidthOf(page)).toBeLessThanOrEqual(WIDTH);
     expect(await rightEdgeOf([ui.heading, ui.chartCard, ui.tableCard])).toBeLessThanOrEqual(WIDTH);
 
-    // The chart card still summarises in a line of text, and it is not clipped.
-    const period = ui.chartCard.getByRole('paragraph');
-    await expect(period).toBeVisible();
-    expect(await period.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    // The chart stands where the period line stood (003 FR9), inside the card, not past it.
+    await expectChartLoaded(ui);
+    expect(await rightEdgeOf([ui.chart])).toBeLessThanOrEqual(WIDTH);
 
     // The lower card holds the table since spec 002 FR7. Its months scroll sideways inside their
     // own box — which is exactly why the page above them still does not — and the name column

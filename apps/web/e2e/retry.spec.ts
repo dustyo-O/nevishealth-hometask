@@ -12,6 +12,7 @@ import {
   isSameDocument,
   markDocument,
   TEXT,
+  expectChartLoaded,
 } from './support/clients-page';
 
 /** FR4-AC4: "the same error panel returns within 3 seconds" of clicking Retry. */
@@ -63,7 +64,7 @@ test(
     double.mode = 'ok';
     await ui.retry.click();
 
-    await expect(ui.chartCard).toHaveText(TEXT.period);
+    await expectChartLoaded(ui);
     await expectTableLoaded(ui);
     await expect(ui.alert).toHaveCount(0);
     await expect(ui.grid).toHaveAttribute('aria-busy', 'false');

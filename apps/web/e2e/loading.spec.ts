@@ -14,6 +14,7 @@ import {
   sameBoxes,
   TEXT,
   VIEWPORT,
+  expectChartLoaded,
 } from './support/clients-page';
 
 const DELAY_MS = 3000;
@@ -116,7 +117,7 @@ for (const [name, viewport] of Object.entries(VIEWPORT)) {
         await expect(ui.grid).toHaveAttribute('aria-busy', 'true');
 
         // Then the figures arrive: same cards, same places, no announcement, no reload.
-        await expect(ui.chartCard).toHaveText(TEXT.period, { timeout: DELAY_MS + 3000 });
+        await expectChartLoaded(ui, DELAY_MS + 3000);
         await expectTableLoaded(ui);
         await expect(ui.grid).toHaveAttribute('aria-busy', 'false');
         await expect(ui.status).toHaveText('');
@@ -149,7 +150,7 @@ test(
     await page.goto('/');
 
     await expect(ui.heading).toBeVisible();
-    await expect(ui.chartCard).toHaveText(TEXT.period);
+    await expectChartLoaded(ui);
     await expectTableLoaded(ui);
     await expect(ui.grid).toHaveAttribute('aria-busy', 'false');
     await expect(ui.status).toHaveText('');
