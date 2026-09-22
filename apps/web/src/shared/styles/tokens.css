@@ -31,8 +31,11 @@
   --card-chart-min-h: 430px;
   --card-table-min-h: 280px;
 
-  /* focus */
-  --focus-ring: 2px solid var(--color-text);
+  /* focus — the ring's parts are named so it can also be painted as a box-shadow (002 D-4);
+     `--focus-ring` itself is spec 001's value, unchanged, and the reset still uses it. */
+  --focus-ring-width: 2px;
+  --focus-ring-color: var(--color-text);
+  --focus-ring: var(--focus-ring-width) solid var(--focus-ring-color);
   --focus-ring-offset: 2px;
 
   /* monthly detail table — geometry from Figma `1:2901` (002 §2.5) */

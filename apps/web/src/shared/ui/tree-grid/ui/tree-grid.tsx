@@ -1,6 +1,13 @@
-import { useMemo, type CSSProperties, type ReactNode, type UIEvent } from 'react';
+import {
+  useMemo,
+  type CSSProperties,
+  type KeyboardEventHandler,
+  type ReactNode,
+  type UIEvent,
+} from 'react';
 import { cx } from '../../../lib/cx';
-import { TreeGridProvider, type TreeGridContextValue } from '../model/context';
+import { TreeGridProvider } from '../model/context';
+import { treeGridIds } from '../model/ids';
 import { TreeGridCell } from './tree-grid-cell';
 import { TreeGridColumnHeader, TreeGridHead } from './tree-grid-head';
 import { TreeGridRow } from './tree-grid-row';
@@ -17,6 +24,11 @@ export type TreeGridProps = {
   head: ReactNode;
   children: ReactNode;
   className?: string;
+  /**
+   * The whole keyboard model, from `useTreeGrid`. It hangs on the table rather than on each of
+   * its ~570 cells: a keystroke reaches it by bubbling from whichever one has focus.
+   */
+  onKeyDown?: KeyboardEventHandler<HTMLTableElement>;
 };
 
 /**
@@ -25,14 +37,16 @@ export type TreeGridProps = {
  * card on the page into a scroll container (D-1). Sticky still resolves against this scroller,
  * because the card is an ancestor *of* it rather than something in between.
  */
-export const TreeGrid = ({ id, label, columnCount, head, children, className }: TreeGridProps) => {
-  const context = useMemo<TreeGridContextValue>(
-    () => ({
-      columnHeaderId: (colIndex) => `${id}-col-${colIndex}`,
-      rowHeaderId: (rowId) => `${id}-row-${rowId}-name`,
-    }),
-    [id],
-  );
+export const TreeGrid = ({
+  id,
+  label,
+  columnCount,
+  head,
+  children,
+  className,
+  onKeyDown,
+}: TreeGridProps) => {
+  const context = useMemo(() => treeGridIds(id), [id]);
 
   // The edge shadow is the sign that there is more to see, so it must not show when there is
   // nothing (FR6-AC3/AC4). Written straight to the DOM rather than held in state: scrolling
@@ -51,6 +65,7 @@ export const TreeGrid = ({ id, label, columnCount, head, children, className }: 
           aria-label={label}
           className={styles.table}
           style={{ '--tree-grid-columns': columnCount } as CSSProperties}
+          onKeyDown={onKeyDown}
         >
           {head}
           <tbody>{children}</tbody>

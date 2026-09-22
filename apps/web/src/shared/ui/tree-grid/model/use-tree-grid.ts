@@ -1,0 +1,136 @@
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { treeGridIds } from './ids';
+import { reduceKey } from './keyboard';
+import { ROW_COL_INDEX, type TreeGridCursor, type TreeGridRow } from './types';
+
+export type UseTreeGridOptions = {
+  /** The same id given to `<TreeGrid>`: both sides name elements through `treeGridIds` (D-11). */
+  id: string;
+  /** The rows that are showing, in the order they are shown. */
+  rows: readonly TreeGridRow[];
+  /** How many figure columns follow the name column. */
+  columnCount: number;
+  expandedIds: ReadonlySet<string>;
+  /** Opens or closes that row. The caller owns the state; the grid only asks (D-6). */
+  onToggle: (id: string) => void;
+};
+
+export type TreeGridApi = {
+  /** Where the outline is. One value for both modes: `colIndex -1` is the row's own name. */
+  cursor: TreeGridCursor;
+  /**
+   * The one prop a `memo`'d row needs, and the whole of the roving `tabindex`: `null` for every
+   * row but the cursor's, so a keystroke changes the props of exactly two rows (D-9).
+   */
+  activeColIndexOf: (rowId: string) => number | null;
+  /** Opens or closes a row, remembering which — a collapse may have to recover from it (D-10). */
+  toggle: (id: string) => void;
+  /** For the `<table>`: the keyboard model of FR3, attached once and stable for its lifetime. */
+  gridProps: { onKeyDown: (event: KeyboardEvent<HTMLElement>) => void };
+};
+
+/**
+ * The cursor, and everything that follows from moving it: which element is the grid's single
+ * tab stop, which element has focus, and how far the scroller must move to show it.
+ *
+ * Deliberately not here: which rows are open. Flattening needs those ids *before* the grid
+ * renders, so they belong to the caller (D-6) — this hook is told, and asks to be told again.
+ */
+export const useTreeGrid = ({
+  id,
+  rows,
+  columnCount,
+  expandedIds,
+  onToggle,
+}: UseTreeGridOptions): TreeGridApi => {
+  const ids = useMemo(() => treeGridIds(id), [id]);
+
+  const [cursor, setCursor] = useState<TreeGridCursor>(() => ({
+    rowId: rows[0]?.id ?? '',
+    colIndex: ROW_COL_INDEX,
+  }));
+
+  // Read by handlers that must never be rebuilt: a fresh `onKeyDown` each render would change
+  // a prop on every row and undo D-9. Written after the commit, so render stays pure.
+  const latest = useRef({ rows, columnCount, expandedIds, onToggle, cursor });
+  useLayoutEffect(() => {
+    latest.current = { rows, columnCount, expandedIds, onToggle, cursor };
+  });
+
+  // Which row was last asked to open or close. State rather than a ref because it is read
+  // while rendering, by the recovery below — the one thing that has to know where the outline
+  // should land when its own row has just gone.
+  const [lastToggled, setLastToggled] = useState<string | null>(null);
+
+  // Mounting the table must not steal focus, or the page jumps to it on load. Nothing is
+  // focused until the user has asked for something.
+  const hasMovedRef = useRef(false);
+
+  // FR2's focus recovery (D-10). Closing a row can take the row the outline is on with it —
+  // by mouse, which is exactly when the user is not watching the keyboard — and a keyboard user
+  // must never be left with nothing selected. Corrected here, during render, so the focus
+  // effect below runs once against the cursor that survives rather than twice.
+  const firstRow = rows[0];
+  if (firstRow !== undefined && !rows.some((row) => row.id === cursor.rowId)) {
+    const closed = lastToggled !== null && rows.some((row) => row.id === lastToggled);
+    setCursor({ rowId: closed ? lastToggled : firstRow.id, colIndex: ROW_COL_INDEX });
+  }
+
+  // D-7, measured: Blink's own focus-scroll path ignores `scroll-padding`, so it oscillates and
+  // drops cells under the sticky name column. Take the scrolling away from focus and ask for it
+  // explicitly — `nearest` does nothing at all while the cell is already in view, which is what
+  // "the page does not move" means (FR3-AC14), and the least it can while it is not (AC15).
+  useLayoutEffect(() => {
+    if (!hasMovedRef.current) return;
+    // A row that has just been closed away is still in the DOM for a moment (D-8); the cursor
+    // is about to be moved off it by the correction above, so leave it where it is until then.
+    if (!rows.some((row) => row.id === cursor.rowId)) return;
+    const target = document.getElementById(ids.cellId(cursor.rowId, cursor.colIndex));
+    if (target === null) return;
+    target.focus({ preventScroll: true });
+    target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [cursor, rows, ids]);
+
+  const toggle = useCallback((rowId: string) => {
+    setLastToggled(rowId);
+    latest.current.onToggle(rowId);
+  }, []);
+
+  const handleKeyDown = useCallback((event: KeyboardEvent<HTMLElement>) => {
+    const current = latest.current;
+    const result = reduceKey(
+      current.cursor,
+      event.key,
+      current.rows,
+      current.expandedIds,
+      current.columnCount,
+    );
+    if (result === null) return;
+
+    // The grid owns this key from here, even where the outline does not move: an arrow left to
+    // the browser would scroll the months under a stationary outline, and Space would scroll
+    // the page (FR3-AC9/AC10).
+    event.preventDefault();
+    hasMovedRef.current = true;
+
+    if ('toggle' in result) {
+      setLastToggled(result.toggle);
+      current.onToggle(result.toggle);
+      return;
+    }
+
+    const { cursor: next } = result;
+    setCursor((previous) =>
+      previous.rowId === next.rowId && previous.colIndex === next.colIndex ? previous : next,
+    );
+  }, []);
+
+  const activeColIndexOf = useCallback(
+    (rowId: string) => (rowId === cursor.rowId ? cursor.colIndex : null),
+    [cursor],
+  );
+
+  const gridProps = useMemo(() => ({ onKeyDown: handleKeyDown }), [handleKeyDown]);
+
+  return { cursor, activeColIndexOf, toggle, gridProps };
+};

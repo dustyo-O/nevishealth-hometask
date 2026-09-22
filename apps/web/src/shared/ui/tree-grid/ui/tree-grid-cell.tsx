@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
-import { useTreeGridContext, useTreeGridRow } from '../model/context';
+import { cx } from '../../../lib/cx';
+import { useTreeGridContext, useTreeGridRowContext } from '../model/context';
+import styles from './tree-grid.module.css';
 
 export type TreeGridCellProps = {
   /** 0-based, matching the `colIndex` its column heading was given. */
@@ -13,11 +15,16 @@ export type TreeGridCellProps = {
  * the two headers a screen reader should read out are named explicitly (D-11, FR4-AC2).
  */
 export const TreeGridCell = ({ colIndex, className, children }: TreeGridCellProps) => {
-  const { columnHeaderId, rowHeaderId } = useTreeGridContext();
-  const row = useTreeGridRow();
+  const { columnHeaderId, rowHeaderId, cellId } = useTreeGridContext();
+  const { row, activeColIndex } = useTreeGridRowContext();
 
   return (
-    <td headers={`${columnHeaderId(colIndex)} ${rowHeaderId(row.id)}`} className={className}>
+    <td
+      id={cellId(row.id, colIndex)}
+      headers={`${columnHeaderId(colIndex)} ${rowHeaderId(row.id)}`}
+      className={cx(styles.cell, className)}
+      tabIndex={activeColIndex === colIndex ? 0 : -1}
+    >
       {children}
     </td>
   );
