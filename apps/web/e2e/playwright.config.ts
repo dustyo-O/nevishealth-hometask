@@ -2,7 +2,10 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
 
 const appDir = fileURLToPath(new URL('..', import.meta.url));
-const DEV_URL = 'http://localhost:5173';
+// Its own port, never the developer's 5173: with `reuseExistingServer` a running dev server would be
+// reused and the suite would silently test that checkout instead of this one — which is how a lane's gate
+// came back green against the wrong tree (slice 6). A clash on 5273 now fails loudly instead.
+const DEV_URL = 'http://localhost:5273';
 const PROD_URL = 'http://localhost:4173';
 const isCI = Boolean(process.env.CI);
 
@@ -44,10 +47,10 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'pnpm dev',
+      command: 'pnpm exec vite --port 5273 --strictPort',
       cwd: appDir,
       url: DEV_URL,
-      reuseExistingServer: !isCI,
+      reuseExistingServer: false,
       timeout: 60_000,
     },
     {
