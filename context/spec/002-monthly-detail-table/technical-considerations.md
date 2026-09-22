@@ -68,14 +68,14 @@ Three layers, exactly as architecture §6 requires:
 |---|---|---|
 | ↓ | next visible row, else stay | same column, next visible row, else stay |
 | ↑ | previous visible row, else stay | same column, previous row, else stay |
-| → | closed + has children → **expand**; open, or **leaf** → `colIndex 0` | next column, stop at 11 |
-| ← | open → **collapse**; closed or leaf → **parent row**, else stay | `colIndex 0` → **back to the row**; else previous column |
+| → | **`colIndex 0`, always** — never expands (owner's decision 2026-09-22) | next column, stop at 11 |
+| ← | **parent row, always** — never collapses; on the Company row it stays | `colIndex 0` → **back to the row**; else previous column |
 | Home | first visible row | `colIndex 0` |
 | End | last visible row | `colIndex 11` |
 | Enter / Space | toggle if it has children, else nothing | **nothing** |
 | Tab | not handled — leaves the grid | not handled |
 
-Nothing wraps at any edge.
+Nothing wraps at any edge. **The arrows never change the table's shape** — only Enter and Space toggle. This departs from the APG treegrid pattern, where Right expands a collapsed row: with cell focus enabled (D-4) that makes Right state-dependent, which the owner found confusing in a real screen-reader pass. Recorded in the functional spec's Change Log.
 
 ### 2.3 `entities/clients` (pure)
 

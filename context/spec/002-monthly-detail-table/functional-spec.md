@@ -60,19 +60,21 @@ Rows slide in when they appear and slide out when they disappear. A viewer whose
 The whole table is one stop in the page's tab order: pressing Tab moves into the table once, and pressing Tab again leaves it. Inside, the arrow keys move and open:
 
 - Up and Down move between the rows that are currently visible, skipping anything hidden inside a closed row.
-- Right on a closed row opens it; Right on a row that is already open — or on a row with nothing beneath it — moves into that row's first monthly figure.
-- Left on an open row closes it; Left on a closed row — or one that cannot open — moves to the row it belongs to, one level up.
+- Right moves into that row's first monthly figure, whatever state the row is in.
+- Left moves to the row it belongs to, one level up; on the Company row it stays put.
 - Home moves to the Company row, End to the last visible row.
 - Enter or Space opens or closes the current row.
 
+**The arrow keys never open or close anything.** Only Enter and Space do. This is a deliberate departure from the usual tree-table convention, where Right expands a closed row: with the figures reachable by keyboard as well, Right would mean two different things depending on whether the row happened to be open, and a user walking the table could not predict which. The owner found exactly that confusing when using the table with a screen reader on 2026-09-22, so the table trades convention for predictability: arrows move, Enter and Space change.
+
 Once the user is on a figure, Left and Right move along that row's months, Left from the first figure returns to the row's name, and Up and Down move to the same month in the row above or below. Home and End move to that row's first and last month. Enter and Space do nothing on a figure — a row is opened and closed from its name, never from its figures.
 
-Movement stops at the edges rather than wrapping: Up on the Company row, Down on the last visible row, Right on the last month, and Left on the Company row once it is closed — it has nothing above it — all leave the outline where it is. Whatever the user is on carries a visible outline. Moving to a figure that is out of view brings it into view sideways; the page itself does not move up or down when the row is already fully visible, and when the row is only partly visible it scrolls just far enough to show that row and no further.
+Movement stops at the edges rather than wrapping: Up on the Company row, Down on the last visible row, Right on the last month, and Left on the Company row — it has nothing above it — all leave the outline where it is. Whatever the user is on carries a visible outline. Moving to a figure that is out of view brings it into view sideways; the page itself does not move up or down when the row is already fully visible, and when the row is only partly visible it scrolls just far enough to show that row and no further.
 
 - **Acceptance Criteria:**
   - [ ] When the user presses Tab from the page heading, then the outline appears on the Company row, and pressing Tab again moves out of the table entirely.
-  - [ ] Given the outline is on the Company row, when the user presses Down then Right, then the outline is on Branch 1 and Branch 1 has opened to show its advisers.
-  - [ ] Given the outline is on an open Branch 1, when the user presses Right, then the outline moves to Branch 1's figure for February 2024.
+  - [ ] Given the outline is on the Company row and Branch 1 is closed, when the user presses Down then Right, then the outline moves to Branch 1 and then to Branch 1's figure for February 2024, and Branch 1 stays closed.
+  - [ ] Given the outline is on an open Branch 1, when the user presses Right, then the outline moves to Branch 1's figure for February 2024 and Branch 1 stays open.
   - [ ] Given the outline is on a row with nothing beneath it (an acquisition channel), when the user presses Right, then the outline moves to that row's figure for February 2024.
   - [ ] Given the outline is on Branch 1's figure for February 2024, when the user presses Right twice then Left once, then the outline is on the figure for March 2024.
   - [ ] Given the outline is on Branch 1's figure for February 2024, when the user presses Left, then the outline returns to Branch 1's name.
@@ -80,9 +82,11 @@ Movement stops at the edges rather than wrapping: Up on the Company row, Down on
   - [ ] Given the outline is on Branch 1's figure for June 2024, when the user presses Home, then the outline moves to that row's February 2024 figure, and pressing End moves it to January 2025.
   - [ ] Given the outline is on any figure, when the user presses Enter or Space, then nothing opens or closes and the outline stays where it is.
   - [ ] Given the outline is on the last visible row's figure for January 2025, when the user presses Down and then Right, then the outline stays on that same figure.
-  - [ ] Given the outline is on the Company row and it is closed, when the user presses Left, then the outline stays on the Company row.
-  - [ ] Given the outline is on an open Branch 1, when the user presses Left, then Branch 1 closes; when the user presses Left again, then the outline moves to the Company row.
-  - [ ] Given the outline is on any row, when the user presses Enter, then the row opens if it can, and pressing Space closes it again.
+  - [ ] Given the outline is on the Company row, when the user presses Left, then the outline stays on the Company row.
+  - [ ] Given the outline is on an open Branch 1, when the user presses Left, then the outline moves to the Company row and Branch 1 stays open.
+  - [ ] Given the outline is on one of Branch 1's advisers, when the user presses Left, then the outline moves to the Branch 1 row.
+  - [ ] Given the outline is on any row that has children, when the user presses Enter, then the row opens, and pressing Space closes it again.
+  - [ ] Given the outline is on a row with nothing beneath it, when the user presses Enter or Space, then nothing opens and the outline stays where it is.
   - [ ] Given the outline is on a row deep in the table, when the user presses Home, then the outline moves to the Company row, and pressing End moves it to the last visible row.
   - [ ] Given the row is fully visible and the window is narrow enough that later months are out of sight, when the user moves the outline onto one of them, then it scrolls into view sideways and the page does not scroll up or down.
   - [ ] Given a row is only partly visible because the page is scrolled, when the user moves the outline onto one of that row's months, then the month scrolls into view sideways and the page scrolls only as far as needed to bring that row fully into view.
@@ -172,5 +176,7 @@ If the company has no branches at all, the table shows the Company row alone wit
 ---
 
 ## Change Log
+
+- [2026-09-22] — the owner's screen-reader check of slice 3 — **FR3: the arrow keys no longer open or close rows.** Right moved into the figures on an open row but expanded a closed one, so its meaning depended on state and the owner found it confusing to navigate with VoiceOver; Left had the mirror problem. Right now always moves into the figures, Left always moves to the parent, and Enter/Space are the only keys that change the table's shape. This departs from the usual tree-table convention, deliberately and for a tested reason.
 
 _Dated amendments made after the spec was first written — typically by `/awos:spec` in Update Mode when a bug fix changed documented behavior. Each entry records the date, the source reference (bug id or fix description), and what behavior changed and why. Leave empty until the first amendment._
