@@ -117,16 +117,17 @@ A name too long for its column is shortened with an ellipsis on a single line, s
   - [ ] When a screen reader reads an adviser row, then it reads the adviser's name without mentioning the circle.
   - [ ] Given a name is wider than the first column, when the user looks at the row, then the name is shortened with an ellipsis on one line and the row is the same height as every other row; when the user hovers over it, then the full name appears.
   - [ ] Given a name is wider than the first column, when the user moves the outline onto that name with the keyboard, then the full name appears.
-  - [ ] When the table shows the supplied data at 375 px and at 1440 px, then no name is shortened, because the first column is wide enough for every name at every level.
+  - [ ] When the table shows the supplied data at 1440 px, then no name is shortened, because the first column is wide enough for every name at every level.
+  - [ ] Given the table is viewed at 375 px, where the name column is narrower, when a deep name does not fit, then it is shortened with an ellipsis and the full name is still available on hover, on keyboard focus and to a screen reader.
 
 ### FR6 — Narrow screens
 
-Thirteen columns cannot fit on a phone. On a narrow screen the months scroll sideways **inside the table**, while the name column stays in place so the user always knows whose row they are reading. A shadow appears along the name column's edge while the months are scrolled, as the sign that there is more to see; at full width, where nothing scrolls, no shadow appears.
+Thirteen columns cannot fit on a phone. On a narrow screen the months scroll sideways **inside the table**, while the name column stays in place so the user always knows whose row they are reading. The name column itself narrows on a small screen, so that whole months fit beside it rather than a sliver of one: at the design's width it is wide enough for the deepest name, and on a phone it gives up room to the figures, which is what the user came to read. A shadow appears along the name column's edge while the months are scrolled, as the sign that there is more to see; at full width, where nothing scrolls, no shadow appears.
 
 The page itself never scrolls sideways, at any width.
 
 - **Acceptance Criteria:**
-  - [ ] When the table is viewed at 375 px wide, then the name column and the first months are visible, and the page has no horizontal scrollbar.
+  - [ ] When the table is viewed at 375 px wide, then the name column and at least two whole month columns are visible — no month is cut off at the right edge — and the page has no horizontal scrollbar.
   - [ ] Given the table is viewed at 375 px wide, when the user scrolls the table sideways, then the month columns move while the name column stays in place, and a shadow appears along its edge.
   - [ ] Given the table is viewed at 375 px wide and scrolled back to the start, when the user looks at the name column's edge, then no shadow is shown.
   - [ ] When the table is viewed at 1440 px wide, then all twelve months and the names are visible at once, nothing scrolls sideways and no shadow is shown.
@@ -177,6 +178,7 @@ If the company has no branches at all, the table shows the Company row alone wit
 
 ## Change Log
 
+- [2026-09-22] — the acceptance suite's 375-px run, and the owner's decision — **FR6: the name column narrows on a small screen.** It had kept the design's 1440-px width of 264 px, leaving 79 px beside it — less than one month column — so a figure was always clipped whatever the scroll position. The design only ever specified 1440. The name column now gives up room on a phone so whole months fit; the consequence is that the deepest names can be shortened there, which FR5's ellipsis and reveal already cover, and the criterion claiming nothing is ever shortened now applies to the design width alone.
 - [2026-09-22] — the owner's screen-reader check of slice 3 — **FR3: the arrow keys no longer open or close rows.** Right moved into the figures on an open row but expanded a closed one, so its meaning depended on state and the owner found it confusing to navigate with VoiceOver; Left had the mirror problem. Right now always moves into the figures, Left always moves to the parent, and Enter/Space are the only keys that change the table's shape. This departs from the usual tree-table convention, deliberately and for a tested reason.
 
 _Dated amendments made after the spec was first written — typically by `/awos:spec` in Update Mode when a bug fix changed documented behavior. Each entry records the date, the source reference (bug id or fix description), and what behavior changed and why. Leave empty until the first amendment._
