@@ -12,11 +12,17 @@
 }
 
 /* The anchor the reveal is positioned against. It takes the rest of the cell whatever its text
-   measures, so promoting the label to an overlay never moves the row around it. */
+   measures, so promoting the label to an overlay never moves the row around it. It also keeps
+   its height when the label leaves the flow: stretched to the line, and never shorter than one
+   line of text. Without that it collapses to 0 px the moment the label turns absolute, the
+   overlay's `inset-block: 0` gives it no height to paint its background on, and the month figure
+   behind shows through the name ("Anna Blackwood25", found at 375 on 2026-09-22). */
 .nameSlot {
   position: relative;
   flex: 1;
+  align-self: stretch;
   min-width: 0;
+  min-block-size: 1lh;
 }
 
 /* One line, shortened with an ellipsis, so every row keeps the same height (FR5-AC3). */
