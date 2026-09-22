@@ -58,6 +58,7 @@ const ClientsGrid = ({ data }: ClientsGridProps) => {
       label="Clients by month"
       columnCount={months.length}
       onKeyDown={grid.gridProps.onKeyDown}
+      onFocus={grid.gridProps.onFocus}
       head={
         <TreeGrid.Head>
           {/* Blank in the design, and still named for a screen reader (FR4-AC3). */}

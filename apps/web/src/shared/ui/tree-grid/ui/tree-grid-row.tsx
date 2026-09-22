@@ -42,6 +42,7 @@ export const TreeGridRow = ({
         // Exactly one element in the grid is ever 0, so Tab moves into the table once and out
         // again (FR3-AC1); the rest stay reachable to the arrow keys and to nothing else.
         tabIndex={activeColIndex === ROW_COL_INDEX ? 0 : -1}
+        data-row-id={row.id}
       >
         {children}
       </tr>

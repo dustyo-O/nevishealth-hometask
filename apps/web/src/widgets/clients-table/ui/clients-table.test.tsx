@@ -1,6 +1,6 @@
 import { MONTHS, type ClientsResponse } from '@nevis/contracts';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import { describe, expect, it, vi } from 'vitest';
@@ -432,6 +432,51 @@ describe('ClientsTable — operating the real table from the keyboard (FR3)', ()
 
     await press(user, '{ArrowDown}');
     expect(document.activeElement).toBe(rowNamed('Branch 2'));
+  });
+
+  it('leaves the keyboard where it was when a figure is clicked, so the next key acts there (FR2-AC5, code review F1)', async () => {
+    mockClients(clientsFixture());
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole('treegrid');
+    const before = screen.getByRole('button', { name: 'before' });
+    before.focus();
+
+    // Nothing in the table has focus: a click on a figure must not bring it there, or Enter
+    // would act on the cursor the user cannot see — the Company row — and close it.
+    await user.click(rowNamed('Branch 1').querySelectorAll('td')[4] as HTMLTableCellElement);
+    expect(document.activeElement).toBe(before);
+    await user.keyboard('{Enter}');
+    expect(rowNamed('Company')).toHaveAttribute('aria-expanded', 'true');
+    expect(visibleNames()).toEqual(['Company', 'Branch 1', 'Branch 2', 'Branch 3']);
+
+    // With the outline on a row, a click on another row's figure leaves it on that row, and the
+    // next key moves on from there.
+    await user.tab();
+    expect(document.activeElement).toBe(rowNamed('Company'));
+    await user.click(rowNamed('Branch 2').querySelectorAll('td')[4] as HTMLTableCellElement);
+    expect(document.activeElement).toBe(rowNamed('Company'));
+    await press(user, '{ArrowDown}');
+    expect(document.activeElement).toBe(rowNamed('Branch 1'));
+    expect(rowNamed('Branch 1')).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('follows focus that arrives by other means than its own keys (code review F1)', async () => {
+    mockClients(clientsFixture());
+    const user = await enterTable();
+
+    // A figure focused from outside the keyboard model — a script, an assistive technology.
+    const figure = rowNamed('Branch 1').querySelectorAll('td')[4] as HTMLTableCellElement;
+    act(() => figure.focus());
+    expect(document.activeElement).toBe(figure);
+
+    // Enter on a figure does nothing (FR3-AC9), rather than closing the Company row the stale
+    // cursor was on; and the arrows move on from the figure the outline is actually on.
+    await press(user, '{Enter}');
+    expect(rowNamed('Company')).toHaveAttribute('aria-expanded', 'true');
+    expect(document.activeElement).toBe(figure);
+    await press(user, '{ArrowRight}');
+    expect(document.activeElement).toBe(rowNamed('Branch 1').querySelectorAll('td')[5]);
   });
 
   it('has no accessibility violations with the outline inside the table', async () => {
