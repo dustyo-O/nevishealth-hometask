@@ -19,3 +19,16 @@ export type TreeGridRow = {
    */
   hasChildren: boolean;
 };
+
+/**
+ * Where the outline is: one row, and one column within it. `colIndex` is 0-based along the
+ * figures and {@link ROW_COL_INDEX} for the row's own name, so "on a row" and "on a figure" are
+ * one value rather than two states that could disagree.
+ */
+export type TreeGridCursor = {
+  rowId: string;
+  colIndex: number;
+};
+
+/** The cursor's home: the row's name cell, where it enters the grid and where ← brings it back. */
+export const ROW_COL_INDEX = -1;
