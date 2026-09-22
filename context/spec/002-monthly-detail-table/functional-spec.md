@@ -1,7 +1,7 @@
 # Functional Specification: Monthly Detail Table
 
 - **Roadmap Item:** Phase 1 — Monthly Detail Table: one column per month, one row per part of the company, with rows that open to reveal the level beneath, operable from the keyboard and understandable to a screen reader.
-- **Status:** Draft
+- **Status:** Completed
 - **Author:** Alexander Shleyko
 - **Sources:** `context/inbox/monthly-detail-table.md` (grill decisions D1–D16), `context/product/product-definition.md`, the design ("Web engineer home task": the table frames and row variants, screenshots in `context/inbox/design/`), spec 001 (Completed) for the page around it
 
@@ -28,10 +28,10 @@ Rows follow the shape of the business: the **Company** row first, already open w
 Every row shows the figures recorded for it, exactly as they are, right-aligned, with digits that line up in columns. A figure is never recalculated from the rows beneath it.
 
 - **Acceptance Criteria:**
-  - [ ] When the page has loaded, then the table shows a Company row followed by its three branch rows, each indented one step, and each showing twelve figures that match the data for those months.
-  - [ ] When the user reads the Company row, then its figures for February 2024 and January 2025 are 250 and 350, matching the data rather than the sum of the branches shown beneath it.
-  - [ ] When the user looks at the first column's heading, then it is blank, and the other twelve headings read "Feb 2024" through "Jan 2025" in order.
-  - [ ] Given a row has nothing beneath it (an acquisition channel, or a branch with no advisers), when the user looks at it, then it shows no control to open it.
+  - [x] When the page has loaded, then the table shows a Company row followed by its three branch rows, each indented one step, and each showing twelve figures that match the data for those months.
+  - [x] When the user reads the Company row, then its figures for February 2024 and January 2025 are 250 and 350, matching the data rather than the sum of the branches shown beneath it.
+  - [x] When the user looks at the first column's heading, then it is blank, and the other twelve headings read "Feb 2024" through "Jan 2025" in order.
+  - [x] Given a row has nothing beneath it (an acquisition channel, or a branch with no advisers), when the user looks at it, then it shows no control to open it.
 
 ### FR2 — Opening and closing a row with the mouse
 
@@ -46,14 +46,14 @@ If closing a row hides whatever the user's outline is on — a row or a figure s
 Rows slide in when they appear and slide out when they disappear. A viewer whose system is set to reduce motion sees them appear and disappear immediately instead.
 
 - **Acceptance Criteria:**
-  - [ ] When the user clicks the name of Branch 1, then its five adviser rows appear directly beneath it, indented one step further, and the arrow on Branch 1 turns to its open position.
-  - [ ] Given Branch 1 is open, when the user clicks its name again, then its adviser rows disappear and the arrow returns to its closed position.
-  - [ ] Given Branch 1 is open and Anna Blackwood inside it is open, when the user closes Branch 1, then both the advisers and Anna's channels disappear; when the user opens Branch 1 again, then Anna's row is shown closed.
-  - [ ] Given Branch 1 is open, when the user opens Branch 2, then Branch 1 stays open.
-  - [ ] When the user clicks a monthly figure in any row, then nothing opens, closes or changes.
-  - [ ] Given the outline is on one of Anna Blackwood's channel figures inside an open Branch 1, when the user closes Branch 1 by clicking its name, then the outline moves to the Branch 1 row.
-  - [ ] Given the outline is on an adviser row inside an open Branch 1, when the user closes Branch 1, then the outline moves to the Branch 1 row and pressing Down moves it to Branch 2.
-  - [ ] When a row opens or closes, then the affected rows slide in or out; given the viewer's system is set to reduce motion, when a row opens or closes, then the rows appear or disappear without movement.
+  - [x] When the user clicks the name of Branch 1, then its five adviser rows appear directly beneath it, indented one step further, and the arrow on Branch 1 turns to its open position.
+  - [x] Given Branch 1 is open, when the user clicks its name again, then its adviser rows disappear and the arrow returns to its closed position.
+  - [x] Given Branch 1 is open and Anna Blackwood inside it is open, when the user closes Branch 1, then both the advisers and Anna's channels disappear; when the user opens Branch 1 again, then Anna's row is shown closed.
+  - [x] Given Branch 1 is open, when the user opens Branch 2, then Branch 1 stays open.
+  - [x] When the user clicks a monthly figure in any row, then nothing opens, closes or changes.
+  - [x] Given the outline is on one of Anna Blackwood's channel figures inside an open Branch 1, when the user closes Branch 1 by clicking its name, then the outline moves to the Branch 1 row.
+  - [x] Given the outline is on an adviser row inside an open Branch 1, when the user closes Branch 1, then the outline moves to the Branch 1 row and pressing Down moves it to Branch 2.
+  - [x] When a row opens or closes, then the affected rows slide in or out; given the viewer's system is set to reduce motion, when a row opens or closes, then the rows appear or disappear without movement.
 
 ### FR3 — Operating the table from the keyboard
 
@@ -72,24 +72,24 @@ Once the user is on a figure, Left and Right move along that row's months, Left 
 Movement stops at the edges rather than wrapping: Up on the Company row, Down on the last visible row, Right on the last month, and Left on the Company row — it has nothing above it — all leave the outline where it is. Whatever the user is on carries a visible outline. Moving to a figure that is out of view brings it into view sideways; the page itself does not move up or down when the row is already fully visible, and when the row is only partly visible it scrolls just far enough to show that row and no further.
 
 - **Acceptance Criteria:**
-  - [ ] When the user presses Tab from the page heading, then the outline appears on the Company row, and pressing Tab again moves out of the table entirely.
-  - [ ] Given the outline is on the Company row and Branch 1 is closed, when the user presses Down then Right, then the outline moves to Branch 1 and then to Branch 1's figure for February 2024, and Branch 1 stays closed.
-  - [ ] Given the outline is on an open Branch 1, when the user presses Right, then the outline moves to Branch 1's figure for February 2024 and Branch 1 stays open.
-  - [ ] Given the outline is on a row with nothing beneath it (an acquisition channel), when the user presses Right, then the outline moves to that row's figure for February 2024.
-  - [ ] Given the outline is on Branch 1's figure for February 2024, when the user presses Right twice then Left once, then the outline is on the figure for March 2024.
-  - [ ] Given the outline is on Branch 1's figure for February 2024, when the user presses Left, then the outline returns to Branch 1's name.
-  - [ ] Given the outline is on Branch 1's figure for June 2024, when the user presses Down, then the outline moves to the June 2024 figure of the row beneath.
-  - [ ] Given the outline is on Branch 1's figure for June 2024, when the user presses Home, then the outline moves to that row's February 2024 figure, and pressing End moves it to January 2025.
-  - [ ] Given the outline is on any figure, when the user presses Enter or Space, then nothing opens or closes and the outline stays where it is.
-  - [ ] Given the outline is on the last visible row's figure for January 2025, when the user presses Down and then Right, then the outline stays on that same figure.
-  - [ ] Given the outline is on the Company row, when the user presses Left, then the outline stays on the Company row.
-  - [ ] Given the outline is on an open Branch 1, when the user presses Left, then the outline moves to the Company row and Branch 1 stays open.
-  - [ ] Given the outline is on one of Branch 1's advisers, when the user presses Left, then the outline moves to the Branch 1 row.
-  - [ ] Given the outline is on any row that has children, when the user presses Enter, then the row opens, and pressing Space closes it again.
-  - [ ] Given the outline is on a row with nothing beneath it, when the user presses Enter or Space, then nothing opens and the outline stays where it is.
-  - [ ] Given the outline is on a row deep in the table, when the user presses Home, then the outline moves to the Company row, and pressing End moves it to the last visible row.
-  - [ ] Given the row is fully visible and the window is narrow enough that later months are out of sight, when the user moves the outline onto one of them, then it scrolls into view sideways and the page does not scroll up or down.
-  - [ ] Given a row is only partly visible because the page is scrolled, when the user moves the outline onto one of that row's months, then the month scrolls into view sideways and the page scrolls only as far as needed to bring that row fully into view.
+  - [x] When the user presses Tab from the page heading, then the outline appears on the Company row, and pressing Tab again moves out of the table entirely.
+  - [x] Given the outline is on the Company row and Branch 1 is closed, when the user presses Down then Right, then the outline moves to Branch 1 and then to Branch 1's figure for February 2024, and Branch 1 stays closed.
+  - [x] Given the outline is on an open Branch 1, when the user presses Right, then the outline moves to Branch 1's figure for February 2024 and Branch 1 stays open.
+  - [x] Given the outline is on a row with nothing beneath it (an acquisition channel), when the user presses Right, then the outline moves to that row's figure for February 2024.
+  - [x] Given the outline is on Branch 1's figure for February 2024, when the user presses Right twice then Left once, then the outline is on the figure for March 2024.
+  - [x] Given the outline is on Branch 1's figure for February 2024, when the user presses Left, then the outline returns to Branch 1's name.
+  - [x] Given the outline is on Branch 1's figure for June 2024, when the user presses Down, then the outline moves to the June 2024 figure of the row beneath.
+  - [x] Given the outline is on Branch 1's figure for June 2024, when the user presses Home, then the outline moves to that row's February 2024 figure, and pressing End moves it to January 2025.
+  - [x] Given the outline is on any figure, when the user presses Enter or Space, then nothing opens or closes and the outline stays where it is.
+  - [x] Given the outline is on the last visible row's figure for January 2025, when the user presses Down and then Right, then the outline stays on that same figure.
+  - [x] Given the outline is on the Company row, when the user presses Left, then the outline stays on the Company row.
+  - [x] Given the outline is on an open Branch 1, when the user presses Left, then the outline moves to the Company row and Branch 1 stays open.
+  - [x] Given the outline is on one of Branch 1's advisers, when the user presses Left, then the outline moves to the Branch 1 row.
+  - [x] Given the outline is on any row that has children, when the user presses Enter, then the row opens, and pressing Space closes it again.
+  - [x] Given the outline is on a row with nothing beneath it, when the user presses Enter or Space, then nothing opens and the outline stays where it is.
+  - [x] Given the outline is on a row deep in the table, when the user presses Home, then the outline moves to the Company row, and pressing End moves it to the last visible row.
+  - [x] Given the row is fully visible and the window is narrow enough that later months are out of sight, when the user moves the outline onto one of them, then it scrolls into view sideways and the page does not scroll up or down.
+  - [x] Given a row is only partly visible because the page is scrolled, when the user moves the outline onto one of that row's months, then the month scrolls into view sideways and the page scrolls only as far as needed to bring that row fully into view.
 
 ### FR4 — What a screen reader reports
 
@@ -100,11 +100,11 @@ On a monthly figure, the reader announces whose row it belongs to and which mont
 When a row opens or closes, the reader says so as part of announcing the row — the table adds no separate message of its own.
 
 - **Acceptance Criteria:**
-  - [ ] When a screen reader reads Branch 1, then it reports the row's name, that it is at level 2, that it is row 1 of 3 at that level, and whether it is open or closed.
-  - [ ] When a screen reader reads Anna Blackwood's figure for June 2024, then it announces the adviser's name and "Jun 2024" along with the figure.
-  - [ ] When a screen reader reads the first column's heading, then it is announced as "Name".
-  - [ ] When the user opens a row with the keyboard, then the screen reader announces that the row is now open, and no other message is added.
-  - [ ] When a screen reader reads a row that has nothing beneath it, then it reports no open-or-closed state for that row.
+  - [x] When a screen reader reads Branch 1, then it reports the row's name, that it is at level 2, that it is row 1 of 3 at that level, and whether it is open or closed.
+  - [x] When a screen reader reads Anna Blackwood's figure for June 2024, then it announces the adviser's name and "Jun 2024" along with the figure.
+  - [x] When a screen reader reads the first column's heading, then it is announced as "Name".
+  - [x] When the user opens a row with the keyboard, then the screen reader announces that the row is now open, and no other message is added.
+  - [x] When a screen reader reads a row that has nothing beneath it, then it reports no open-or-closed state for that row.
 
 ### FR5 — Reading a row
 
@@ -113,12 +113,12 @@ An adviser's row carries a circle with that adviser's initials before the name �
 A name too long for its column is shortened with an ellipsis on a single line, so every row keeps the same height; the full name appears when the user hovers over it **or moves the outline onto it**, and it is what a screen reader reads. When a name is revealed this way it is shown whole and legible: it sits on the row's own background, so nothing behind it shows through. On a touch screen there is no hover and no outline, so a tapped name opens its row rather than revealing itself — at the design's width none of the names in this data is shortened at all, and on a phone, where the first column is narrower, the deeper names are shortened and are reached by the means above.
 
 - **Acceptance Criteria:**
-  - [ ] When the user opens Branch 1, then each adviser row shows a circle with that adviser's initials — "AB" for Anna Blackwood — followed by the name.
-  - [ ] When a screen reader reads an adviser row, then it reads the adviser's name without mentioning the circle.
-  - [ ] Given a name is wider than the first column, when the user looks at the row, then the name is shortened with an ellipsis on one line and the row is the same height as every other row; when the user hovers over it, then the full name appears.
-  - [ ] Given a name is wider than the first column, when the user moves the outline onto that name with the keyboard, then the full name appears.
-  - [ ] When the table shows the supplied data at 1440 px, then no name is shortened, because the first column is wide enough for every name at every level.
-  - [ ] Given the table is viewed at 375 px, where the name column is narrower, when a deep name does not fit, then it is shortened with an ellipsis and the full name is still available on hover, on keyboard focus and to a screen reader.
+  - [x] When the user opens Branch 1, then each adviser row shows a circle with that adviser's initials — "AB" for Anna Blackwood — followed by the name.
+  - [x] When a screen reader reads an adviser row, then it reads the adviser's name without mentioning the circle.
+  - [x] Given a name is wider than the first column, when the user looks at the row, then the name is shortened with an ellipsis on one line and the row is the same height as every other row; when the user hovers over it, then the full name appears.
+  - [x] Given a name is wider than the first column, when the user moves the outline onto that name with the keyboard, then the full name appears.
+  - [x] When the table shows the supplied data at 1440 px, then no name is shortened, because the first column is wide enough for every name at every level.
+  - [x] Given the table is viewed at 375 px, where the name column is narrower, when a deep name does not fit, then it is shortened with an ellipsis and the full name is still available on hover, on keyboard focus and to a screen reader.
 
 ### FR6 — Narrow screens
 
@@ -127,11 +127,11 @@ Thirteen columns cannot fit on a phone. On a narrow screen the months scroll sid
 The page itself never scrolls sideways, at any width.
 
 - **Acceptance Criteria:**
-  - [ ] When the table is viewed at 375 px wide, then the name column and at least two whole month columns are visible — no month is cut off at the right edge — and the page has no horizontal scrollbar.
-  - [ ] Given the table is viewed at 375 px wide, when the user scrolls the table sideways, then the month columns move while the name column stays in place, and a shadow appears along its edge.
-  - [ ] Given the table is viewed at 375 px wide and scrolled back to the start, when the user looks at the name column's edge, then no shadow is shown.
-  - [ ] When the table is viewed at 1440 px wide, then all twelve months and the names are visible at once, nothing scrolls sideways and no shadow is shown.
-  - [ ] When rows are opened at 375 px wide until the table is taller than the screen, then the page scrolls down normally and still never scrolls sideways.
+  - [x] When the table is viewed at 375 px wide, then the name column and at least two whole month columns are visible — no month is cut off at the right edge — and the page has no horizontal scrollbar.
+  - [x] Given the table is viewed at 375 px wide, when the user scrolls the table sideways, then the month columns move while the name column stays in place, and a shadow appears along its edge.
+  - [x] Given the table is viewed at 375 px wide and scrolled back to the start, when the user looks at the name column's edge, then no shadow is shown.
+  - [x] When the table is viewed at 1440 px wide, then all twelve months and the names are visible at once, nothing scrolls sideways and no shadow is shown.
+  - [x] When rows are opened at 375 px wide until the table is taller than the screen, then the page scrolls down normally and still never scrolls sideways.
 
 ### FR7 — While loading, and when something is wrong
 
@@ -140,9 +140,9 @@ The table appears inside the card that spec 001 already fills: the placeholder b
 If the company has no branches at all, the table shows the Company row alone with its figures and nothing to open.
 
 - **Acceptance Criteria:**
-  - [ ] Given the figures are slow to arrive, when the user opens the page, then the table's card shows the placeholder blocks exactly as before, and the table replaces them once the figures arrive.
-  - [ ] Given the figures cannot be loaded, when the user opens the page, then the error message with its Retry button appears in place of the table, and clicking Retry shows the table once the figures arrive.
-  - [ ] Given a company with no branches, when the figures load, then the table shows the Company row with its twelve figures and no control to open it.
+  - [x] Given the figures are slow to arrive, when the user opens the page, then the table's card shows the placeholder blocks exactly as before, and the table replaces them once the figures arrive.
+  - [x] Given the figures cannot be loaded, when the user opens the page, then the error message with its Retry button appears in place of the table, and clicking Retry shows the table once the figures arrive.
+  - [x] Given a company with no branches, when the figures load, then the table shows the Company row with its twelve figures and no control to open it.
 
 ---
 

@@ -1,7 +1,7 @@
 # Technical Specification: Monthly Detail Table
 
 - **Functional Specification:** `context/spec/002-monthly-detail-table/functional-spec.md`
-- **Status:** Draft
+- **Status:** Completed
 - **Author(s):** Alexander Shleyko (lead); the frontend plan comes from the specialist consultation quoted verbatim in `consults/react-frontend-table-sections-20260922-145932.md`, which prototyped the real DOM and measured every claim below in Chrome 153 (Playwright MCP) — measurements are cited, not assumed.
 
 ---

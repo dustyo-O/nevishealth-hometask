@@ -14,10 +14,10 @@ _The highest priority features that form the core foundation of the product — 
   - [x] **Client Data Served from an API:** Serve the company → branch → adviser → channel client tree, twelve months Feb 2024 – Jan 2025, from a small read-only REST API, so the dashboard has one source of truth and the data can later come from a real system.
   - [x] **Dashboard Page with Honest States:** A single "Clients" page that loads the data, tells the user when it is loading, and shows a clear message with a retry when loading fails — never an empty chart.
 
-- [ ] **Monthly Detail Table**
-  - [ ] **Hierarchical Table with Expandable Rows:** One column per month, one row per node; the Company row is expanded on load to its branches, a branch expands to its advisers, an adviser to their channels, and any row collapses again. A node without children is a leaf and offers nothing to expand.
-  - [ ] **Keyboard and Assistive-Technology Access:** Every expand and collapse works from the keyboard, focus is visible, and the tree structure — each row's level and expanded state — is announced to screen readers.
-  - [ ] **Expand/Collapse Behaviour Tests:** Automated UI tests prove rows expand and collapse by mouse and keyboard and that the hierarchy is exposed correctly.
+- [x] **Monthly Detail Table**
+  - [x] **Hierarchical Table with Expandable Rows:** One column per month, one row per node; the Company row is expanded on load to its branches, a branch expands to its advisers, an adviser to their channels, and any row collapses again. A node without children is a leaf and offers nothing to expand.
+  - [x] **Keyboard and Assistive-Technology Access:** Every expand and collapse works from the keyboard, focus is visible, and the tree structure — each row's level and expanded state — is announced to screen readers.
+  - [x] **Expand/Collapse Behaviour Tests:** Automated UI tests prove rows expand and collapse by mouse and keyboard and that the hierarchy is exposed correctly.
 
 - [ ] **Clients Trend Chart**
   - [ ] **Stacked Monthly Bar Chart by Channel:** One bar per month, stacked by acquisition channel (Existing clients / New organic / New paid) with a legend, on a clients y-axis, matching the design; totals agree with the table.
