@@ -31,6 +31,14 @@ pnpm dev
 
 Other root scripts: `pnpm build` (builds every package), `pnpm format` (Prettier, write mode).
 
+### Motion
+
+Rows slide in and out as they are opened and closed. A viewer whose system is set to reduce
+motion sees none of it — the rows simply appear and disappear. That setting is read **once, as
+the page starts**: `@formkit/auto-animate` asks the `prefers-reduced-motion` media query when it
+initialises and never asks again, so a change made in System Settings applies on the next reload
+rather than to the open page.
+
 ## How to test
 
 One command runs every check for every package — the same command CI runs on each pull request

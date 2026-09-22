@@ -1,3 +1,4 @@
+import { useAutoAnimate } from '@formkit/auto-animate/react';
 import {
   useMemo,
   type CSSProperties,
@@ -8,6 +9,7 @@ import {
 import { cx } from '../../../lib/cx';
 import { TreeGridProvider } from '../model/context';
 import { treeGridIds } from '../model/ids';
+import { rowMotion } from '../model/row-motion';
 import { TreeGridCell } from './tree-grid-cell';
 import { TreeGridColumnHeader, TreeGridHead } from './tree-grid-head';
 import { TreeGridRow } from './tree-grid-row';
@@ -48,6 +50,12 @@ export const TreeGrid = ({
 }: TreeGridProps) => {
   const context = useMemo(() => treeGridIds(id), [id]);
 
+  // FR2-AC8, D-16: the rows that appear and disappear slide, and the ones that stay travel with
+  // them. It hangs on the `<tbody>` because that is the element whose children come and go — the
+  // header row must not move — and the plugin is chosen once, at mount: under
+  // `prefers-reduced-motion` it is not a plugin at all and the library disables itself.
+  const [rowsRef] = useAutoAnimate<HTMLTableSectionElement>(rowMotion());
+
   // The edge shadow is the sign that there is more to see, so it must not show when there is
   // nothing (FR6-AC3/AC4). Written straight to the DOM rather than held in state: scrolling
   // must not re-render 44 rows, and the stylesheet is what decides what the flag looks like.
@@ -68,7 +76,7 @@ export const TreeGrid = ({
           onKeyDown={onKeyDown}
         >
           {head}
-          <tbody>{children}</tbody>
+          <tbody ref={rowsRef}>{children}</tbody>
         </table>
       </TreeGridProvider>
     </div>

@@ -10,6 +10,21 @@ expect.extend(toHaveNoViolations);
 // question, answered by `e2e/table-keyboard-scroll.spec.ts` rather than here.
 Element.prototype.scrollIntoView = () => {};
 
+// jsdom implements no media queries either, so `window.matchMedia` does not exist at all. The
+// tree grid asks it once, when it mounts, whether the viewer wants less motion (002 D-16). The
+// answer here is "no"; a test that needs "yes" says so for itself. What the browser then does
+// with the answer is a browser question, not this environment's.
+window.matchMedia = (media: string): MediaQueryList => ({
+  media,
+  matches: false,
+  onchange: null,
+  addListener: () => {},
+  removeListener: () => {},
+  addEventListener: () => {},
+  removeEventListener: () => {},
+  dispatchEvent: () => false,
+});
+
 afterEach(() => {
   cleanup();
 });
