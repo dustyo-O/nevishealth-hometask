@@ -155,6 +155,10 @@ resume)
   pane=$(harness_open_pane "$num $lane" right)
   [ -n "$pane" ] || { echo "could not open a pane for $lane" >&2; exit 1; }
   herdr pane run "$pane" "$launch"
+  # Write the new pane id back, or `wait` and `clean` keep watching the pane we just closed.
+  awk -F'\t' -v lane="$lane" -v pane="$pane" 'BEGIN{OFS="\t"} $1==lane{$5=pane} {print}' \
+    "$state/slice-$slice_n.tsv" > "$state/slice-$slice_n.tsv.new" \
+    && mv "$state/slice-$slice_n.tsv.new" "$state/slice-$slice_n.tsv"
   echo "resumed $lane in $wt (pane $pane) — git status there is untouched, the session judges its own leftovers"
   echo "next: bin/harness/swarm.sh wait $num" ;;
 
