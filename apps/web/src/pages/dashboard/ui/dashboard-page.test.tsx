@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -12,8 +12,11 @@ const BRANCHES = 'Company · 3 branches';
 const MESSAGE = "We couldn't load the clients data.";
 const STATUS_500 = 'Request failed with status 500';
 const LOADING = 'Loading clients…';
+/** FR3: the announcement's own wait, mirroring `LOADING_ANNOUNCE_DELAY_MS` in the page. */
+const ANNOUNCE_DELAY_MS = 1000;
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
   window.history.replaceState(null, '', '/');
@@ -67,22 +70,43 @@ const busyContainerOf = (element: HTMLElement) => element.closest('[aria-busy]')
 
 const settle = () => act(() => new Promise<void>((resolve) => setTimeout(resolve, 20)));
 
-/** The live region fills on the tick after it mounts (code review F2), so its text is awaited. */
-const expectLoadingAnnounced = () =>
-  waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(LOADING));
+/**
+ * Moves the fake clock inside `act`, flushing whatever the app resolves along the way. The
+ * announcement's wait is a real second in the browser; no test here spends one (tech doc §4).
+ */
+const advance = (ms: number) =>
+  act(async () => {
+    await vi.advanceTimersByTimeAsync(ms);
+  });
+
+/**
+ * Every text the live region ever carried, in order. A screen reader speaks whatever appears,
+ * however briefly, so "it never announced" has to be watched for, not sampled afterwards.
+ */
+const recordAnnouncements = (status: HTMLElement): string[] => {
+  const spoken: string[] = [];
+  new MutationObserver(() => {
+    const text = status.textContent ?? '';
+    if (text !== '' && text !== spoken.at(-1)) spoken.push(text);
+  }).observe(status, { childList: true, characterData: true, subtree: true });
+  return spoken;
+};
 
 describe('DashboardPage — loading state (FR3)', () => {
-  it('shows the heading, the status text, the busy grid and two placeholder cards without text', async () => {
+  it('shows the heading, the busy grid and two placeholder cards at once — and only then announces (FR3-AC1)', async () => {
+    vi.useFakeTimers();
     const pending = deferred();
     vi.spyOn(globalThis, 'fetch').mockImplementation(() => pending.promise);
     renderPage();
 
     expect(screen.getByRole('heading', { level: 1, name: 'Clients' })).toBeInTheDocument();
-    await expectLoadingAnnounced();
     const chart = screen.getByRole('region', { name: 'Clients chart' });
     const table = screen.getByRole('region', { name: 'Monthly detail' });
     expect(screen.getAllByRole('region')).toHaveLength(2);
+
+    // What the eye needs is immediate; only what is spoken waits (FR3, amended 2026-09-22).
     expect(busyContainerOf(chart)).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
 
     // Grey blocks in the content's positions, hidden from assistive technology, nothing to read.
     expect(placeholderBlocksOf(chart).length).toBeGreaterThan(0);
@@ -91,6 +115,9 @@ describe('DashboardPage — loading state (FR3)', () => {
     expect(table.textContent).toBe('');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+
+    await advance(ANNOUNCE_DELAY_MS);
+    expect(screen.getByRole('status')).toHaveTextContent(LOADING);
   });
 
   it('replaces the placeholders in place when the figures arrive (FR3-AC2)', async () => {
@@ -113,11 +140,15 @@ describe('DashboardPage — loading state (FR3)', () => {
     expect(busyContainerOf(chart)).toHaveAttribute('aria-busy', 'false');
   });
 
-  it('has no accessibility violations while loading', async () => {
+  it('has no accessibility violations while loading, announcement and all', async () => {
+    vi.useFakeTimers();
     const pending = deferred();
     vi.spyOn(globalThis, 'fetch').mockImplementation(() => pending.promise);
     const { container } = renderPage();
-    await expectLoadingAnnounced();
+    await advance(ANNOUNCE_DELAY_MS);
+    expect(screen.getByRole('status')).toHaveTextContent(LOADING);
+    // axe drives its own clock; hand it back before the audit.
+    vi.useRealTimers();
 
     expect(await axe(container)).toHaveNoViolations();
   });
@@ -153,7 +184,8 @@ describe('DashboardPage — loaded state', () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/clients');
   });
 
-  it('mounts the live region empty, fills it with "Loading clients…" on the next tick, and clears it when loaded (FR3-AC1, code review F2)', async () => {
+  it('mounts the live region empty, keeps it empty until the wait has passed, fills it while loading, clears it when loaded (FR3-AC1/AC2)', async () => {
+    vi.useFakeTimers();
     const pending = deferred();
     vi.spyOn(globalThis, 'fetch').mockImplementation(() => pending.promise);
     renderPage();
@@ -163,18 +195,55 @@ describe('DashboardPage — loaded state', () => {
     const status = screen.getByRole('status');
     expect(status).toBeEmptyDOMElement();
     expect(busyContainerOf(status)).toBeNull();
+    expect(status).toHaveAttribute('aria-atomic', 'true');
+    const spoken = recordAnnouncements(status);
     expect(busyContainerOf(screen.getByRole('region', { name: 'Clients chart' }))).toHaveAttribute(
       'aria-busy',
       'true',
     );
 
-    await waitFor(() => expect(status).toHaveTextContent(LOADING));
+    // A millisecond short of the wait the region is still silent: a screen reader is still
+    // reading the page it just opened, and anything said underneath it is lost (VoiceOver
+    // device check 2026-09-22, FR3 amended).
+    await advance(ANNOUNCE_DELAY_MS - 1);
+    expect(status).toBeEmptyDOMElement();
 
+    await advance(1);
+    expect(status).toHaveTextContent(LOADING);
+
+    // The figures land: the same node, silent again, nothing further announced.
+    vi.useRealTimers();
     pending.resolve(Response.json(clientsFixture()));
     await screen.findByText(PERIOD);
 
     expect(screen.getByRole('status')).toBe(status);
     expect(status).toBeEmptyDOMElement();
+    // Spoken once, and nothing further when the figures landed.
+    expect(spoken).toEqual([LOADING]);
+  });
+
+  it('says nothing at all when the figures are already there (FR3-AC3)', async () => {
+    vi.useFakeTimers();
+    const pending = deferred();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => pending.promise);
+    renderPage();
+    const status = screen.getByRole('status');
+    const spoken = recordAnnouncements(status);
+    expect(status).toBeEmptyDOMElement();
+
+    // A fast service — fifty milliseconds, well inside the wait — so the announcement never
+    // falls due. The wait is real time, not a tick: a load this quick still crosses one.
+    await advance(50);
+    expect(status).toBeEmptyDOMElement();
+    pending.resolve(Response.json(clientsFixture()));
+    await advance(50);
+    expect(screen.getByText(PERIOD)).toBeVisible();
+
+    // And the moment it would have been due passes with the region still silent.
+    await advance(ANNOUNCE_DELAY_MS * 2);
+    expect(screen.getByRole('status')).toBe(status);
+    expect(status).toBeEmptyDOMElement();
+    expect(spoken).toEqual([]);
   });
 
   it('does not fetch again when the window regains focus (FR5-AC4)', async () => {
@@ -239,8 +308,9 @@ describe('DashboardPage — failed state (FR4)', () => {
     fetchMock.mockImplementationOnce(() => pending.promise);
     await user.click(retry);
 
+    // What Retry shows is the placeholder frame, at once — the announcement has its own wait
+    // and its own test below (FR4-AC4 / FR4-AC5).
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    await expectLoadingAnnounced();
     const chart = screen.getByRole('region', { name: 'Clients chart' });
     expect(screen.getByRole('region', { name: 'Monthly detail' })).toBeInTheDocument();
     expect(busyContainerOf(chart)).toHaveAttribute('aria-busy', 'true');
@@ -252,6 +322,34 @@ describe('DashboardPage — failed state (FR4)', () => {
     expect(alert).toHaveTextContent(STATUS_500);
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it('Retry announces the same way: silent until the wait has passed, then "Loading clients…" (FR4-AC5)', async () => {
+    const fetchMock = mockClientsFailing();
+    renderPage();
+    const retry = await screen.findByRole('button', { name: 'Retry' });
+    const status = screen.getByRole('status');
+    expect(status).toBeEmptyDOMElement();
+
+    // A service that now answers slowly: the retry stays in flight while the clock is driven
+    // by hand. The fake clock goes in before the click, so the wait the click starts is ours —
+    // and the click is `fireEvent`, whose own waits are not on that clock.
+    const pending = deferred();
+    fetchMock.mockImplementation(() => pending.promise);
+    vi.useFakeTimers();
+    fireEvent.click(retry);
+    await advance(0);
+
+    const chart = screen.getByRole('region', { name: 'Clients chart' });
+    expect(busyContainerOf(chart)).toHaveAttribute('aria-busy', 'true');
+    expect(status).toBeEmptyDOMElement();
+
+    await advance(ANNOUNCE_DELAY_MS - 1);
+    expect(status).toBeEmptyDOMElement();
+
+    await advance(1);
+    expect(status).toHaveTextContent(LOADING);
+    expect(screen.getByRole('status')).toBe(status);
   });
 
   it('Retry once the service is back: the loaded content, no reload (FR4-AC6)', async () => {
