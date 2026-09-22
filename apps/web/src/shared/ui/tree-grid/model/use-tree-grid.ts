@@ -89,6 +89,23 @@ export const useTreeGrid = ({
     if (target === null) return;
     target.focus({ preventScroll: true });
     target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+
+    // D-7 measured that the one `scroll-padding-inline-start` line lands every figure flush
+    // with the sticky name column, never under it. Re-measured at 375 in Chrome 153 on
+    // 2026-09-22, after D-17 widened a month column from 72 px to 88: the column is now wider
+    // than the 79 px of scrollport the 264 px name column leaves (343 − 264), and walking
+    // *left* Blink then aligns the cell's end edge rather than its start — `cellLeft 271`
+    // against a sticky edge at 280. At 72 px it fitted, so the original measurement was right
+    // when it was taken. CSSOM-View says `nearest` aligns the *start* edge when the target
+    // cannot fit, so asking for `start` here restores the specified behaviour rather than
+    // inventing one; it is asked for only once the cell has actually landed under the column,
+    // so `nearest` still does nothing whenever nothing is needed, and no `scrollLeft`
+    // arithmetic is involved (D-7 rejected that, and rightly).
+    if (cursor.colIndex === ROW_COL_INDEX) return;
+    const stickyEdge = target.closest('tr')?.querySelector('th')?.getBoundingClientRect().right;
+    if (stickyEdge !== undefined && target.getBoundingClientRect().left < stickyEdge) {
+      target.scrollIntoView({ block: 'nearest', inline: 'start' });
+    }
   }, [cursor, rows, ids]);
 
   const toggle = useCallback((rowId: string) => {
