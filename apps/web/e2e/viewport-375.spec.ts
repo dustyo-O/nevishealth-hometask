@@ -5,7 +5,14 @@
 // off, the Retry button reachable.
 import { expect, test } from '@playwright/test';
 import { installClientsDouble } from './support/clients-double';
-import { clientsPage, rightEdgeOf, scrollWidthOf, TEXT, VIEWPORT } from './support/clients-page';
+import {
+  clientsPage,
+  expectTableLoaded,
+  rightEdgeOf,
+  scrollWidthOf,
+  TEXT,
+  VIEWPORT,
+} from './support/clients-page';
 
 test.use({ viewport: VIEWPORT.phone });
 
@@ -53,21 +60,26 @@ test(
 );
 
 test(
-  'FR7: loaded — no horizontal scroll, both summaries fully readable',
+  'FR7: loaded — no horizontal scroll, the period readable and every row name on screen',
   { tag: '@regression' },
   async ({ page }) => {
     await installClientsDouble(page);
     const ui = clientsPage(page);
 
     await page.goto('/');
-    await expect(ui.tableCard).toHaveText(TEXT.branches);
+    await expectTableLoaded(ui);
 
     expect(await scrollWidthOf(page)).toBeLessThanOrEqual(WIDTH);
     expect(await rightEdgeOf([ui.heading, ui.chartCard, ui.tableCard])).toBeLessThanOrEqual(WIDTH);
-    for (const card of [ui.chartCard, ui.tableCard]) {
-      const summary = card.getByRole('paragraph');
-      await expect(summary).toBeVisible();
-      expect(await summary.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
-    }
+
+    // The chart card still summarises in a line of text, and it is not clipped.
+    const period = ui.chartCard.getByRole('paragraph');
+    await expect(period).toBeVisible();
+    expect(await period.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+
+    // The lower card holds the table since spec 002 FR7. Its months scroll sideways inside their
+    // own box — which is exactly why the page above them still does not — and the name column
+    // stays where the reader can see it, every row of it inside the viewport (002 FR6-AC1).
+    expect(await rightEdgeOf(await ui.rowNames.all())).toBeLessThanOrEqual(WIDTH);
   },
 );

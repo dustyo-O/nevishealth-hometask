@@ -6,7 +6,13 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { installClientsDouble, type ClientsMode } from './support/clients-double';
-import { clientsPage, TEXT, VIEWPORT, type ClientsPage } from './support/clients-page';
+import {
+  clientsPage,
+  expectTableLoaded,
+  TEXT,
+  VIEWPORT,
+  type ClientsPage,
+} from './support/clients-page';
 
 type State = { name: string; mode: ClientsMode; settled: (ui: ClientsPage) => Promise<void> };
 
@@ -30,9 +36,9 @@ const STATES: State[] = [
   {
     name: 'loaded',
     mode: 'ok',
-    settled: async (ui) => {
-      await expect(ui.tableCard).toHaveText(TEXT.branches);
-    },
+    // Since spec 002 FR7 the lower card holds the table itself, so the audit runs over the real
+    // treegrid — its levels, its row headers and the `headers` on every figure.
+    settled: (ui) => expectTableLoaded(ui),
   },
 ];
 
@@ -62,7 +68,7 @@ test('the loading announcement is a polite live region that exists before it spe
   const ui = clientsPage(page);
 
   await page.goto('/');
-  await expect(ui.tableCard).toHaveText(TEXT.branches);
+  await expectTableLoaded(ui);
 
   // Still in the document once loaded, silent — so its next text change is announced.
   await expect(ui.status).toHaveCount(1);
