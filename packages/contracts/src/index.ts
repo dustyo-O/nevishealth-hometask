@@ -20,7 +20,8 @@ export type Month = (typeof MONTHS)[number];
 
 /**
  * One item of the company tree: the company, a branch, an adviser (`employees`) or a channel.
- * A node carries at most one non-empty child list; a node with none is the end of its line.
+ * A node defines at most one child list — never two, even if the extra one is empty (FR2);
+ * a node whose single list is missing or empty is the end of its line.
  * The `| undefined` is required under `exactOptionalPropertyTypes` (tech doc D-4).
  */
 export type TreeNode = {
@@ -43,12 +44,15 @@ export const CHILD_KEYS = ['branches', 'employees', 'channels'] as const;
 
 export type ChildKey = (typeof CHILD_KEYS)[number];
 
+const definedChildKeys = (node: TreeNode): ChildKey[] =>
+  CHILD_KEYS.filter((key) => node[key] !== undefined);
+
 const populatedChildKeys = (node: TreeNode): ChildKey[] =>
   CHILD_KEYS.filter((key) => (node[key]?.length ?? 0) > 0);
 
 /**
  * The one definition of "children" shared by the API's consistency check and the web's flatten:
- * the single non-empty child list (the schema guarantees at most one), `[]` for a leaf.
+ * the single non-empty child list (the schema guarantees at most one is defined), `[]` for a leaf.
  */
 export const childrenOf = (node: TreeNode): TreeNode[] => {
   const key = populatedChildKeys(node)[0];
@@ -71,11 +75,12 @@ export const TreeNodeSchema: z.ZodType<TreeNode> = z
     channels: z.array(z.lazy(() => TreeNodeSchema)).optional(),
   })
   .superRefine((node, ctx) => {
-    const populated = populatedChildKeys(node);
-    if (populated.length > 1) {
+    // FR2: "never two of these at once" — an empty extra list is still a second kind of list.
+    const defined = definedChildKeys(node);
+    if (defined.length > 1) {
       ctx.addIssue({
         code: 'custom',
-        message: `An item may carry at most one non-empty child list, got: ${populated.join(', ')}`,
+        message: `An item may define at most one child list, got: ${defined.join(', ')}`,
       });
     }
   });

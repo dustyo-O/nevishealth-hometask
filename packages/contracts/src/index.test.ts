@@ -85,7 +85,23 @@ describe('ClientsResponseSchema', () => {
     doc.company.branches![0]!.channels = [leaf()];
     const result = ClientsResponseSchema.safeParse(doc);
     expect(result.success).toBe(false);
-    expect(result.error?.issues[0]?.message).toMatch(/at most one non-empty child list/);
+    expect(result.error?.issues[0]?.message).toMatch(/at most one child list/);
+  });
+
+  it('rejects an item that defines a populated list and an empty one (FR2: never two at once)', () => {
+    const doc = envelope();
+    doc.company.branches![0]!.channels = [];
+    const result = ClientsResponseSchema.safeParse(doc);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toMatch(/employees, channels/);
+  });
+
+  it('rejects an item that defines two empty child lists', () => {
+    const doc = envelope();
+    doc.company.branches![2]!.employees = [];
+    doc.company.branches![2]!.channels = [];
+    expect(ClientsResponseSchema.safeParse(doc).success).toBe(false);
+    expect(TreeNodeSchema.safeParse(leaf({ branches: [], employees: [] })).success).toBe(false);
   });
 
   it('accepts a branch without advisers and an adviser without channels (missing lists)', () => {
@@ -95,11 +111,12 @@ describe('ClientsResponseSchema', () => {
     expect(ClientsResponseSchema.safeParse(doc).success).toBe(true);
   });
 
-  it('accepts empty child lists, including one empty list beside a populated one', () => {
+  it('accepts a single empty child list as a leaf', () => {
     const doc = envelope();
     doc.company.branches![2]!.employees = [];
-    doc.company.branches![0]!.channels = [];
+    doc.company.branches![0]!.employees![0]!.channels = [];
     expect(ClientsResponseSchema.safeParse(doc).success).toBe(true);
+    expect(TreeNodeSchema.safeParse(leaf({ channels: [] })).success).toBe(true);
   });
 });
 
