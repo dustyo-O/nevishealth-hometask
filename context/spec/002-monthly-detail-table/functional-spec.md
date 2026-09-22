@@ -67,7 +67,7 @@ The whole table is one stop in the page's tab order: pressing Tab moves into the
 
 Once the user is on a figure, Left and Right move along that row's months, Left from the first figure returns to the row's name, and Up and Down move to the same month in the row above or below. Home and End move to that row's first and last month. Enter and Space do nothing on a figure — a row is opened and closed from its name, never from its figures.
 
-Movement stops at the edges rather than wrapping: Up on the Company row, Down on the last visible row, Right on the last month and Left on the row's name all leave the outline where it is. Whatever the user is on carries a visible outline, and moving to a figure that is out of view brings it into view sideways without moving the page up or down.
+Movement stops at the edges rather than wrapping: Up on the Company row, Down on the last visible row, Right on the last month, and Left on the Company row once it is closed — it has nothing above it — all leave the outline where it is. Whatever the user is on carries a visible outline. Moving to a figure that is out of view brings it into view sideways; the page itself does not move up or down when the row is already fully visible, and when the row is only partly visible it scrolls just far enough to show that row and no further.
 
 - **Acceptance Criteria:**
   - [ ] When the user presses Tab from the page heading, then the outline appears on the Company row, and pressing Tab again moves out of the table entirely.
@@ -80,10 +80,12 @@ Movement stops at the edges rather than wrapping: Up on the Company row, Down on
   - [ ] Given the outline is on Branch 1's figure for June 2024, when the user presses Home, then the outline moves to that row's February 2024 figure, and pressing End moves it to January 2025.
   - [ ] Given the outline is on any figure, when the user presses Enter or Space, then nothing opens or closes and the outline stays where it is.
   - [ ] Given the outline is on the last visible row's figure for January 2025, when the user presses Down and then Right, then the outline stays on that same figure.
+  - [ ] Given the outline is on the Company row and it is closed, when the user presses Left, then the outline stays on the Company row.
   - [ ] Given the outline is on an open Branch 1, when the user presses Left, then Branch 1 closes; when the user presses Left again, then the outline moves to the Company row.
   - [ ] Given the outline is on any row, when the user presses Enter, then the row opens if it can, and pressing Space closes it again.
   - [ ] Given the outline is on a row deep in the table, when the user presses Home, then the outline moves to the Company row, and pressing End moves it to the last visible row.
-  - [ ] Given the window is narrow enough that later months are out of sight, when the user moves the outline onto one of them, then it scrolls into view sideways and the page does not scroll up or down.
+  - [ ] Given the row is fully visible and the window is narrow enough that later months are out of sight, when the user moves the outline onto one of them, then it scrolls into view sideways and the page does not scroll up or down.
+  - [ ] Given a row is only partly visible because the page is scrolled, when the user moves the outline onto one of that row's months, then the month scrolls into view sideways and the page scrolls only as far as needed to bring that row fully into view.
 
 ### FR4 — What a screen reader reports
 
