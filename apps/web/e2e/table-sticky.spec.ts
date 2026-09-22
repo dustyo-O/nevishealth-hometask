@@ -125,6 +125,8 @@ test.describe('at 375 px', () => {
     'FR6-AC5: opening rows until the table outgrows the screen scrolls the page down, never sideways',
     { tag: '@regression' },
     async ({ page }) => {
+      // Opening every row, level by level, is some forty clicks — slow in WebKit.
+      test.slow();
       const ui = await openTable(page);
 
       await expandAll(ui);

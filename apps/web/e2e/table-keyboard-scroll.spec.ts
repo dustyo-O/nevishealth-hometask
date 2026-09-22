@@ -145,23 +145,25 @@ for (const edge of ['bottom', 'top'] as const) {
       const CUT = 20;
       await scrollRowTo(row, edge === 'bottom' ? innerHeight - (bottom - top) + CUT : -CUT);
       const before = await scrollY(page);
-      // The row really is cut off by CUT px before the key is pressed.
+      // The row really is cut off before the key is pressed — by what the engine allowed: WebKit
+      // snaps the page's scroll position to whole pixels, so the cut can be 20.75 rather than 20.
       const cutOff = await rectOf(row);
-      expect(edge === 'bottom' ? cutOff.bottom - innerHeight : -cutOff.top).toBeCloseTo(CUT, 0);
+      const cut = edge === 'bottom' ? cutOff.bottom - innerHeight : -cutOff.top;
+      expect(Math.abs(cut - CUT)).toBeLessThan(1);
 
       await page.keyboard.press('ArrowRight');
       const cell = row.getByRole('gridcell').first();
       await expect(cell).toBeFocused();
 
-      // Vertically: just far enough to show the row — CUT px, and not a pixel more.
+      // Vertically: just far enough to show the row — the cut, and not a pixel more.
       const after = await rectOf(row);
       const moved = (await scrollY(page)) - before;
       if (edge === 'bottom') {
         expect(Math.abs(after.bottom - innerHeight)).toBeLessThanOrEqual(TOLERANCE);
-        expect(Math.abs(moved - CUT)).toBeLessThanOrEqual(TOLERANCE);
+        expect(Math.abs(moved - cut)).toBeLessThanOrEqual(TOLERANCE);
       } else {
         expect(Math.abs(after.top)).toBeLessThanOrEqual(TOLERANCE);
-        expect(Math.abs(moved + CUT)).toBeLessThanOrEqual(TOLERANCE);
+        expect(Math.abs(moved + cut)).toBeLessThanOrEqual(TOLERANCE);
       }
       // Sideways: back to Feb 2024, beside the name column.
       await expectBesideStickyColumn(ui, row, cell);

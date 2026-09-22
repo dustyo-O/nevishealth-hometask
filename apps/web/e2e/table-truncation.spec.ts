@@ -92,6 +92,8 @@ for (const [width, viewport] of Object.entries(VIEWPORT)) {
       'FR5-AC5: with the shipped data fully open, no name is shortened',
       { tag: '@regression' },
       async ({ page }) => {
+        // Opening every row, level by level, is some forty clicks — slow in WebKit.
+        test.slow();
         const ui = await openTable(page);
         await expandAll(ui);
 
