@@ -54,7 +54,10 @@ for l in s["lanes"]:
   [ -n "$ticket" ] || ticket=$(grep -oE "$prefix-[0-9]+" "$spec_dir/tasks.md" | head -1 || echo "$num")
   base_branch=$(git rev-parse --abbrev-ref HEAD)
   [ "$base_branch" = "main" ] && { echo "lead is on main — create feat/$ticket-… first"; exit 1; }
-  : > "$state/slice-$slice_n.tsv"
+  # Keep any lanes already launched for this slice: a slice is often relaunched for a follow-up
+  # task (a lane that came back BLOCKED, a task added mid-slice). Truncating here orphaned the
+  # first launch's panes and worktrees, because `clean` only knows what this file lists.
+  prev="$state/slice-$slice_n.tsv"; [ -f "$prev" ] || : > "$prev"
   printf '%s\n' "$lanes" | while IFS=$'\t' read -r lane agent owns tasks gate_cmd; do
     [ -z "$lane" ] && continue
     branch="lane/$num-s$slice_n-$lane"; wt="$wt_root/$num-s$slice_n-$lane"
@@ -89,6 +92,9 @@ for l in s["lanes"]:
   perms="${HARNESS_LANE_PERMS:-auto}"
   tmp="$state/slice-$slice_n.tsv.new"; : > "$tmp"
   while IFS=$'\t' read -r lane agent branch wt _; do
+    if [ -d "$wt" ] && grep -q "^$lane\t" "$state/slice-$slice_n.tsv" 2>/dev/null; then
+      echo "lane $lane already running for slice $slice_n (worktree $wt) — skipping" >&2; continue
+    fi
     git worktree add -B "$branch" "$wt" "$base_branch" >/dev/null
     brief="$state/s$slice_n-$lane.md"
     launch="cd '$wt' && claude --permission-mode $perms \"\$(cat '$root/$brief')\"; echo; echo 'LANE SESSION ENDED — this pane closes in 20s (Ctrl+C to keep it)'; sleep 20"
