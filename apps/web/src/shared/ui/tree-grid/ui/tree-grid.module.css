@@ -7,6 +7,16 @@
   scroll-padding-inline-start: var(--table-name-col-w);
 }
 
+/* D-17a: on a phone the name column gives up room to the figures, so whole months fit beside it.
+   Overridden on the scroller rather than per rule, so its scroll padding, the table's minimum
+   width and the sticky cell all read the same narrower value — and the focus ring, the edge
+   shadow and the reveal overlay, all painted inside that cell, follow it for free. */
+@media (width < 600px) {
+  .scroller {
+    --table-name-col-w: var(--table-name-col-w-narrow);
+  }
+}
+
 /* D-2: `border-collapse: collapse` drops the borders of sticky cells in Blink, so the dividers
    live on the cells; `table-layout: fixed` also holds a departing row's geometry while it
    animates out (D-8). The minimum is what makes the months scroll on a phone (D-17). */
