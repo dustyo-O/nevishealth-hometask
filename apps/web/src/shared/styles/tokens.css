@@ -42,6 +42,10 @@
   --table-row-h: 56px;
   --table-header-h: 56px;
   --table-name-col-w: 264px;
+  /* Below ~600 px the design's 264 left 79 px beside it at 375 — less than one month, clipped at
+     every scroll position. 160 leaves 183: two whole months (002 FR6, D-17a). Applied by the
+     tree grid's scroller, the one place the column width is read. */
+  --table-name-col-w-narrow: 160px;
   --table-indent-step: 28px;
   --table-cell-pad-inline-start: 16px;
   --table-cell-pad-inline-end: 24px;
@@ -49,8 +53,8 @@
   --table-chevron-gap: 8px;
   --table-avatar-size: 20px;
   /*
-   * The one geometry Figma does not give; it sets the scroll width at 375 (264 + 12 × 88 =
-   * 1320). Re-measured from D-17's 72px in Chrome 153 on 2026-09-22: a month column carries
+   * The one geometry Figma does not give; it sets the scroll width at 375 (160 + 12 × 88 + 24 =
+   * 1240). Re-measured from D-17's 72px in Chrome 153 on 2026-09-22: a month column carries
    * the design's 16px inter-column gap as its own padding, so 72px left a 56px box and every
    * one of the twelve headings wrapped to two lines, pushing the header row to 61px against
    * the design's 56. The widest heading ("May 2024") needs 66.85px, so the true minimum is
