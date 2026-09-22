@@ -4,6 +4,7 @@ import styles from './chart-legend.module.css';
 
 type ChartLegendProps = {
   channels: readonly string[];
+  className?: string | undefined;
 };
 
 /**
@@ -12,8 +13,8 @@ type ChartLegendProps = {
  * clicked into hiding a series — which would change every bar's height and break the chart's
  * agreement with the table. This one explains; it does not operate.
  */
-export const ChartLegend = ({ channels }: ChartLegendProps) => (
-  <ul className={styles.legend}>
+export const ChartLegend = ({ channels, className }: ChartLegendProps) => (
+  <ul className={cx(styles.legend, className)}>
     {channels.map((name) => (
       <li key={name} className={styles.entry}>
         <span aria-hidden="true" className={cx(styles.swatch, styles[channelKey(name)])} />

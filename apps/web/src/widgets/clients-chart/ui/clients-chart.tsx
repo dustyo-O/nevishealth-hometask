@@ -32,7 +32,7 @@ export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
       <div aria-hidden="true" className={styles.plot}>
         <BarPlot series={series} initialDimension={initialDimension} />
       </div>
-      <ChartLegend channels={series.channels} />
+      <ChartLegend channels={series.channels} className={styles.legend} />
     </div>
   );
 };

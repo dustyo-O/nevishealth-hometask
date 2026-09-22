@@ -20,3 +20,9 @@
 .chart > :last-child {
   margin-block-start: auto;
 }
+
+/* The mockup centres the legend on the card, but the padding is 16 left and 24 right; reaching
+   into the right padding by the difference centres it there (measured: 4 px off without). */
+.legend {
+  margin-inline-end: calc(var(--space-4) - var(--space-6));
+}
