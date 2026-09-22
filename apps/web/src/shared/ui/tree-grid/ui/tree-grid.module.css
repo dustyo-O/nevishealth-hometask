@@ -13,7 +13,8 @@
 .table {
   width: 100%;
   min-width: calc(
-    var(--table-name-col-w) + var(--tree-grid-columns) * var(--table-month-col-min-w)
+    var(--table-name-col-w) + var(--tree-grid-columns) * var(--table-month-col-min-w) +
+      var(--table-cell-pad-inline-end)
   );
   border-collapse: separate;
   border-spacing: 0;
@@ -36,7 +37,11 @@
   color: var(--color-text-muted);
 }
 
+/* The row's end padding lands on the last cell, so the divider still runs the full width of the
+   card. The column is widened by exactly that much in return, which leaves every month the same
+   content box — without it the last heading is the only one narrow enough to wrap. */
 .table :where(tr > :last-child) {
+  width: calc(var(--table-month-col-min-w) + var(--table-cell-pad-inline-end));
   padding-inline-end: var(--table-cell-pad-inline-end);
 }
 

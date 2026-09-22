@@ -45,8 +45,15 @@
   --table-chevron-size: 16px;
   --table-chevron-gap: 8px;
   --table-avatar-size: 20px;
-  /* The one geometry Figma does not give: it sets the scroll width at 375 (264 + 12 × 72). */
-  --table-month-col-min-w: 72px; /* proposal — not in Figma (D-17) */
+  /*
+   * The one geometry Figma does not give; it sets the scroll width at 375 (264 + 12 × 88 =
+   * 1320). Re-measured from D-17's 72px in Chrome 153 on 2026-09-22: a month column carries
+   * the design's 16px inter-column gap as its own padding, so 72px left a 56px box and every
+   * one of the twelve headings wrapped to two lines, pushing the header row to 61px against
+   * the design's 56. The widest heading ("May 2024") needs 66.85px, so the true minimum is
+   * 83px; 88 keeps ~5px of margin for an engine that measures Inter differently (D-15).
+   */
+  --table-month-col-min-w: 88px; /* proposal — not in Figma (D-17, re-measured) */
 
   /* row states — measured from Figma `0:1533`; an opened row has no background of its own */
   --color-row-hover: rgba(20, 20, 19, 0.04);
