@@ -58,6 +58,20 @@
   padding-inline-end: var(--table-cell-pad-inline-end);
 }
 
+/*
+ * The animation library places a leaving row absolutely, measured against its nearest positioned
+ * ancestor, and it only knows the coordinates of the element it animates — this `<tbody>`. It
+ * makes the `<tbody>` `relative` itself, but WebKit computes `position: relative` on a table
+ * section as `static` (measured, WebKit 2359: Chromium says `relative`). The library then walks
+ * on up to `<body>`, whose coordinates it never took, and throws on the first collapse that
+ * interrupts a slide — leaving the row it had just re-inserted on screen and not inert (4 specs
+ * red in WebKit only). `sticky` with no offsets is positioned like `relative` and moves nothing,
+ * and WebKit keeps it, so both engines measure the leaving row against this element.
+ */
+.table tbody {
+  position: sticky;
+}
+
 /* The last row carries no divider (design `1:2901`). */
 .table :where(tbody tr:last-child > *) {
   border-block-end: none;
