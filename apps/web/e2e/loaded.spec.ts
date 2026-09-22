@@ -9,10 +9,10 @@
 // beneath it. Everything else here is spec 001's and still true.
 import { expect, test } from '@playwright/test';
 import { clientsOk, companyWith, installClientsDouble, noBranches } from './support/clients-double';
-import { clientsPage, expectTableLoaded, TEXT } from './support/clients-page';
+import { clientsPage, expectTableLoaded, TEXT, expectChartLoaded } from './support/clients-page';
 
 test(
-  'FR5-AC1: the heading, "12 months · Feb 2024 – Jan 2025" in the chart card, the Company row and its three branches in the table card',
+  'FR5-AC1: the heading, the chart in the chart card (003 FR9: it replaced "12 months · Feb 2024 – Jan 2025"), the Company row and its three branches in the table card',
   { tag: '@regression' },
   async ({ page }) => {
     await installClientsDouble(page);
@@ -21,7 +21,7 @@ test(
     await page.goto('/');
 
     await expect(ui.heading).toHaveText(TEXT.heading);
-    await expect(ui.chartCard).toHaveText(TEXT.period);
+    await expectChartLoaded(ui);
     await expectTableLoaded(ui);
     await expect(ui.alert).toHaveCount(0);
     await expect(ui.retry).toHaveCount(0);
@@ -38,7 +38,7 @@ test(
     await page.goto('/');
 
     await expectTableLoaded(ui, ['Company', 'Branch 1', 'Branch 2']);
-    await expect(ui.chartCard).toHaveText(TEXT.period);
+    await expectChartLoaded(ui);
   },
 );
 

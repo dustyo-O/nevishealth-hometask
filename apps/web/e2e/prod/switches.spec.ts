@@ -6,7 +6,7 @@
 // at once.
 import { expect, test } from '@playwright/test';
 import { installClientsDouble, queriesOf } from '../support/clients-double';
-import { clientsPage, expectTableLoaded, TEXT } from '../support/clients-page';
+import { clientsPage, expectTableLoaded, TEXT, expectChartLoaded } from '../support/clients-page';
 
 test(
   'FR6-AC4: /?fail=1&delay=10000 → the loaded content appears at once, no panel, no switch forwarded',
@@ -18,7 +18,7 @@ test(
     await page.goto('/?fail=1&delay=10000');
 
     // No 10-second wait, no error panel.
-    await expect(ui.chartCard).toHaveText(TEXT.period, { timeout: 3000 });
+    await expectChartLoaded(ui, 3000);
     await expectTableLoaded(ui);
     await expect(ui.alert).toHaveCount(0);
     // Exactly one request (no development double-mount here), with nothing forwarded.
@@ -40,7 +40,7 @@ test(
 
     double.mode = 'ok';
     await ui.retry.click();
-    await expect(ui.chartCard).toHaveText(TEXT.period);
+    await expectChartLoaded(ui);
     await expectTableLoaded(ui);
     await expect(ui.alert).toHaveCount(0);
   },

@@ -1,0 +1,28 @@
+/* A flex column at least the card's design height (003 §2.6). The plot box has a fixed height of
+   its own and the legend sits beneath at whatever height it needs, so a legend that wraps grows
+   the card instead of shrinking the bars (tech review F3). */
+.chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: var(--card-chart-min-h);
+  padding: var(--space-6) var(--space-6) var(--space-4) var(--space-4);
+}
+
+/* Definite height, or the responsive container renders no SVG at all — silently (consult Q4). */
+.plot {
+  flex: none;
+  height: var(--chart-plot-h);
+  min-width: 0;
+}
+
+/* Any height the card has beyond its content opens above the legend, which stays at the foot. */
+.chart > :last-child {
+  margin-block-start: auto;
+}
+
+/* The mockup centres the legend on the card, but the padding is 16 left and 24 right; reaching
+   into the right padding by the difference centres it there (measured: 4 px off without). */
+.legend {
+  margin-inline-end: calc(var(--space-4) - var(--space-6));
+}

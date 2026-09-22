@@ -67,6 +67,14 @@
   /* Pre-composited twin for the sticky name cell, which must stay opaque over scrolled months. */
   --color-row-hover-solid: color-mix(in srgb, var(--color-text) 4%, var(--color-surface));
 
+  /* clients chart (003 §2.2) — channel colours decoded from the mockup: legend swatch and bar body agree */
+  --color-channel-existing: #b29df8;
+  --color-channel-organic: #f4beb4;
+  --color-channel-paid: #a75e6e;
+  /* The plot's own height, independent of the legend beneath it, so a wrapping legend can never
+     take height from the bars (003 §2.6, tech review F3). Measured 338 at 1440 and at 375. */
+  --chart-plot-h: 338px;
+
   /* ours to define: the design shows only mouse states, and photographs instead of initials */
   --shadow-sticky-edge: 6px 0 8px -6px rgba(20, 20, 19, 0.24); /* proposal */
   --color-avatar-s: 62%; /* proposal */

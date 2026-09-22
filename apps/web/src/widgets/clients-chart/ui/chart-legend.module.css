@@ -1,0 +1,37 @@
+/* Centred beneath the plot (Figma `1:2814`): an 8 px swatch before each label. The mockup's
+   labels measure 12 px Inter in the muted grey, like the axis. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: var(--space-2);
+  row-gap: var(--space-2);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+  color: var(--color-text-muted);
+}
+
+.entry {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.swatch {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.existing {
+  background: var(--color-channel-existing);
+}
+
+.organic {
+  background: var(--color-channel-organic);
+}
+
+.paid {
+  background: var(--color-channel-paid);
+}

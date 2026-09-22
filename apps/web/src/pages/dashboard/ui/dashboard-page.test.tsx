@@ -6,8 +6,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createQueryClient } from '@/shared/api';
 import { DashboardPage } from './dashboard-page';
 import { clientsFixture, makeNode } from '@/test/fixtures/clients';
+import { shippedClients } from '@/test/fixtures/shipped-clients';
 
+/** The line that stood in for the chart until spec 003; the chart replaces it (003 FR9-AC3). */
 const PERIOD = '12 months · Feb 2024 – Jan 2025';
+/**
+ * What says the chart has landed. The legend is the chart's only text that jsdom can show: with
+ * no `ResizeObserver` the drawing renders no SVG here, and the page passes it no size to fake one
+ * (003 R-5) — the drawing itself is the widget's own test's business.
+ */
+const CHART_LOADED = 'Existing clients';
 /** The placeholder spec 001 shipped in the table card; spec 002 puts the table there instead. */
 const BRANCHES = 'Company · 3 branches';
 const MESSAGE = "We couldn't load the clients data.";
@@ -26,7 +34,7 @@ afterEach(() => {
 const mockClientsOk = () =>
   vi
     .spyOn(globalThis, 'fetch')
-    .mockImplementation(() => Promise.resolve(Response.json(clientsFixture())));
+    .mockImplementation(() => Promise.resolve(Response.json(shippedClients())));
 
 /** The service failing on purpose — Nest's `?fail=1` answer. Fresh body per call. */
 const fail500 = () =>
@@ -133,13 +141,13 @@ describe('DashboardPage — loading state (FR3)', () => {
     const chart = screen.getByRole('region', { name: 'Clients chart' });
     const table = screen.getByRole('region', { name: 'Monthly detail' });
 
-    pending.resolve(Response.json(clientsFixture()));
-    await screen.findByText(PERIOD);
+    pending.resolve(Response.json(shippedClients()));
+    await screen.findByText(CHART_LOADED);
 
-    // The same two card nodes, now holding the summaries and no placeholder blocks.
+    // The same two card nodes, now holding the chart and the table and no placeholder blocks.
     expect(screen.getByRole('region', { name: 'Clients chart' })).toBe(chart);
     expect(screen.getByRole('region', { name: 'Monthly detail' })).toBe(table);
-    expect(chart).toHaveTextContent(PERIOD);
+    expect(within(chart).getByText(CHART_LOADED)).toBeVisible();
     expect(within(table).getByRole('treegrid')).toBeInTheDocument();
     expect(placeholderBlocksOf(chart)).toHaveLength(0);
     expect(placeholderBlocksOf(table)).toHaveLength(0);
@@ -165,7 +173,7 @@ describe('DashboardPage — loaded state', () => {
     mockClientsOk();
     renderPage();
 
-    expect(await screen.findByText(PERIOD)).toBeInTheDocument();
+    expect(await screen.findByText(CHART_LOADED)).toBeInTheDocument();
     expect(screen.getByRole('main')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: 'Clients' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Clients chart' })).toBeInTheDocument();
@@ -176,7 +184,7 @@ describe('DashboardPage — loaded state', () => {
   it('puts the monthly table in the table card, in place of the summary (002 FR1-AC1, FR7)', async () => {
     mockClientsOk();
     renderPage();
-    await screen.findByText(PERIOD);
+    await screen.findByText(CHART_LOADED);
 
     const table = screen.getByRole('region', { name: 'Monthly detail' });
     const grid = within(table).getByRole('treegrid');
@@ -186,20 +194,24 @@ describe('DashboardPage — loaded state', () => {
         .map((header) => header.textContent),
     ).toEqual(['Company', 'Branch 1', 'Branch 2', 'Branch 3']);
 
-    // The placeholder line spec 001 shipped is gone, and the chart card is untouched.
+    // The placeholder line spec 001 shipped is gone, and the chart card holds the chart.
     expect(screen.queryByText(BRANCHES)).not.toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'Clients chart' })).toHaveTextContent(PERIOD);
+    expect(
+      within(screen.getByRole('region', { name: 'Clients chart' })).getByText(CHART_LOADED),
+    ).toBeVisible();
   });
 
-  it('fetches once and shows the chart summary and the table, both from the loaded data (FR5-AC1)', async () => {
+  it('fetches once and shows the chart and the table, both from the loaded data (FR5-AC1)', async () => {
     const fetchMock = mockClientsOk();
     renderPage();
 
     const chart = screen.getByRole('region', { name: 'Clients chart' });
     const table = screen.getByRole('region', { name: 'Monthly detail' });
-    expect(await screen.findByText(PERIOD)).toBeVisible();
+    expect(await within(chart).findByText(CHART_LOADED)).toBeVisible();
 
-    expect(chart).toHaveTextContent(PERIOD);
+    // The line that stood in for the chart is gone from the whole page (003 FR9-AC3).
+    expect(screen.queryByText(PERIOD)).not.toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent(PERIOD);
     expect(within(table).getByRole('treegrid')).toBeInTheDocument();
     expect(busyContainerOf(chart)).toHaveAttribute('aria-busy', 'false');
     expect(busyContainerOf(table)).toBe(busyContainerOf(chart));
@@ -237,8 +249,8 @@ describe('DashboardPage — loaded state', () => {
 
     // The figures land: the same node, silent again, nothing further announced.
     vi.useRealTimers();
-    pending.resolve(Response.json(clientsFixture()));
-    await screen.findByText(PERIOD);
+    pending.resolve(Response.json(shippedClients()));
+    await screen.findByText(CHART_LOADED);
 
     expect(screen.getByRole('status')).toBe(status);
     expect(status).toBeEmptyDOMElement();
@@ -259,9 +271,9 @@ describe('DashboardPage — loaded state', () => {
     // falls due. The wait is real time, not a tick: a load this quick still crosses one.
     await advance(50);
     expect(status).toBeEmptyDOMElement();
-    pending.resolve(Response.json(clientsFixture()));
+    pending.resolve(Response.json(shippedClients()));
     await advance(50);
-    expect(screen.getByText(PERIOD)).toBeVisible();
+    expect(screen.getByText(CHART_LOADED)).toBeVisible();
 
     // And the moment it would have been due passes with the region still silent.
     await advance(ANNOUNCE_DELAY_MS * 2);
@@ -273,7 +285,7 @@ describe('DashboardPage — loaded state', () => {
   it('does not fetch again when the window regains focus (FR5-AC4)', async () => {
     const fetchMock = mockClientsOk();
     renderPage();
-    await screen.findByText(PERIOD);
+    await screen.findByText(CHART_LOADED);
 
     act(() => {
       window.dispatchEvent(new Event('focus'));
@@ -293,7 +305,7 @@ describe('DashboardPage — loaded state', () => {
   it('has no accessibility violations once loaded', async () => {
     mockClientsOk();
     const { container } = renderPage();
-    await screen.findByText(PERIOD);
+    await screen.findByText(CHART_LOADED);
 
     expect(await axe(container)).toHaveNoViolations();
   });
@@ -384,10 +396,10 @@ describe('DashboardPage — failed state (FR4)', () => {
     const retry = await screen.findByRole('button', { name: 'Retry' });
     const heading = screen.getByRole('heading', { level: 1, name: 'Clients' });
 
-    fetchMock.mockImplementation(() => Promise.resolve(Response.json(clientsFixture())));
+    fetchMock.mockImplementation(() => Promise.resolve(Response.json(shippedClients())));
     await user.click(retry);
 
-    expect(await screen.findByText(PERIOD)).toBeVisible();
+    expect(await screen.findByText(CHART_LOADED)).toBeVisible();
     expect(screen.getByRole('treegrid')).toBeVisible();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: 'Clients' })).toBe(heading);

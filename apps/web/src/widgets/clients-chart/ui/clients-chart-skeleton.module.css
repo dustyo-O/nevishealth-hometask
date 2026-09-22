@@ -1,12 +1,20 @@
-/* Chart card at 1440 (tokens.md): plot 1338×320 from 32 px below the card top, y-axis ticks to the
-   left, month labels beneath, legend centred at the bottom. The root is exactly the card's
-   min-height so the card measures the same while loading and once loaded (FR3-AC2). */
+/* Chart card at 1440 (tokens.md): y-axis ticks to the left, twelve bars, month labels beneath,
+   legend centred at the foot. The same frame as the loaded chart — padding, a plot area of
+   `--chart-plot-h`, the legend beneath it — so the card measures the same in both (003 §2.6). */
 .chart {
-  height: var(--card-chart-min-h);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: var(--card-chart-min-h);
   padding: var(--space-6) var(--space-6) var(--space-4) var(--space-4);
+}
+
+.plotArea {
+  flex: none;
+  height: var(--chart-plot-h);
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) auto auto;
+  grid-template-rows: minmax(0, 1fr) auto;
   column-gap: var(--space-4);
   row-gap: var(--space-4);
 }
@@ -77,7 +85,7 @@
 }
 
 .legend {
-  grid-column: 1 / -1;
+  margin-block-start: auto;
   display: flex;
   justify-content: center;
   gap: var(--space-4);

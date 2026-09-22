@@ -4,6 +4,7 @@ export { fetchClients, type FetchClientsOptions } from './api/fetch-clients';
 export { flattenVisibleRows, type ClientKind, type ClientRow } from './model/flatten-rows';
 export { formatMonth } from './model/format-month';
 export { toInitials } from './model/initials';
-export { formatBranchCount, formatPeriod } from './model/summaries';
+export { toMonthlySeries, type MonthlyPoint, type MonthlySeries } from './model/monthly-series';
+export { formatBranchCount } from './model/summaries';
 export type { ClientsData, DevSwitches, TreeNode } from './model/types';
 export { clientsQueryOptions, useClientsQuery } from './queries/clients-query';
