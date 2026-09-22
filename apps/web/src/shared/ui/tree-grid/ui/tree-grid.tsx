@@ -1,5 +1,8 @@
+import autoAnimate from '@formkit/auto-animate';
 import {
+  useEffect,
   useMemo,
+  useRef,
   type CSSProperties,
   type KeyboardEventHandler,
   type ReactNode,
@@ -8,6 +11,7 @@ import {
 import { cx } from '../../../lib/cx';
 import { TreeGridProvider } from '../model/context';
 import { treeGridIds } from '../model/ids';
+import { rowMotion } from '../model/row-motion';
 import { TreeGridCell } from './tree-grid-cell';
 import { TreeGridColumnHeader, TreeGridHead } from './tree-grid-head';
 import { TreeGridRow } from './tree-grid-row';
@@ -48,6 +52,25 @@ export const TreeGrid = ({
 }: TreeGridProps) => {
   const context = useMemo(() => treeGridIds(id), [id]);
 
+  // FR2-AC8, D-16: the rows that appear and disappear slide, and the ones that stay travel with
+  // them. It is the `<tbody>` because that is the element whose children come and go — the
+  // header row must not move — and the plugin is chosen once, here at mount: under
+  // `prefers-reduced-motion` it is not a plugin at all and the library disables itself.
+  //
+  // Registered in an effect with a cleanup rather than through the library's own
+  // `useAutoAnimate`, which attaches from a ref callback and cannot undo it: under React's
+  // StrictMode the grid mounts twice, and its cleanup reads a controller its first pass had not
+  // been told about yet, so the first registration survives the remount. Measured in Chrome 153
+  // — two mutation observers on one `<tbody>`, the second re-animating every row about a
+  // millisecond after the first, which cancelled every arriving row's slide before it had moved.
+  const rowsRef = useRef<HTMLTableSectionElement>(null);
+  useEffect(() => {
+    const rows = rowsRef.current;
+    if (rows === null) return;
+    const motion = autoAnimate(rows, rowMotion());
+    return () => motion.destroy?.();
+  }, []);
+
   // The edge shadow is the sign that there is more to see, so it must not show when there is
   // nothing (FR6-AC3/AC4). Written straight to the DOM rather than held in state: scrolling
   // must not re-render 44 rows, and the stylesheet is what decides what the flag looks like.
@@ -68,7 +91,7 @@ export const TreeGrid = ({
           onKeyDown={onKeyDown}
         >
           {head}
-          <tbody>{children}</tbody>
+          <tbody ref={rowsRef}>{children}</tbody>
         </table>
       </TreeGridProvider>
     </div>
