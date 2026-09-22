@@ -17,6 +17,14 @@ type View = 'loading' | 'loaded' | 'error';
 
 const LOAD_FAILED_MESSAGE = "We couldn't load the clients data.";
 const LOADING_MESSAGE = 'Loading clients…';
+/**
+ * How long the wait must last before the live region says anything (FR3, amended 2026-09-22).
+ * A screen reader spends the first moment after a page opens reading the page itself, and
+ * anything said underneath it is lost — VoiceOver read only "Clients. You are currently at…"
+ * and the announcement went unheard. A wait shorter than this needs no announcement either:
+ * the figures are already on screen.
+ */
+const LOADING_ANNOUNCE_DELAY_MS = 1000;
 
 /**
  * The "Clients" page: heading, a live region for assistive technology, and the two card slots
@@ -36,13 +44,15 @@ export const DashboardPage = () => {
   const loading = view === 'loading';
 
   // Live regions report changes, not the content they mount with: the status node renders empty
-  // and gets its text on the next tick, so the first "Loading clients…" is a change assistive
-  // technology announces (FR3-AC1, code review F2). The flag resets whenever loading ends, so
-  // Retry announces again the same way.
+  // and gets its text only once the wait has lasted LOADING_ANNOUNCE_DELAY_MS, so the first
+  // "Loading clients…" is a change assistive technology announces — and one it is free to hear
+  // (FR3-AC1/AC3, code review F2 + the VoiceOver device check). The timer is cleared and the
+  // flag reset whenever loading ends, so a fast load stays silent and Retry announces the same
+  // way, its own wait starting again from zero.
   const [announced, setAnnounced] = useState(false);
   useEffect(() => {
     if (!loading) return undefined;
-    const timer = setTimeout(() => setAnnounced(true), 0);
+    const timer = setTimeout(() => setAnnounced(true), LOADING_ANNOUNCE_DELAY_MS);
     return () => {
       clearTimeout(timer);
       setAnnounced(false);
@@ -62,7 +72,7 @@ export const DashboardPage = () => {
         Clients
       </h1>
       {/* Persistent node outside the busy container: AT may suppress content inside aria-busy. */}
-      <VisuallyHidden as="p" role="status">
+      <VisuallyHidden as="p" role="status" aria-atomic="true">
         {loading && announced ? LOADING_MESSAGE : null}
       </VisuallyHidden>
       <div aria-busy={loading} className={styles.grid}>

@@ -32,7 +32,7 @@ test(
   'FR7: failed — no horizontal scroll, the panel inside the viewport, Retry visible and clickable',
   { tag: '@regression' },
   async ({ page }) => {
-    await installClientsDouble(page, { mode: 'fail' });
+    const double = await installClientsDouble(page, { mode: 'fail' });
     const ui = clientsPage(page);
 
     await page.goto('/');
@@ -44,8 +44,11 @@ test(
     // The message is not clipped: the text block is as wide as its longest line needs.
     expect(await ui.alert.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
 
+    // The button is reachable and it works: this failure returns too quickly to be announced
+    // (FR3 amended 2026-09-22), so what Retry did is counted, not read.
+    const requestsBefore = double.requests.length;
     await ui.retry.click();
-    await expect(ui.status).toHaveText(TEXT.loading);
+    await expect.poll(() => double.requests.length).toBeGreaterThan(requestsBefore);
   },
 );
 

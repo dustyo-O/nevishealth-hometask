@@ -35,7 +35,9 @@ test(
     const ui = clientsPage(page);
 
     await page.goto(`/?delay=${DELAY_MS}&fail=1`);
-    await expect(ui.status).toHaveText(TEXT.loading, { timeout: 1000 });
+    // The busy frame is immediate; the announcement follows on its own ~1 s wait (FR3 amended).
+    await expect(ui.grid).toHaveAttribute('aria-busy', 'true', { timeout: 1000 });
+    await expect(ui.status).toHaveText(TEXT.loading);
 
     // Both attempts wait for the service: no panel before two delays have passed.
     await waitSinceFirstRequest(double, 2 * DELAY_MS);

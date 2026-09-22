@@ -25,8 +25,8 @@ test(
 
     await ui.retry.click();
 
-    // The placeholder cards are back while it works…
-    await expect(ui.status).toHaveText(TEXT.loading);
+    // The placeholder cards are back while it works. Nothing is announced: this failure
+    // returns inside the announcement's own wait (FR3 amended 2026-09-22, FR4-AC5).
     await expect(ui.grid).toHaveAttribute('aria-busy', 'true');
     await expect(ui.chartCard).toBeVisible();
     await expect(ui.tableCard).toBeVisible();
@@ -81,7 +81,7 @@ test(
     const requestsBefore = double.requests.length;
 
     await ui.retry.click();
-    await expect(ui.status).toHaveText(TEXT.loading);
+    await expect(ui.grid).toHaveAttribute('aria-busy', 'true');
     await expect(ui.alert).toContainText(TEXT.detail.status500, { timeout: PANEL_BUDGET_MS });
     expect(double.requests.length).toBeGreaterThan(requestsBefore);
     expect(queriesOf(double).every((query) => query === '?fail=1')).toBe(true);
@@ -108,7 +108,7 @@ test(
     await expect(ui.retry).toBeFocused();
     let requestsBefore = double.requests.length;
     await page.keyboard.press('Enter');
-    await expect(ui.status).toHaveText(TEXT.loading);
+    await expect(ui.grid).toHaveAttribute('aria-busy', 'true');
     // The button just left under the keyboard user; focus is parked on the heading (tech doc D-11).
     await expect(ui.heading).toBeFocused();
     await expect(ui.alert).toContainText(TEXT.message, { timeout: PANEL_BUDGET_MS });
@@ -118,7 +118,7 @@ test(
     await expect(ui.retry).toBeFocused();
     requestsBefore = double.requests.length;
     await page.keyboard.press('Space');
-    await expect(ui.status).toHaveText(TEXT.loading);
+    await expect(ui.grid).toHaveAttribute('aria-busy', 'true');
     await expect(ui.alert).toContainText(TEXT.message, { timeout: PANEL_BUDGET_MS });
     expect(double.requests.length).toBeGreaterThan(requestsBefore);
   },
