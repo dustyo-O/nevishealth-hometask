@@ -7,7 +7,7 @@
 // here are the timings a reviewer sees with the real service.
 import { expect, test } from '@playwright/test';
 import { installClientsDouble, queriesOf, waitSinceFirstRequest } from './support/clients-double';
-import { clientsPage, TEXT } from './support/clients-page';
+import { clientsPage, expectTableLoaded, TEXT } from './support/clients-page';
 
 const DELAY_MS = 3000;
 
@@ -60,7 +60,7 @@ test(
 
     await page.goto('/?utm=review&delay=abc&other=1');
 
-    await expect(ui.tableCard).toHaveText(TEXT.branches);
+    await expectTableLoaded(ui);
     expect(queriesOf(double).every((query) => query === '?delay=abc')).toBe(true);
   },
 );

@@ -8,6 +8,7 @@ import { installClientsDouble, queriesOf, waitSinceFirstRequest } from './suppor
 import {
   cardBoxes,
   clientsPage,
+  expectTableLoaded,
   isSameDocument,
   markDocument,
   sameBoxes,
@@ -19,7 +20,13 @@ const DELAY_MS = 3000;
 /** The page's own `LOADING_ANNOUNCE_DELAY_MS`: the wait before the live region says anything. */
 const ANNOUNCE_DELAY_MS = 1000;
 
-const placeholderBlocks = (card: Locator) => card.locator('[aria-hidden="true"]');
+/**
+ * The grey blocks, found by the `Skeleton` component's own class (Vite scopes it as
+ * `_skeleton_<hash>_<line>`). Not by `[aria-hidden="true"]` any more: since spec 002 a loaded
+ * row reserves its chevron's place with an `aria-hidden` span of its own, so the attribute no
+ * longer tells a placeholder from a row that has arrived.
+ */
+const placeholderBlocks = (card: Locator) => card.locator('[class*="_skeleton_"]');
 
 type AnnouncingWindow = Window & { __spokeAfterMs?: number | null };
 
@@ -90,7 +97,7 @@ for (const [name, viewport] of Object.entries(VIEWPORT)) {
 
         // Then the figures arrive: same cards, same places, no announcement, no reload.
         await expect(ui.chartCard).toHaveText(TEXT.period, { timeout: DELAY_MS + 3000 });
-        await expect(ui.tableCard).toHaveText(TEXT.branches);
+        await expectTableLoaded(ui);
         await expect(ui.grid).toHaveAttribute('aria-busy', 'false');
         await expect(ui.status).toHaveText('');
         await expect(placeholderBlocks(ui.chartCard)).toHaveCount(0);
@@ -117,7 +124,7 @@ test(
 
     await expect(ui.heading).toBeVisible();
     await expect(ui.chartCard).toHaveText(TEXT.period);
-    await expect(ui.tableCard).toHaveText(TEXT.branches);
+    await expectTableLoaded(ui);
     await expect(ui.grid).toHaveAttribute('aria-busy', 'false');
     await expect(ui.status).toHaveText('');
     await expect(ui.alert).toHaveCount(0);
