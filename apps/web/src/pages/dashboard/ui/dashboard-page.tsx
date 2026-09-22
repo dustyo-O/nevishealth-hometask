@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   formatBranchCount,
   formatPeriod,
@@ -16,6 +16,7 @@ import { TableCardSkeleton } from './table-card-skeleton';
 type View = 'loading' | 'loaded' | 'error';
 
 const LOAD_FAILED_MESSAGE = "We couldn't load the clients data.";
+const LOADING_MESSAGE = 'Loading clients…';
 
 /**
  * The "Clients" page: heading, a live region for assistive technology, and the two card slots
@@ -34,6 +35,20 @@ export const DashboardPage = () => {
   const view: View = data ? 'loaded' : status === 'error' && !isFetching ? 'error' : 'loading';
   const loading = view === 'loading';
 
+  // Live regions report changes, not the content they mount with: the status node renders empty
+  // and gets its text on the next tick, so the first "Loading clients…" is a change assistive
+  // technology announces (FR3-AC1, code review F2). The flag resets whenever loading ends, so
+  // Retry announces again the same way.
+  const [announced, setAnnounced] = useState(false);
+  useEffect(() => {
+    if (!loading) return undefined;
+    const timer = setTimeout(() => setAnnounced(true), 0);
+    return () => {
+      clearTimeout(timer);
+      setAnnounced(false);
+    };
+  }, [loading]);
+
   // Retry unmounts its own button under the keyboard user, so focus moves to the heading first
   // (tech doc D-11); the panel's alert itself never moves focus.
   const handleRetry = () => {
@@ -48,7 +63,7 @@ export const DashboardPage = () => {
       </h1>
       {/* Persistent node outside the busy container: AT may suppress content inside aria-busy. */}
       <VisuallyHidden as="p" role="status">
-        {loading ? 'Loading clients…' : null}
+        {loading && announced ? LOADING_MESSAGE : null}
       </VisuallyHidden>
       <div aria-busy={loading} className={styles.grid}>
         {view === 'error' ? (

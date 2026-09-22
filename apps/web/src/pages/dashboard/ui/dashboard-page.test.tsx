@@ -67,14 +67,18 @@ const busyContainerOf = (element: HTMLElement) => element.closest('[aria-busy]')
 
 const settle = () => act(() => new Promise<void>((resolve) => setTimeout(resolve, 20)));
 
+/** The live region fills on the tick after it mounts (code review F2), so its text is awaited. */
+const expectLoadingAnnounced = () =>
+  waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(LOADING));
+
 describe('DashboardPage — loading state (FR3)', () => {
-  it('shows the heading, the status text, the busy grid and two placeholder cards without text', () => {
+  it('shows the heading, the status text, the busy grid and two placeholder cards without text', async () => {
     const pending = deferred();
     vi.spyOn(globalThis, 'fetch').mockImplementation(() => pending.promise);
     renderPage();
 
     expect(screen.getByRole('heading', { level: 1, name: 'Clients' })).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('Loading clients…');
+    await expectLoadingAnnounced();
     const chart = screen.getByRole('region', { name: 'Clients chart' });
     const table = screen.getByRole('region', { name: 'Monthly detail' });
     expect(screen.getAllByRole('region')).toHaveLength(2);
@@ -113,7 +117,7 @@ describe('DashboardPage — loading state (FR3)', () => {
     const pending = deferred();
     vi.spyOn(globalThis, 'fetch').mockImplementation(() => pending.promise);
     const { container } = renderPage();
-    expect(screen.getByRole('status')).toHaveTextContent('Loading clients…');
+    await expectLoadingAnnounced();
 
     expect(await axe(container)).toHaveNoViolations();
   });
@@ -149,17 +153,24 @@ describe('DashboardPage — loaded state', () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/clients');
   });
 
-  it('announces "Loading clients…" from a live region that exists before the data arrives', async () => {
-    mockClientsOk();
+  it('mounts the live region empty, fills it with "Loading clients…" on the next tick, and clears it when loaded (FR3-AC1, code review F2)', async () => {
+    const pending = deferred();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => pending.promise);
     renderPage();
 
+    // First synchronous render: the node exists, outside the busy container, with no text yet —
+    // live regions report changes, so the announcement must be a change to an existing node.
     const status = screen.getByRole('status');
-    expect(status).toHaveTextContent('Loading clients…');
+    expect(status).toBeEmptyDOMElement();
+    expect(busyContainerOf(status)).toBeNull();
     expect(busyContainerOf(screen.getByRole('region', { name: 'Clients chart' }))).toHaveAttribute(
       'aria-busy',
       'true',
     );
 
+    await waitFor(() => expect(status).toHaveTextContent(LOADING));
+
+    pending.resolve(Response.json(clientsFixture()));
     await screen.findByText(PERIOD);
 
     expect(screen.getByRole('status')).toBe(status);
@@ -229,7 +240,7 @@ describe('DashboardPage — failed state (FR4)', () => {
     await user.click(retry);
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent(LOADING);
+    await expectLoadingAnnounced();
     const chart = screen.getByRole('region', { name: 'Clients chart' });
     expect(screen.getByRole('region', { name: 'Monthly detail' })).toBeInTheDocument();
     expect(busyContainerOf(chart)).toHaveAttribute('aria-busy', 'true');
