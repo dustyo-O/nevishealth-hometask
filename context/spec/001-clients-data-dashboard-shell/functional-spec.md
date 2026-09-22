@@ -51,10 +51,12 @@ For development and demonstration only, the service can be asked to respond slow
 
 ### FR3 — Loading state
 
-While the figures are being fetched, the page shows the design's layout in placeholder form: the "Clients" heading, then a chart card and a table card filled with grey placeholder blocks in the positions the real content will occupy. Assistive technology is told the content is loading. When the figures arrive, the placeholders are replaced in place — the page does not jump and does not reload.
+While the figures are being fetched, the page shows the design's layout in placeholder form: the "Clients" heading, then a chart card and a table card filled with grey placeholder blocks in the positions the real content will occupy. Assistive technology is told the content is loading: the region is marked busy at once, and when the wait lasts longer than about a second a screen reader announces "Loading clients…". The announcement waits on purpose — a screen reader spends the first moment after a page opens reading the page itself, and anything said underneath it is lost; a wait shorter than that needs no announcement, because the figures are already there. When the figures arrive, the placeholders are replaced in place — the page does not jump and does not reload, and nothing further is announced.
 
 - **Acceptance Criteria:**
-  - [ ] Given the data service is slow to answer (development switch `delay=3000`), when the user opens the page, then within 1 second they see the "Clients" heading and two grey placeholder cards laid out as in the design, and a screen reader announces "Loading clients…".
+  - [ ] Given the data service is slow to answer (development switch `delay=3000`), when the user opens the page, then within 1 second they see the "Clients" heading and two grey placeholder cards laid out as in the design, and the content area is marked as busy.
+  - [ ] Given the data service is slow to answer (development switch `delay=3000`), when the user opens the page with a screen reader running, then it announces "Loading clients…" once the wait passes about a second — after the screen reader's own page-opening announcement — and says nothing further when the figures land.
+  - [ ] Given the data service answers quickly, when the user opens the page, then no loading announcement is made (the figures are already on screen).
   - [ ] When the figures arrive, then the placeholder cards are replaced by the loaded content in the same positions without a page reload and without the content shifting.
 
 ### FR4 — Failed state
@@ -66,6 +68,7 @@ If the figures cannot be loaded — the data service is unreachable, answers wit
   - [ ] Given the data service is stopped, when the user opens the page, then within 3 seconds they see the same error panel with a detail line such as "Network error".
   - [ ] Given the data service accepts the request but never answers (test double), when the user opens the page, then the placeholders stay for about 20 seconds and the error panel then appears with a detail line such as "Request timed out".
   - [ ] Given the error panel is showing and the problem persists as an immediate failure (`fail=1` or the service stopped), when the user clicks Retry, then the placeholder cards appear while it retries and the same error panel returns within 3 seconds.
+  - [ ] Given the error panel is showing because the service answers slowly, when the user clicks Retry with a screen reader running, then it announces "Loading clients…" once that wait passes about a second.
   - [ ] Given the error panel is showing because the service never answers (test double), when the user clicks Retry, then the placeholders stay for about 20 seconds and the same error panel returns.
   - [ ] Given the error panel is showing because the data service was stopped, when the service is started again and the user clicks Retry, then the loaded content appears without a page reload.
   - [ ] Given the page was opened with `?fail=1` and shows the error panel, when the user clicks Retry, then the request fails again in the same way (the switch travels with Retry) — only opening the address without the switch clears it.
@@ -127,3 +130,5 @@ In all three states the page stays usable at a 375 px wide viewport: no horizont
 ## Change Log
 
 _Dated amendments made after the spec was first written — typically by `/awos:spec` in Update Mode when a bug fix changed documented behavior. Each entry records the date, the source reference (bug id or fix description), and what behavior changed and why. Leave empty until the first amendment._
+
+- [2026-09-22] — code review `reviews/code-codex-20260922-1152.md` F2, then the owner's device check with VoiceOver — **FR3: the loading announcement now waits until the wait passes about a second.** The first implementation announced on the next tick after mount; VoiceOver read only its own page-opening announcement ("Clients. You are currently at…") and the live region was never heard. A screen reader is busy for the first moment after a page opens, so an announcement made underneath it is lost. FR3's text and acceptance criteria now separate the visible busy state (immediate) from the spoken announcement (after ~1 s, and not at all for a fast load); FR4 gains the matching criterion for Retry.
