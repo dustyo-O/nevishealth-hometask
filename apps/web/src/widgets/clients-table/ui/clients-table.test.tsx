@@ -337,3 +337,98 @@ describe('ClientsTable — reading a row (FR5)', () => {
     expect(label).toHaveTextContent('Branch 1');
   });
 });
+
+/**
+ * The table with something before and after it, because "Tab moves into the table once and out
+ * again" is a claim about the page around it (FR3-AC1). The generic grid has its own keyboard
+ * tests; what is proved here is that this widget wires the same model to the real names and
+ * the real months — a missing `onKeyDown` would leave those tests perfectly green.
+ */
+const renderPage = () =>
+  render(
+    <QueryClientProvider client={createQueryClient({ retryDelay: 0 })}>
+      <button type="button">before</button>
+      <ClientsTable />
+      <button type="button">after</button>
+    </QueryClientProvider>,
+  );
+
+const tabStops = () => [...screen.getByRole('treegrid').querySelectorAll('[tabindex="0"]')];
+
+const enterTable = async (): Promise<UserEvent> => {
+  const user = userEvent.setup();
+  renderPage();
+  await screen.findByRole('treegrid');
+  screen.getByRole('button', { name: 'before' }).focus();
+  await user.tab();
+  return user;
+};
+
+/** Every step leaves one way into the table, and it is where the outline is (D-9). */
+const press = async (user: UserEvent, keys: string) => {
+  await user.keyboard(keys);
+  expect(tabStops()).toHaveLength(1);
+  expect(tabStops()[0]).toBe(document.activeElement);
+};
+
+describe('ClientsTable — operating the real table from the keyboard (FR3)', () => {
+  it('takes one Tab to reach the Company row and one more to leave (FR3-AC1)', async () => {
+    mockClients(clientsFixture());
+    const user = await enterTable();
+
+    expect(document.activeElement).toBe(rowNamed('Company'));
+
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'after' }));
+  });
+
+  it('opens Branch 1 with Down then Right, and enters its figures with Right again (FR3-AC2, FR3-AC3)', async () => {
+    mockClients(clientsFixture());
+    const user = await enterTable();
+
+    await press(user, '{ArrowDown}{ArrowRight}');
+    expect(document.activeElement).toBe(rowNamed('Branch 1'));
+    expect(rowNamed('Branch 1')).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('rowheader', { name: 'Anna Blackwood' })).toBeInTheDocument();
+
+    await press(user, '{ArrowRight}');
+    // The first month of that row, named by the two headings a screen reader reads (D-11).
+    const [month, name] = (document.activeElement?.getAttribute('headers') ?? '').split(' ');
+    expect(document.getElementById(month ?? '')).toHaveTextContent('Feb 2024');
+    expect(document.getElementById(name ?? '')).toHaveTextContent('Branch 1');
+  });
+
+  it('moves the outline onto Branch 1 when a click closes the row it was inside (FR2-AC6, FR2-AC7)', async () => {
+    mockClients(clientsFixture());
+    const user = await enterTable();
+
+    // Company → Branch 1 → open → Anna Blackwood → open → Referral → into its months.
+    await press(user, '{ArrowDown}{ArrowRight}{ArrowDown}{ArrowRight}{ArrowDown}');
+    expect(document.activeElement).toBe(rowNamed('Referral'));
+    await press(user, '{ArrowRight}{ArrowRight}');
+    expect(rowNamed('Referral').contains(document.activeElement)).toBe(true);
+
+    await clickName(user, 'Branch 1');
+
+    await waitFor(() => {
+      expect(screen.queryByRole('rowheader', { name: 'Referral' })).not.toBeInTheDocument();
+    });
+    expect(tabStops()).toEqual([rowNamed('Branch 1')]);
+    expect(document.activeElement).toBe(rowNamed('Branch 1'));
+
+    await press(user, '{ArrowDown}');
+    expect(document.activeElement).toBe(rowNamed('Branch 2'));
+  });
+
+  it('has no accessibility violations with the outline inside the table', async () => {
+    mockClients(clientsFixture());
+    const { container } = renderPage();
+    await screen.findByRole('treegrid');
+    const user = userEvent.setup();
+    screen.getByRole('button', { name: 'before' }).focus();
+    await user.tab();
+    await press(user, '{ArrowDown}{ArrowRight}{ArrowRight}');
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+});

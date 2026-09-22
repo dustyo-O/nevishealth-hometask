@@ -11,6 +11,9 @@
    live on the cells; `table-layout: fixed` also holds a departing row's geometry while it
    animates out (D-8). The minimum is what makes the months scroll on a phone (D-17). */
 .table {
+  /* Default for the edge shadow below, so every cell has something to resolve `var()` against. */
+  --tree-grid-sticky-shadow: 0 0 transparent;
+
   width: 100%;
   min-width: calc(
     var(--table-name-col-w) + var(--tree-grid-columns) * var(--table-month-col-min-w) +
@@ -60,6 +63,7 @@
   /* Published rather than set outright so anything drawn over the months inside this cell can
      match it — the reveal overlay of D-13 has to be as opaque as the cell it sits in. */
   background-color: var(--tree-grid-name-bg, var(--color-surface));
+  box-shadow: var(--tree-grid-sticky-shadow);
   text-align: start;
 }
 
@@ -76,9 +80,11 @@
 }
 
 /* The sign that there is more to see, and only then: at full width nothing scrolls and no
-   shadow is shown (FR6-AC2/AC3/AC4). */
+   shadow is shown (FR6-AC2/AC3/AC4). Carried as a variable rather than set outright, because a
+   focused row paints its ring on this same cell with this same property (D-4) — declaring both
+   outright would mean whichever rule came last silently erased the other. */
 .scroller[data-scrolled='true'] .nameCell {
-  box-shadow: var(--shadow-sticky-edge);
+  --tree-grid-sticky-shadow: var(--shadow-sticky-edge);
 }
 
 /* One step per level, inside the name cell — the chevron slot sits after it, so a row's arrow
@@ -112,4 +118,43 @@
 
 tr[aria-expanded='false'] .chevron {
   rotate: -90deg;
+}
+
+/*
+ * D-4, measured: an `outline` on the `<tr>` is painted *over* by the opaque sticky name cell —
+ * the ring visibly starts at x = 280, a third of the way into the row. The row's ring is drawn
+ * inside each of its cells instead, which also keeps it clear of the scroller's
+ * `overflow-y: hidden` on the first and last rows, where an outward ring would be clipped.
+ */
+.row:focus-visible {
+  outline: none;
+}
+
+.row:focus-visible > * {
+  --tree-grid-ring:
+    inset 0 var(--focus-ring-width) 0 0 var(--focus-ring-color),
+    inset 0 calc(-1 * var(--focus-ring-width)) 0 0 var(--focus-ring-color);
+
+  box-shadow: var(--tree-grid-ring);
+}
+
+/* The ends of the row close the ring — and the name cell keeps its edge shadow underneath it. */
+.row:focus-visible > :first-child {
+  box-shadow:
+    var(--tree-grid-ring),
+    inset var(--focus-ring-width) 0 0 0 var(--focus-ring-color),
+    var(--tree-grid-sticky-shadow);
+}
+
+.row:focus-visible > :last-child {
+  box-shadow:
+    var(--tree-grid-ring),
+    inset calc(-1 * var(--focus-ring-width)) 0 0 0 var(--focus-ring-color);
+}
+
+/* A figure carries its own ring, pulled inside its box: the reset's outward offset would be
+   clipped by the scroller and would sit on top of the cell beside it. */
+.cell:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: calc(-1 * var(--focus-ring-width));
 }

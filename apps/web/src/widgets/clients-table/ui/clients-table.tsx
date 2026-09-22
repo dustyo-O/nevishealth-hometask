@@ -3,14 +3,12 @@ import {
   flattenVisibleRows,
   formatMonth,
   readDevSwitches,
-  toInitials,
   useClientsQuery,
   type ClientsData,
 } from '@/entities/clients';
-import { Avatar } from '@/shared/ui/avatar';
-import { TreeGrid, useExpandedIds } from '@/shared/ui/tree-grid';
+import { TreeGrid, useExpandedIds, useTreeGrid } from '@/shared/ui/tree-grid';
 import { VisuallyHidden } from '@/shared/ui/visually-hidden';
-import styles from './clients-table.module.css';
+import { ClientsRow } from './clients-row';
 
 const GRID_ID = 'clients-table';
 
@@ -36,20 +34,30 @@ type ClientsGridProps = {
 };
 
 /**
- * Holds which rows are open. The ids live here rather than inside the grid because flattening
- * needs them *before* the grid renders (D-6); the hook beneath them is generic, and the seed —
- * the company, open when the page appears (FR1) — is this widget's business.
+ * Holds which rows are open, and lets `useTreeGrid` hold where the outline is. The ids live
+ * here rather than inside the grid because flattening needs them *before* the grid renders
+ * (D-6); the hook beneath them is generic, and the seed — the company, open when the page
+ * appears (FR1) — is this widget's business.
  */
 const ClientsGrid = ({ data }: ClientsGridProps) => {
   const { company, months } = data;
   const { expandedIds, toggle } = useExpandedIds(() => [company.id]);
   const rows = useMemo(() => flattenVisibleRows(company, expandedIds), [company, expandedIds]);
+  const grid = useTreeGrid({
+    id: GRID_ID,
+    rows,
+    columnCount: months.length,
+    expandedIds,
+    // Rebuilt every render and read through a ref, so the grid's own handlers stay stable.
+    onToggle: (id) => toggle(id, rows),
+  });
 
   return (
     <TreeGrid
       id={GRID_ID}
       label="Clients by month"
       columnCount={months.length}
+      onKeyDown={grid.gridProps.onKeyDown}
       head={
         <TreeGrid.Head>
           {/* Blank in the design, and still named for a screen reader (FR4-AC3). */}
@@ -65,30 +73,14 @@ const ClientsGrid = ({ data }: ClientsGridProps) => {
       }
     >
       {rows.map((row) => (
-        <TreeGrid.Row key={row.id} row={row} expanded={expandedIds.has(row.id)}>
-          {/* A row with nothing beneath it offers nothing to open, so it listens for nothing. */}
-          <TreeGrid.RowHeader onClick={row.hasChildren ? () => toggle(row.id, rows) : undefined}>
-            <span className={styles.name}>
-              {/* Reserved on every row, open, closed or leaf, so the names line up. */}
-              <TreeGrid.Toggle />
-              {/* The design photographs advisers; the data holds no photographs (FR5-AC1). A
-                  channel's extra step of indent takes this slot's place, so the two line up. */}
-              {row.kind === 'adviser' ? (
-                <Avatar initials={toInitials(row.name)} seed={row.id} className={styles.avatar} />
-              ) : null}
-              <span className={styles.nameSlot}>
-                <span className={styles.label} title={row.name}>
-                  {row.name}
-                </span>
-              </span>
-            </span>
-          </TreeGrid.RowHeader>
-          {months.map((month, colIndex) => (
-            <TreeGrid.Cell key={month} colIndex={colIndex} className={styles.figure}>
-              {row.values[colIndex]}
-            </TreeGrid.Cell>
-          ))}
-        </TreeGrid.Row>
+        <ClientsRow
+          key={row.id}
+          row={row}
+          months={months}
+          expanded={expandedIds.has(row.id)}
+          activeColIndex={grid.activeColIndexOf(row.id)}
+          onToggle={grid.toggle}
+        />
       ))}
     </TreeGrid>
   );
