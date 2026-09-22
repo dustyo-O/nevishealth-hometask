@@ -12,6 +12,7 @@
 #   HARNESS_NO_HERDR=1    run the reviewer inline instead of in a visible herdr pane
 #   HARNESS_REVIEW_TIMEOUT seconds to wait for the pane to write the review (default 1800)
 #   HARNESS_KEEP_REVIEW_PANE=1  leave the reviewer pane open after the review lands (default: close it)
+#   HARNESS_REVIEW_DIFF_BYTES   cap on the code diff sent to the reviewer (default 400000); context/, images, lockfiles excluded
 #
 # Output: context/spec/<NNN>-*/reviews/<kind>-<reviewer>-<timestamp>.md  (path printed on stdout)
 set -euo pipefail
@@ -85,7 +86,13 @@ CODE
     echo; echo "## functional-spec.md"; echo; cat "$dir/functional-spec.md"
     [ -f "$dir/technical-considerations.md" ] && { echo; echo "## technical-considerations.md"; echo; cat "$dir/technical-considerations.md"; }
     echo; echo "## Diff vs $base"; echo; echo '```diff'
-    git diff "$base"...HEAD -- . ':(exclude)*.lock' ':(exclude)package-lock.json' ':(exclude)uv.lock' | head -c 400000
+    # Code only: the spec files are quoted above and context/ is not code; images and lockfiles are noise.
+    # Written to a file first — `git diff | head -c` under pipefail dies with SIGPIPE (141) on a big diff.
+    diff_file="$dir/lanes/review-code-$stamp.diff"; limit="${HARNESS_REVIEW_DIFF_BYTES:-400000}"
+    git diff "$base"...HEAD -- . ':(exclude)*.lock' ':(exclude)package-lock.json' ':(exclude)uv.lock' \
+      ':(exclude)pnpm-lock.yaml' ':(exclude)context/**' ':(exclude)*.png' ':(exclude)*.jpg' ':(exclude)*.svg' > "$diff_file"
+    head -c "$limit" "$diff_file"
+    if [ "$(wc -c < "$diff_file")" -gt "$limit" ]; then echo; echo "[diff truncated at $limit bytes of $(wc -c < "$diff_file") — HARNESS_REVIEW_DIFF_BYTES raises the cap]"; fi
     echo '```'
   fi
 } > "$prompt_file"
