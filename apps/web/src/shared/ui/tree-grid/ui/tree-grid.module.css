@@ -1,0 +1,77 @@
+/* The months' scrollport. `overflow-y: hidden` keeps the card growing downwards as rows open
+   (FR6-AC5); the scroll padding is what stops a cell moved into view from landing under the
+   sticky name column — measured, one line, D-7. */
+.scroller {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-padding-inline-start: var(--table-name-col-w);
+}
+
+/* D-2: `border-collapse: collapse` drops the borders of sticky cells in Blink, so the dividers
+   live on the cells; `table-layout: fixed` also holds a departing row's geometry while it
+   animates out (D-8). The minimum is what makes the months scroll on a phone (D-17). */
+.table {
+  width: 100%;
+  min-width: calc(
+    var(--table-name-col-w) + var(--tree-grid-columns) * var(--table-month-col-min-w)
+  );
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+/* Element rules are wrapped in :where() so every class below can override them by order alone. */
+.table :where(th, td) {
+  height: var(--table-row-h);
+  padding-block: 0;
+  padding-inline: var(--table-cell-pad-inline-start) 0;
+  border-block-end: 1px solid var(--color-line);
+  font-weight: var(--font-weight-regular);
+  text-align: end;
+  vertical-align: middle;
+}
+
+.table :where(thead th) {
+  height: var(--table-header-h);
+  color: var(--color-text-muted);
+}
+
+.table :where(tr > :last-child) {
+  padding-inline-end: var(--table-cell-pad-inline-end);
+}
+
+/* The last row carries no divider (design `1:2901`). */
+.table :where(tbody tr:last-child > *) {
+  border-block-end: none;
+}
+
+/* D-3: pinned in both `thead` and `tbody`, each with an opaque background — the months are
+   unpositioned, so `z-index: 2` is enough to keep them from showing through. */
+.nameCell {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  width: var(--table-name-col-w);
+  background: var(--color-surface);
+  text-align: start;
+}
+
+/* The sign that there is more to see, and only then: at full width nothing scrolls and no
+   shadow is shown (FR6-AC2/AC3/AC4). */
+.scroller[data-scrolled='true'] .nameCell {
+  box-shadow: var(--shadow-sticky-edge);
+}
+
+/* One step per level, inside the name cell — the chevron slot sits after it, so a row's arrow
+   lines up with its own depth. */
+.rowHeader {
+  padding-inline-start: calc(
+    var(--table-cell-pad-inline-start) + (var(--tree-grid-level) - 1) * var(--table-indent-step)
+  );
+}
+
+.toggle {
+  flex: none;
+  inline-size: var(--table-chevron-size);
+  block-size: var(--table-chevron-size);
+}
