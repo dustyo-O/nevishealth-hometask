@@ -123,11 +123,13 @@ When the figures arrive, the bars grow up from the bottom of the plot once, so t
 
 Thirteen months' worth of labels cannot fit across a phone, but the shape of the year can. On a narrow screen all twelve bars stay visible and simply become thinner; the plot keeps its height, so the difference between a good month and a bad one is as easy to see on a phone as on a laptop.
 
-Only the month labels give way: below the width at which they would collide, every third month is named — February, May, August, November — and January, so the ends of the year are always labelled. The chart itself never scrolls sideways, and neither does the page.
+Only the month labels give way, and in two steps. Below the width at which all twelve would collide, every third month is named — February, May, August, November — and January, so the ends of the year are always labelled. To fit those five, the months in between give up their year: the labels read "Feb 2024", "May", "Aug", "Nov", "Jan 2025". Both ends still carry the year, and the four repeated "2024"s that would otherwise crowd the axis are gone.
+
+The chart itself never scrolls sideways, and neither does the page.
 
 - **Acceptance Criteria:**
   - [ ] When the page is viewed at 375 px wide, then all twelve bars are visible inside the card and none is cut off.
-  - [ ] When the page is viewed at 375 px wide, then the month labels read "Feb 2024", "May 2024", "Aug 2024", "Nov 2024" and "Jan 2025", and no labels overlap.
+  - [ ] When the page is viewed at 375 px wide, then the month labels read "Feb 2024", "May", "Aug", "Nov" and "Jan 2025", and no labels overlap.
   - [ ] When the page is viewed at 375 px wide, then the plot is the same height as at the design's width and the page has no horizontal scrollbar.
   - [ ] When the user tries to scroll the chart sideways at any width, then nothing moves, because the whole year is already shown.
   - [ ] When the page is viewed at the design's width, then all twelve months are named beneath their bars.
@@ -175,5 +177,7 @@ The chart appears inside the card that spec 001 already fills: the placeholder b
 ---
 
 ## Change Log
+
+- [2026-09-23] — the technical consultation's measurements (`consults/react-frontend-chart-sections-20260922-234604.md`, Q3, and the lead's own measurement of the app's Inter at 12 px) — **FR8: the months between the ends give up their year on a narrow screen.** Five full labels cannot fit at 375 px: "Nov 2024" and "Jan 2025" sit 45 px apart and are about 56 px wide each, so they overlapped by 9.5 px. This is geometry, not a library limit — one-line labels only come clear at about 440 px. Shortening the three middle labels to the month alone clears the tightest pair by 7.1 px and holds down to roughly 336 px, and it removes four repeated "2024"s the owner did not want on the axis. The criterion now names the labels that are actually rendered.
 
 _Dated amendments made after the spec was first written — typically by `/awos:spec` in Update Mode when a bug fix changed documented behavior. Each entry records the date, the source reference (bug id or fix description), and what behavior changed and why. Leave empty until the first amendment._
