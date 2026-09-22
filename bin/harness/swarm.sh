@@ -92,9 +92,13 @@ for l in s["lanes"]:
 
   perms="${HARNESS_LANE_PERMS:-auto}"
   tmp="$state/slice-$slice_n.tsv.new"; : > "$tmp"
-  while IFS=$'\t' read -r lane agent branch wt _; do
-    if [ -d "$wt" ] && grep -q "^$lane\t" "$state/slice-$slice_n.tsv" 2>/dev/null; then
-      echo "lane $lane already running for slice $slice_n (worktree $wt) — skipping" >&2; continue
+  while IFS=$'\t' read -r lane agent branch wt prev_pane; do
+    if [ -d "$wt" ]; then
+      # Already launched for this slice: keep its row (pane id included) so `clean` and `resume`
+      # can still find it — dropping it here is what emptied the file on the second relaunch.
+      printf '%s\t%s\t%s\t%s\t%s\n' "$lane" "$agent" "$branch" "$wt" "${prev_pane:--}" >> "$tmp"
+      echo "lane $lane already running for slice $slice_n (worktree $wt) — skipping; `resume` restarts it" >&2
+      continue
     fi
     git worktree add -B "$branch" "$wt" "$base_branch" >/dev/null
     brief="$state/s$slice_n-$lane.md"
@@ -129,11 +133,18 @@ status)
 # the same brief — append a "RESUME" section to the brief first if the lane should know what it left.
 resume)
   lane="${1:?lane name, e.g. react-frontend}"
-  row=$(grep -h "^$lane	" "$state"/slice-*.tsv 2>/dev/null | tail -1) || true
-  [ -z "$row" ] && { echo "no launched lane '$lane' for spec $num" >&2; exit 1; }
+  # Newest slice first, and only a lane whose worktree still exists: the same lane name appears in
+  # every slice's file, and the older entries point at worktrees `clean` has already removed.
+  row=""; slice_n=""
+  for f in $(ls "$state"/slice-*.tsv 2>/dev/null | sort -t- -k2 -rn); do
+    cand=$(grep -h "^$lane	" "$f" 2>/dev/null | tail -1) || true
+    [ -z "$cand" ] && continue
+    cand_wt=$(printf '%s' "$cand" | cut -f4)
+    [ -d "$cand_wt" ] || continue
+    row="$cand"; slice_n=$(basename "$f" | sed 's/slice-\([0-9]*\)\.tsv/\1/'); break
+  done
+  [ -z "$row" ] && { echo "no resumable lane '$lane' for spec $num (no launched lane with a worktree still on disk) — relaunch the slice instead" >&2; exit 1; }
   IFS=$'\t' read -r _ agent branch wt pane <<< "$row"
-  [ -d "$wt" ] || { echo "worktree $wt is gone — nothing to resume; relaunch the slice instead" >&2; exit 1; }
-  slice_n=$(ls "$state"/slice-*.tsv | tail -1 | sed 's/.*slice-\([0-9]*\).tsv/\1/')
   brief="$state/s$slice_n-$lane.md"
   [ -f "$brief" ] || { echo "no brief at $brief" >&2; exit 1; }
   perms="${HARNESS_LANE_PERMS:-auto}"
