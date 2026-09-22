@@ -1,7 +1,7 @@
 # Technical Specification: Clients Data & Dashboard Shell
 
 - **Functional Specification:** `context/spec/001-clients-data-dashboard-shell/functional-spec.md`
-- **Status:** In Review
+- **Status:** Completed
 - **Author(s):** Alexander Shleyko (lead); specialist consultations quoted verbatim in `consults/nest-backend-api-sections-20260921-185844.md` and `consults/react-frontend-web-sections-20260921-185845.md` — every version and option name below was verified there (npm view, unpacked `.d.ts`, official docs, a throwaway workspace that was built, run and tested)
 
 ---
