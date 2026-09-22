@@ -16,3 +16,6 @@ docs/screenshots/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Playwright MCP scratch (probe scripts, snapshots, console logs) — never part of the project
+.playwright-mcp/
