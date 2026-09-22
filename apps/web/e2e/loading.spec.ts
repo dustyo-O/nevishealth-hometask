@@ -28,30 +28,51 @@ const ANNOUNCE_DELAY_MS = 1000;
  */
 const placeholderBlocks = (card: Locator) => card.locator('[class*="_skeleton_"]');
 
-type AnnouncingWindow = Window & { __spokeAfterMs?: number | null };
+type TimedWindow = Window & {
+  __spokeAfterMs?: number | null;
+  __figuresLandedMs?: number | null;
+};
 
 /**
- * Times the announcement from inside the page, starting before the app mounts. FR3 is about
- * *when* the region speaks — a screen reader is still reading the page it just opened for the
- * first moment — so the e2e measures the wait instead of sampling the region and hoping.
+ * Times the announcement *and* the figures landing from inside the page, off one clock, starting
+ * before the app mounts. FR3 is about *when* the region speaks — a screen reader is still reading
+ * the page it just opened for the first moment — so the e2e measures the wait instead of sampling
+ * the region and hoping.
+ *
+ * Both events are marked the same way because the promise FR3 makes is about their *order*: the
+ * page waits `LOADING_ANNOUNCE_DELAY_MS` from its own mount, not from `goto`, so under the full
+ * suite's parallel load mount lands seconds in and any budget measured from page-open drifts with
+ * it — while "spoke after the wait, and before the figures" does not.
  * Must be installed before `goto`.
  */
-const recordAnnouncement = (page: Page) =>
+const recordTimings = (page: Page) =>
   page.addInitScript(() => {
-    const marks = window as AnnouncingWindow;
+    const marks = window as TimedWindow;
     const start = performance.now();
     marks.__spokeAfterMs = null;
+    marks.__figuresLandedMs = null;
     new MutationObserver(() => {
       const status = document.querySelector('[role="status"]');
       if (marks.__spokeAfterMs === null && status !== null && status.textContent !== '') {
         marks.__spokeAfterMs = performance.now() - start;
+      }
+      // The table renders nothing at all until the figures are here, so its arrival in the DOM
+      // *is* the figures landing — and, unlike `aria-busy="false"`, it can never mean the error
+      // panel instead.
+      const table = document.querySelector('[role="treegrid"]');
+      if (marks.__figuresLandedMs === null && table !== null) {
+        marks.__figuresLandedMs = performance.now() - start;
       }
     }).observe(document, { childList: true, characterData: true, subtree: true });
   });
 
 /** How long after the page opened the region first carried text; `null` if it never did. */
 const spokeAfterMs = (page: Page) =>
-  page.evaluate(() => (window as AnnouncingWindow).__spokeAfterMs ?? null);
+  page.evaluate(() => (window as TimedWindow).__spokeAfterMs ?? null);
+
+/** How long after the page opened the table first stood in the DOM; `null` if it never did. */
+const figuresLandedMs = (page: Page) =>
+  page.evaluate(() => (window as TimedWindow).__figuresLandedMs ?? null);
 
 for (const [name, viewport] of Object.entries(VIEWPORT)) {
   test.describe(`at ${viewport.width} px (${name})`, () => {
@@ -63,7 +84,7 @@ for (const [name, viewport] of Object.entries(VIEWPORT)) {
       async ({ page }) => {
         const double = await installClientsDouble(page);
         const ui = clientsPage(page);
-        await recordAnnouncement(page);
+        await recordTimings(page);
 
         // The page forwards `?delay=3000` to the service (FR6); the double, like the service, waits.
         await page.goto(`/?delay=${DELAY_MS}`);
@@ -88,7 +109,6 @@ for (const [name, viewport] of Object.entries(VIEWPORT)) {
         const spokeAfter = await spokeAfterMs(page);
         expect(spokeAfter).not.toBeNull();
         expect(spokeAfter).toBeGreaterThanOrEqual(ANNOUNCE_DELAY_MS);
-        expect(spokeAfter).toBeLessThan(DELAY_MS);
 
         // The placeholders stay for at least the service's delay (FR6-AC1).
         await waitSinceFirstRequest(double, DELAY_MS - 500);
@@ -105,6 +125,12 @@ for (const [name, viewport] of Object.entries(VIEWPORT)) {
         expect(sameBoxes(whileLoading, await cardBoxes(ui))).toBe(true);
         expect(await isSameDocument(page)).toBe(true);
 
+        // The other half of FR3-AC2: the announcement fell *before* the figures did. Both marks
+        // are the page's own, so the order holds however late the page mounted.
+        const figuresLanded = await figuresLandedMs(page);
+        expect(figuresLanded).not.toBeNull();
+        expect(spokeAfter).toBeLessThan(figuresLanded!);
+
         // Every request the page made carried the switch.
         expect(queriesOf(double).every((query) => query === `?delay=${DELAY_MS}`)).toBe(true);
       },
@@ -118,7 +144,7 @@ test(
   async ({ page }) => {
     await installClientsDouble(page);
     const ui = clientsPage(page);
-    await recordAnnouncement(page);
+    await recordTimings(page);
 
     await page.goto('/');
 
