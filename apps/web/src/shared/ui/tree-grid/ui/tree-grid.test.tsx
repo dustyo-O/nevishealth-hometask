@@ -137,6 +137,29 @@ describe('TreeGrid', () => {
     expect(header?.style.getPropertyValue('--tree-grid-level')).toBe('3');
   });
 
+  it('draws an arrow on the rows that can open and reserves its slot on the ones that cannot', () => {
+    render(<Grid />);
+
+    // Every row keeps the slot, so the names line up down the column whatever the row is.
+    for (const row of ROWS) {
+      expect(bodyRowNamed(row.id).querySelector('[class*="toggle"]')).not.toBeNull();
+    }
+    expect(bodyRowNamed('root').querySelector('[class*="toggle"] svg')).not.toBeNull();
+    expect(bodyRowNamed('shut').querySelector('[class*="toggle"] svg')).not.toBeNull();
+    // A leaf offers nothing to open, so it is drawn no arrow at all (FR1-AC4).
+    expect(bodyRowNamed('leaf').querySelector('[class*="toggle"] svg')).toBeNull();
+    expect(bodyRowNamed('child').querySelector('[class*="toggle"] svg')).toBeNull();
+  });
+
+  it('keeps the arrow out of the accessibility tree — the row already says open or closed', () => {
+    render(<Grid />);
+
+    const chevron = bodyRowNamed('root').querySelector('[class*="toggle"] svg');
+    expect(chevron).toHaveAttribute('aria-hidden', 'true');
+    // Which way it points follows `aria-expanded`, so the state is declared once, on the row.
+    expect(chevron?.getAttribute('stroke')).toBe('currentColor');
+  });
+
   it('has no accessibility violations', async () => {
     const { container } = render(<Grid />);
 

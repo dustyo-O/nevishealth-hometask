@@ -3,9 +3,12 @@ import {
   flattenVisibleRows,
   formatMonth,
   readDevSwitches,
+  toInitials,
   useClientsQuery,
+  type ClientsData,
 } from '@/entities/clients';
-import { TreeGrid } from '@/shared/ui/tree-grid';
+import { Avatar } from '@/shared/ui/avatar';
+import { TreeGrid, useExpandedIds } from '@/shared/ui/tree-grid';
 import { VisuallyHidden } from '@/shared/ui/visually-hidden';
 import styles from './clients-table.module.css';
 
@@ -16,25 +19,31 @@ const GRID_ID = 'clients-table';
  * already open when the page appears (FR1). The only place `shared/ui/tree-grid` and
  * `entities/clients` meet — the grid knows rows and columns, the entity knows the tree, and the
  * client-shaped name cell is built here (architecture §6).
- *
- * Slice 1 opens the company and nothing else: the expanded set is fixed, so this slice is about
- * structure, semantics and geometry. Slice 2 makes the names toggle.
  */
 export const ClientsTable = () => {
   // Read once, like the page: changing a switch means changing the address, which reloads.
   const [switches] = useState(() => readDevSwitches(window.location.search));
   const { data } = useClientsQuery(switches);
-  const company = data?.company;
-
-  const expandedIds = useMemo(() => new Set(company === undefined ? [] : [company.id]), [company]);
-  const rows = useMemo(
-    () => (company === undefined ? [] : flattenVisibleRows(company, expandedIds)),
-    [company, expandedIds],
-  );
 
   // The page only mounts the table once the figures are here; this is the belt to that braces.
+  // It is also what lets the grid below be seeded with the company id at its own first render.
   if (data === undefined) return null;
-  const months = data.months;
+  return <ClientsGrid data={data} />;
+};
+
+type ClientsGridProps = {
+  data: ClientsData;
+};
+
+/**
+ * Holds which rows are open. The ids live here rather than inside the grid because flattening
+ * needs them *before* the grid renders (D-6); the hook beneath them is generic, and the seed —
+ * the company, open when the page appears (FR1) — is this widget's business.
+ */
+const ClientsGrid = ({ data }: ClientsGridProps) => {
+  const { company, months } = data;
+  const { expandedIds, toggle } = useExpandedIds(() => [company.id]);
+  const rows = useMemo(() => flattenVisibleRows(company, expandedIds), [company, expandedIds]);
 
   return (
     <TreeGrid
@@ -57,11 +66,21 @@ export const ClientsTable = () => {
     >
       {rows.map((row) => (
         <TreeGrid.Row key={row.id} row={row} expanded={expandedIds.has(row.id)}>
-          <TreeGrid.RowHeader>
+          {/* A row with nothing beneath it offers nothing to open, so it listens for nothing. */}
+          <TreeGrid.RowHeader onClick={row.hasChildren ? () => toggle(row.id, rows) : undefined}>
             <span className={styles.name}>
               {/* Reserved on every row, open, closed or leaf, so the names line up. */}
               <TreeGrid.Toggle />
-              <span className={styles.label}>{row.name}</span>
+              {/* The design photographs advisers; the data holds no photographs (FR5-AC1). A
+                  channel's extra step of indent takes this slot's place, so the two line up. */}
+              {row.kind === 'adviser' ? (
+                <Avatar initials={toInitials(row.name)} seed={row.id} className={styles.avatar} />
+              ) : null}
+              <span className={styles.nameSlot}>
+                <span className={styles.label} title={row.name}>
+                  {row.name}
+                </span>
+              </span>
             </span>
           </TreeGrid.RowHeader>
           {months.map((month, colIndex) => (

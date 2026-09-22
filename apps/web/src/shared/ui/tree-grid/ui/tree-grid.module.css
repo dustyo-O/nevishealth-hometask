@@ -57,8 +57,22 @@
   left: 0;
   z-index: 2;
   width: var(--table-name-col-w);
-  background: var(--color-surface);
+  /* Published rather than set outright so anything drawn over the months inside this cell can
+     match it — the reveal overlay of D-13 has to be as opaque as the cell it sits in. */
+  background-color: var(--tree-grid-name-bg, var(--color-surface));
   text-align: start;
+}
+
+/* D-5: the hover is painted on the cells, never on the `<tr>`. A translucent wash over an
+   opaque sticky column would let the scrolled months show through it, so the name cell gets a
+   pre-composited twin of the same colour instead. Both values are measured from Figma `0:1533`;
+   an opened row has no background of its own at all. */
+.table tbody tr:hover > td {
+  background-color: var(--color-row-hover);
+}
+
+.table tbody tr:hover > .nameCell {
+  --tree-grid-name-bg: var(--color-row-hover-solid);
 }
 
 /* The sign that there is more to see, and only then: at full width nothing scrolls and no
@@ -75,8 +89,27 @@
   );
 }
 
+/* A row that can open says so under the pointer. `aria-expanded` is carried by exactly the rows
+   that have something beneath them, so a leaf's name stays an ordinary arrow (FR1-AC4). */
+.table tbody tr[aria-expanded] > .nameCell {
+  cursor: pointer;
+}
+
 .toggle {
+  display: flex;
   flex: none;
   inline-size: var(--table-chevron-size);
   block-size: var(--table-chevron-size);
+}
+
+/* The asset points down, which is the open position; a closed row turns it to point along the
+   row it would reveal. `aria-expanded` is the one place the state is written down, so the arrow
+   and the screen reader can never disagree. */
+.chevron {
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+tr[aria-expanded='false'] .chevron {
+  rotate: -90deg;
 }
