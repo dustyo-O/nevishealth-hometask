@@ -16,10 +16,10 @@ Everything lives in `apps/web`, so the slices are sequential and each is one lan
 
 ---
 
-- [ ] **Slice 0: The lint rule allows a tree grid (lead, before any lane)**
+- [x] **Slice 0: The lint rule allows a tree grid (lead, before any lane)**
 
   > `<table role="treegrid">` trips `jsx-a11y/no-noninteractive-element-to-interactive-role`, whose allowlist is `table: ['grid']` (verified against this repo's own config). WAI-ARIA permits `treegrid`; the plugin's list is incomplete. The root config is not the frontend lane's to edit, so it lands first or the lane's first commit is red.
-  - [ ] In the root `eslint.config.js`, add `treegrid` to the `jsx-a11y` rule's allowlist for `table` (D-14), with a one-line comment saying why. Run `pnpm --filter @nevis/web lint` to prove the config still loads clean. **[Lead]**
+  - [x] In the root `eslint.config.js`, add `treegrid` to the `jsx-a11y` rule's allowlist for `table` (D-14), with a one-line comment saying why. Run `pnpm --filter @nevis/web lint` to prove the config still loads clean. **[Lead]** _(Done 2026-09-22: added a `rules` block to the apps/web config overriding jsx-a11y/no-noninteractive-element-to-interactive-role with `table: ['grid','treegrid']` (the plugin's other defaults restated so nothing is lost), plus a comment citing the APG treegrid pattern. Proven both ways: `pnpm --filter @nevis/web lint` exit 0, and a throwaway `<table role="treegrid">` probe linted clean before being deleted.)_
 
 - [ ] **Slice 1: The table renders — real figures, right structure, sticky at 375**
 
