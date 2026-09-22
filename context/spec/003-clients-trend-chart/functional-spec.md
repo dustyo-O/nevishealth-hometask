@@ -40,15 +40,16 @@ The parts are the company's totals for each channel — every adviser's figures 
 
 ### FR2 — The scale and the grid
 
-A scale runs up the left side of the chart in numbers of clients. It starts at zero and its top is a round number at or above the largest month, so every bar fits inside the plot with room to spare. The scale is chosen from the figures being shown rather than fixed in advance, so it still fits if the numbers change.
+A scale runs up the left side of the chart in numbers of clients. It starts at zero and is labelled in equal steps of one hundred. Its top is the first step **above** the largest month, so the tallest bar never touches the ceiling — with the figures supplied, whose largest month is 350, the top is 400. The scale is read from the figures being shown rather than fixed in advance, so it still fits if the numbers change.
 
 A faint dotted line runs across the plot at each labelled step of the scale, so a bar's height can be read against it. Nothing is drawn between the months.
 
 - **Acceptance Criteria:**
-  - [ ] When the page has loaded, then the scale starts at 0 and its highest label is a round number at or above 350, and every bar fits within the plot.
+  - [ ] When the page has loaded, then the scale starts at 0 and is labelled in equal steps of one hundred.
+  - [ ] When the page has loaded with the supplied figures, then the scale's top label is 400 and no bar reaches the top of the plot.
   - [ ] When the user looks at the plot, then a faint dotted line runs across it at each labelled step of the scale.
   - [ ] When the user looks between two months, then no vertical line is drawn there.
-  - [ ] Given a month's total is higher than the current top of the scale, when the chart is shown, then the scale's top rises so that the tallest bar still fits inside the plot.
+  - [ ] Given a month's total is higher than the scale's top, when the chart is shown, then the top moves up to the first step above that month's total.
 
 ### FR3 — The legend
 
@@ -65,38 +66,49 @@ The legend explains the chart; it does not operate it. Clicking a legend entry c
 
 When the user points at a month, that month's whole column is gently tinted and a small panel appears naming the month, each of the three parts with its figure in the order they are stacked, and the month's total last. Moving away hides both.
 
-On a touch screen there is no pointing, so a tap does the same thing: tapping a month shows its panel, and tapping elsewhere or another month dismisses it. Without this a phone user could read no exact figure from the chart at all.
+On a touch screen there is no pointing, so a tap does the same thing: tapping a month shows its panel, tapping a **different** month replaces it with that month's figures, and tapping anywhere outside the bars dismisses it. Without this a phone user could read no exact figure from the chart at all.
+
+However the panel was opened, it is never left behind: it disappears when the pointer leaves the chart, when the user taps outside it, and when the outline moves away from the chart.
 
 - **Acceptance Criteria:**
   - [ ] When the user points at February 2024, then a panel appears reading "Feb 2024", existing clients 221, new organic 15, new paid 14, and a total of 250.
   - [ ] When the user points at a month, then that month's column is tinted and the other eleven months are unchanged.
   - [ ] When the user moves the pointer off the chart, then the panel and the tint both disappear.
-  - [ ] Given the page is viewed on a touch screen, when the user taps a month, then that month's panel appears, and tapping elsewhere dismisses it.
+  - [ ] Given the page is viewed on a touch screen, when the user taps a month, then that month's panel appears.
+  - [ ] Given a month's panel is open on a touch screen, when the user taps a different month, then that month's panel replaces it.
+  - [ ] Given a month's panel is open on a touch screen, when the user taps outside the bars, then the panel and the tint disappear.
+  - [ ] Given a month's panel is open, when the outline leaves the chart, then the panel and the tint disappear.
   - [ ] When the user reads the panel for any month, then its three figures add up to the total it shows.
 
 ### FR5 — Reaching the chart from the keyboard
 
-The chart is a single stop on the way through the page: pressing Tab from the page heading puts the outline on the chart, and pressing Tab again leaves it for the table beneath. While the outline is on the chart, Left and Right move from month to month, and the same panel appears for whichever month the outline is on, so a keyboard user reads exactly what a pointing user reads.
+The chart is a single stop on the way through the page: pressing Tab from the page heading puts the outline on the chart as a whole — it never moves onto the individual bars — and pressing Tab again leaves it for the table beneath.
 
-At either end of the year the outline stays where it is rather than wrapping around.
+Arriving at the chart makes **February 2024**, the first month, the month being read: its column is tinted and its panel opens, so the user is never looking at a focused chart that says nothing. Left and Right then move from month to month, the tint and the panel following, so a keyboard user reads exactly what a pointing user reads. At either end of the year the outline stays where it is rather than wrapping around.
+
+Pressing Escape closes the panel and the tint while leaving the outline on the chart; moving to another month opens it again. Leaving the chart clears the panel, and coming back starts at February again — the dashboard remembers nothing between visits.
 
 - **Acceptance Criteria:**
-  - [ ] When the user presses Tab from the page heading, then the outline appears on the chart, which is a single stop.
-  - [ ] Given the outline is on the chart, when the user presses Right, then the outline moves to the next month and that month's panel appears.
-  - [ ] Given the outline is on January 2025, when the user presses Right, then the outline stays on January 2025.
-  - [ ] Given the outline is on February 2024, when the user presses Left, then the outline stays on February 2024.
+  - [ ] When the user presses Tab from the page heading, then the outline appears on the chart as a whole, which is a single stop, and never on an individual bar.
+  - [ ] When the outline first reaches the chart, then February 2024 is the month being read, its column is tinted and its panel is shown.
+  - [ ] Given February 2024 is being read, when the user presses Right, then March 2024 is being read and its panel replaces February's.
+  - [ ] Given January 2025 is being read, when the user presses Right, then January 2025 is still the month being read.
+  - [ ] Given February 2024 is being read, when the user presses Left, then February 2024 is still the month being read.
+  - [ ] Given a month's panel is shown, when the user presses Escape, then the panel and the tint disappear and the outline stays on the chart.
+  - [ ] Given the user has moved to June 2024 and then left the chart, when they return to the chart, then February 2024 is the month being read again.
   - [ ] Given the outline is on the chart, when the user presses Tab, then the outline leaves the chart and the table beneath is the next stop.
 
 ### FR6 — What a screen reader reports
 
 A screen-reader user reaches the chart's figures two ways, and neither is a picture. Moving from month to month with the keyboard announces that month and all four of its numbers. Separately, the same figures are available to read as a table of twelve rows — one per month, each giving existing clients, new organic, new paid and the total — which is not shown on screen.
 
-The drawing itself carries no readable text of its own, so nothing is announced twice and the scale's numbers are never read as a stray list.
+These are two deliberate ways to reach the same figures, and using both is intended: a user may hear June while moving and read June again in the table. What must never happen is a single move announcing the same month twice over, or the drawing itself shedding loose text — the scale's numbers and the month labels are never read as a stray list, because the drawing carries no readable text of its own.
 
 - **Acceptance Criteria:**
   - [ ] When a screen-reader user moves the outline to February 2024, then it announces "Feb 2024", existing clients 221, new organic 15, new paid 14 and a total of 250.
   - [ ] When a screen reader reads the chart's figures as a table, then it finds twelve rows, one per month, each giving existing clients, new organic, new paid and the total.
-  - [ ] When a screen reader reads the chart, then no month's figures are announced twice.
+  - [ ] When the user moves the outline to a month, then that month's figures are announced once for that move, not repeated.
+  - [ ] When a screen reader reads the chart's drawing, then it finds no loose numbers from the scale or the month labels.
   - [ ] When a screen reader reaches the chart, then it is named so the user knows what it shows before hearing any figure.
 
 ### FR7 — Movement
