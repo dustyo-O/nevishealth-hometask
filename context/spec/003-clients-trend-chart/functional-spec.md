@@ -66,7 +66,7 @@ The legend explains the chart; it does not operate it. Clicking a legend entry c
 
 When the user points at a month, that month's whole column is gently tinted and a small panel appears naming the month, each of the three parts with its figure in the order they are stacked, and the month's total last. Moving away hides both.
 
-On a touch screen there is no pointing, so a tap does the same thing: tapping a month shows its panel, tapping a **different** month replaces it with that month's figures, and tapping anywhere outside the bars dismisses it. Without this a phone user could read no exact figure from the chart at all.
+On a touch screen there is no pointing, so a tap does the same thing: tapping a month shows its panel, and tapping a **different** month replaces it with that month's figures — anywhere in that month's column counts as tapping it, not just the bar. Tapping outside the plot altogether — the legend, the month labels, the space around the chart, or the card beneath — dismisses the panel. Without this a phone user could read no exact figure from the chart at all.
 
 However the panel was opened, it is never left behind: it disappears when the pointer leaves the chart, when the user taps outside it, and when the outline moves away from the chart.
 
@@ -76,7 +76,8 @@ However the panel was opened, it is never left behind: it disappears when the po
   - [ ] When the user moves the pointer off the chart, then the panel and the tint both disappear.
   - [ ] Given the page is viewed on a touch screen, when the user taps a month, then that month's panel appears.
   - [ ] Given a month's panel is open on a touch screen, when the user taps a different month, then that month's panel replaces it.
-  - [ ] Given a month's panel is open on a touch screen, when the user taps outside the bars, then the panel and the tint disappear.
+  - [ ] Given a month's panel is open on a touch screen, when the user taps the legend, then the panel and the tint disappear.
+  - [ ] Given a month's panel is open on a touch screen, when the user taps the space around the chart inside its card, then the panel and the tint disappear.
   - [ ] Given a month's panel is open, when the outline leaves the chart, then the panel and the tint disappear.
   - [ ] When the user reads the panel for any month, then its three figures add up to the total it shows.
 
@@ -177,6 +178,8 @@ The chart appears inside the card that spec 001 already fills: the placeholder b
 ---
 
 ## Change Log
+
+- [2026-09-23] — the cross-vendor review of the technical plan (`reviews/spec-codex-20260923-0053.md`, F2) — **FR4: where a tap dismisses is now stated as the plot, not "the bars".** "Tapping anywhere outside the bars" could not be built or tested as written: a tap inside a month's column but above its bar selects that month, which is the useful behaviour and the one the drawing gives for free. The criterion now names the two places a tester can actually tap to dismiss — the legend and the space around the chart — and the prose says a whole column counts as tapping its month.
 
 - [2026-09-23] — the technical consultation's measurements (`consults/react-frontend-chart-sections-20260922-234604.md`, Q3, and the lead's own measurement of the app's Inter at 12 px) — **FR8: the months between the ends give up their year on a narrow screen.** Five full labels cannot fit at 375 px: "Nov 2024" and "Jan 2025" sit 45 px apart and are about 56 px wide each, so they overlapped by 9.5 px. This is geometry, not a library limit — one-line labels only come clear at about 440 px. Shortening the three middle labels to the month alone clears the tightest pair by 7.1 px and holds down to roughly 336 px, and it removes four repeated "2024"s the owner did not want on the axis. The criterion now names the labels that are actually rendered.
 
