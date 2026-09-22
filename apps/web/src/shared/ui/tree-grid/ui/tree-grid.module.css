@@ -75,6 +75,12 @@
   );
 }
 
+/* A row that can open says so under the pointer. `aria-expanded` is carried by exactly the rows
+   that have something beneath them, so a leaf's name stays an ordinary arrow (FR1-AC4). */
+.table tbody tr[aria-expanded] > .nameCell {
+  cursor: pointer;
+}
+
 .toggle {
   flex: none;
   inline-size: var(--table-chevron-size);

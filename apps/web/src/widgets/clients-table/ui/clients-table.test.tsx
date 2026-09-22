@@ -1,10 +1,12 @@
 import { MONTHS, type ClientsResponse } from '@nevis/contracts';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import { describe, expect, it, vi } from 'vitest';
 import { createQueryClient } from '@/shared/api';
 import { ClientsTable } from './clients-table';
+import { clientsFixture } from '@/test/fixtures/clients';
 
 const HEADINGS = [
   'Feb 2024',
@@ -147,6 +149,139 @@ describe('ClientsTable (FR1)', () => {
     mockClients();
     const { container } = renderTable();
     await screen.findByRole('treegrid');
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+const clickName = async (user: UserEvent, name: string) => {
+  await user.click(screen.getByRole('rowheader', { name }));
+};
+
+const visibleNames = () => screen.getAllByRole('rowheader').map((header) => header.textContent);
+
+/**
+ * The shipped shape, from the shared fixture: Company → three branches, one of them with an
+ * adviser who has channels, one with an adviser, one with nothing beneath it. Everything FR2
+ * asks about — independence, nesting and a leaf — is already in it.
+ */
+describe('ClientsTable — opening and closing a row with the mouse (FR2)', () => {
+  it('opens a row when its name is clicked, one level at a time (FR2-AC1)', async () => {
+    mockClients(clientsFixture());
+    const user = userEvent.setup();
+    renderTable();
+    await screen.findByRole('treegrid');
+
+    await clickName(user, 'Branch 1');
+
+    expect(visibleNames()).toEqual([
+      'Company',
+      'Branch 1',
+      'Anna Blackwood',
+      'Branch 2',
+      'Branch 3',
+    ]);
+    expect(rowNamed('Branch 1')).toHaveAttribute('aria-expanded', 'true');
+    // One step further than the branch that owns them (FR1, FR2-AC1).
+    expect(rowNamed('Anna Blackwood')).toHaveAttribute('aria-level', '3');
+  });
+
+  it('closes it again when the name is clicked a second time (FR2-AC2)', async () => {
+    mockClients(clientsFixture());
+    const user = userEvent.setup();
+    renderTable();
+    await screen.findByRole('treegrid');
+
+    await clickName(user, 'Branch 1');
+    await clickName(user, 'Branch 1');
+
+    // Rows linger while they animate out (D-8), so wait for them to go rather than count now.
+    await waitFor(() => {
+      expect(screen.queryByRole('rowheader', { name: 'Anna Blackwood' })).not.toBeInTheDocument();
+    });
+    expect(rowNamed('Branch 1')).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('shows a re-opened branch with its own children closed again (FR2-AC3)', async () => {
+    mockClients(clientsFixture());
+    const user = userEvent.setup();
+    renderTable();
+    await screen.findByRole('treegrid');
+
+    await clickName(user, 'Branch 1');
+    await clickName(user, 'Anna Blackwood');
+    expect(visibleNames()).toContain('Referral');
+
+    await clickName(user, 'Branch 1');
+    await waitFor(() => {
+      expect(screen.queryByRole('rowheader', { name: 'Referral' })).not.toBeInTheDocument();
+    });
+
+    await clickName(user, 'Branch 1');
+    expect(screen.getByRole('rowheader', { name: 'Anna Blackwood' })).toBeInTheDocument();
+    expect(rowNamed('Anna Blackwood')).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('rowheader', { name: 'Referral' })).not.toBeInTheDocument();
+  });
+
+  it('leaves the branches beside it open (FR2-AC4)', async () => {
+    mockClients(clientsFixture());
+    const user = userEvent.setup();
+    renderTable();
+    await screen.findByRole('treegrid');
+
+    await clickName(user, 'Branch 1');
+    await clickName(user, 'Branch 2');
+
+    expect(rowNamed('Branch 1')).toHaveAttribute('aria-expanded', 'true');
+    expect(rowNamed('Branch 2')).toHaveAttribute('aria-expanded', 'true');
+    expect(visibleNames()).toEqual([
+      'Company',
+      'Branch 1',
+      'Anna Blackwood',
+      'Branch 2',
+      'Ben Carter',
+      'Branch 3',
+    ]);
+  });
+
+  it('does nothing at all when a monthly figure is clicked (FR2-AC5)', async () => {
+    mockClients(clientsFixture());
+    const user = userEvent.setup();
+    renderTable();
+    await screen.findByRole('treegrid');
+
+    const before = visibleNames();
+    const [figure] = [...rowNamed('Branch 1').querySelectorAll('td')];
+    expect(figure).toBeDefined();
+    await user.click(figure as HTMLTableCellElement);
+
+    expect(visibleNames()).toEqual(before);
+    expect(rowNamed('Branch 1')).toHaveAttribute('aria-expanded', 'false');
+    // Nothing on a figure listens for a click at all.
+    expect(figure).not.toHaveAttribute('onclick');
+  });
+
+  it('offers nothing to open on a row with nothing beneath it (FR1-AC4)', async () => {
+    mockClients(clientsFixture());
+    const user = userEvent.setup();
+    renderTable();
+    await screen.findByRole('treegrid');
+
+    const before = visibleNames();
+    await clickName(user, 'Branch 3');
+
+    expect(visibleNames()).toEqual(before);
+    expect(rowNamed('Branch 3')).not.toHaveAttribute('aria-expanded');
+  });
+
+  it('has no accessibility violations with rows opened (FR2)', async () => {
+    mockClients(clientsFixture());
+    const user = userEvent.setup();
+    const { container } = renderTable();
+    await screen.findByRole('treegrid');
+
+    await clickName(user, 'Branch 1');
+    await clickName(user, 'Anna Blackwood');
 
     expect(await axe(container)).toHaveNoViolations();
   });
