@@ -21,3 +21,12 @@ Reviewer verdict: **SHIP WITH FIXES** — all four addressed; no blockers; no us
 | F4 | minor | accepted | Sharp catch: spec 001 made every parent equal the sum of its children, so asserting Company = 250/350 against the shipped fixture cannot distinguish "shows the stored value" from "sums the children". The test needs a fixture where the two differ. | technical-considerations.md §4 widget test row |
 
 Reviewer verdict: **SHIP WITH FIXES** — all four addressed; no blockers; no user decision required (F2's rejected half has a reason a stranger can check).
+
+## Code review 2026-09-22 — `code-codex-20260922-2234.md` (codex, effort low, base main)
+
+| # | severity | verdict | rationale | applied in |
+|---|---|---|---|---|
+| F1 | major (spec compliance, FR2/FR3) | accepted | Real divergence: a figure cell is natively focusable, so a click focuses it without moving the cursor, and the next key then acts on the stale cursor — Enter could toggle Company while the user is looking at a figure. FR2 says clicking a figure changes nothing, which must include not stealing the keyboard's place. The reviewer is also right that the existing mouse test compares HTML and so cannot see focus move. | Slice 6 — react-frontend: pointer clicks on figures no longer take focus, plus a defensive cursor sync if focus arrives another way, and a click-then-keyboard regression test |
+| F2 | major (spec compliance, FR5-AC4) | accepted | The reveal is one line at `max-content`, so a name wider than what is left of the scrollport is clipped by the ancestor — and `shownWhole` compares the label against its own content, ignoring the clip, so the test passes while the text is invisible. Both the behaviour and its test are wrong. | Slice 6 — react-frontend: the reveal is constrained to the visible scrollport and wraps; testing-expert: `shownWhole` measures painted bounds against the clipping ancestor |
+
+Reviewer verdict: **SHIP WITH FIXES** — both accepted; no blockers; no user decision required.
