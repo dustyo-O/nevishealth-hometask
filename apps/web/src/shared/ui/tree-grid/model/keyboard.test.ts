@@ -46,12 +46,12 @@ describe('reduceKey — on a row (FR3)', () => {
     expect(press(onRow('last'), 'ArrowDown')).toEqual({ cursor: onRow('last') });
   });
 
-  it('opens a closed row with Right (FR3-AC2)', () => {
-    expect(press(onRow('closed'), 'ArrowRight')).toEqual({ toggle: 'closed' });
-    expect(press(onRow('shut'), 'ArrowRight')).toEqual({ toggle: 'shut' });
+  it('enters the figures with Right on a closed row, without opening it (FR3-AC2)', () => {
+    expect(press(onRow('closed'), 'ArrowRight')).toEqual({ cursor: onFigure('closed', 0) });
+    expect(press(onRow('shut'), 'ArrowRight')).toEqual({ cursor: onFigure('shut', 0) });
   });
 
-  it('enters the figures with Right once the row is open (FR3-AC3)', () => {
+  it('enters the figures with Right while the row is open (FR3-AC3)', () => {
     expect(press(onRow('open'), 'ArrowRight')).toEqual({ cursor: onFigure('open', 0) });
     expect(press(onRow('root'), 'ArrowRight')).toEqual({ cursor: onFigure('root', 0) });
   });
@@ -61,23 +61,38 @@ describe('reduceKey — on a row (FR3)', () => {
     expect(press(onRow('last'), 'ArrowRight')).toEqual({ cursor: onFigure('last', 0) });
   });
 
-  it('closes an open row with Left (FR3-AC11)', () => {
-    expect(press(onRow('open'), 'ArrowLeft')).toEqual({ toggle: 'open' });
-    expect(press(onRow('root'), 'ArrowLeft')).toEqual({ toggle: 'root' });
+  it('goes up to the parent with Left on an open row, without closing it (FR3-AC12)', () => {
+    expect(press(onRow('open'), 'ArrowLeft')).toEqual({ cursor: onRow('root') });
   });
 
-  it('goes up to the parent with Left when the row is closed or cannot open (FR3-AC11)', () => {
+  it('goes up to the parent with Left from a closed row and from a leaf (FR3-AC13)', () => {
     expect(press(onRow('closed'), 'ArrowLeft')).toEqual({ cursor: onRow('root') });
     expect(press(onRow('shut'), 'ArrowLeft')).toEqual({ cursor: onRow('open') });
     expect(press(onRow('leaf'), 'ArrowLeft')).toEqual({ cursor: onRow('open') });
   });
 
-  it('stays put on Left at the top once the root is closed — it has nothing above it (FR3-AC15)', () => {
-    const closedRoot = new Set(['open']);
-    expect(press(onRow('root'), 'ArrowLeft', closedRoot)).toEqual({ cursor: onRow('root') });
+  it('stays put on Left at the top, open or closed — nothing is above the root (FR3-AC11)', () => {
+    expect(press(onRow('root'), 'ArrowLeft')).toEqual({ cursor: onRow('root') });
+    expect(press(onRow('root'), 'ArrowLeft', new Set(['open']))).toEqual({ cursor: onRow('root') });
   });
 
-  it('jumps to the first and last showing rows with Home and End (FR3-AC13)', () => {
+  /**
+   * The amendment itself, said once over the whole shape rather than row by row: after the
+   * owner's screen-reader pass on 2026-09-22 the arrows only ever move the outline. Whether a
+   * row is open was the thing that made Right ambiguous, so the interesting assertion is that
+   * no row, in either state, answers an arrow with a toggle.
+   */
+  it('never changes the table’s shape with an arrow, whatever the row’s state (FR3)', () => {
+    for (const { id } of ROWS) {
+      for (const key of ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown']) {
+        for (const expanded of [EXPANDED, new Set<string>(), new Set(ROWS.map((r) => r.id))]) {
+          expect(press(onRow(id), key, expanded)).not.toHaveProperty('toggle');
+        }
+      }
+    }
+  });
+
+  it('jumps to the first and last showing rows with Home and End (FR3-AC16)', () => {
     expect(press(onRow('closed'), 'Home')).toEqual({ cursor: onRow('root') });
     expect(press(onRow('closed'), 'End')).toEqual({ cursor: onRow('last') });
     // Already there: still handled, so the page never scrolls underneath the grid instead.
@@ -85,14 +100,14 @@ describe('reduceKey — on a row (FR3)', () => {
     expect(press(onRow('last'), 'End')).toEqual({ cursor: onRow('last') });
   });
 
-  it('toggles the row with Enter and with Space (FR3-AC12)', () => {
+  it('toggles the row with Enter and with Space — the only keys that do (FR3-AC14)', () => {
     expect(press(onRow('closed'), 'Enter')).toEqual({ toggle: 'closed' });
     expect(press(onRow('closed'), ' ')).toEqual({ toggle: 'closed' });
     expect(press(onRow('open'), 'Enter')).toEqual({ toggle: 'open' });
     expect(press(onRow('open'), ' ')).toEqual({ toggle: 'open' });
   });
 
-  it('does nothing on Enter or Space for a row with nothing to open (FR1-AC4)', () => {
+  it('does nothing on Enter or Space for a row with nothing to open (FR3-AC15)', () => {
     expect(press(onRow('leaf'), 'Enter')).toEqual({ cursor: onRow('leaf') });
     expect(press(onRow('leaf'), ' ')).toEqual({ cursor: onRow('leaf') });
   });

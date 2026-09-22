@@ -327,17 +327,17 @@ describe('TreeGrid — operating it from the keyboard (FR3)', () => {
     expect(tabStops()).toEqual([bodyRowNamed('root')]);
   });
 
-  it('moves down the rows, and Right opens the one the outline is on (FR3-AC2)', async () => {
+  it('moves down the rows, and Right enters the figures without opening the row (FR3-AC2)', async () => {
     const user = await enterGrid();
 
     await press(user, '{ArrowDown}');
     expect(document.activeElement).toBe(bodyRowNamed('open'));
 
     await press(user, '{ArrowRight}');
-    expect(bodyRowNamed('open')).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByText('child', { selector: 'th' })).toBeInTheDocument();
-    // The outline stays where it was: nothing jumps into the rows just revealed.
-    expect(document.activeElement).toBe(bodyRowNamed('open'));
+    expect(document.activeElement).toBe(figureIn('open', 0));
+    // Closed when the outline arrived and closed after it left: only Enter and Space open a row.
+    expect(bodyRowNamed('open')).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('child', { selector: 'th' })).not.toBeInTheDocument();
   });
 
   it('moves into the figures with Right once the row is open (FR3-AC3)', async () => {
@@ -427,30 +427,38 @@ describe('TreeGrid — operating it from the keyboard (FR3)', () => {
     expect(document.activeElement).toBe(figureIn('leaf', COLUMNS.length - 1));
   });
 
-  it('closes an open row with Left, then goes up to its parent (FR3-AC11)', async () => {
+  it('goes up a level with Left, leaving the row it came from open (FR3-AC12, FR3-AC13)', async () => {
     const user = await enterGrid(['root', 'open']);
 
-    await press(user, '{ArrowDown}');
+    // From the leaf inside "open" up to "open" itself (FR3-AC13).
+    await press(user, '{ArrowDown}{ArrowDown}');
+    expect(document.activeElement).toBe(bodyRowNamed('child'));
     await press(user, '{ArrowLeft}');
-    expect(bodyRowNamed('open')).toHaveAttribute('aria-expanded', 'false');
     expect(document.activeElement).toBe(bodyRowNamed('open'));
 
+    // And on up to the root, which is where Left used to close "open" instead (FR3-AC12).
     await press(user, '{ArrowLeft}');
     expect(document.activeElement).toBe(bodyRowNamed('root'));
+    expect(bodyRowNamed('open')).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('child', { selector: 'th' })).toBeInTheDocument();
   });
 
-  it('leaves the outline on the root once it is closed — there is nothing above it (FR3-AC15)', async () => {
+  it('leaves the outline on the root, which Left never closes (FR3-AC11)', async () => {
     const user = await enterGrid();
 
     await press(user, '{ArrowLeft}');
-    expect(bodyRowNamed('root')).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.getAllByRole('row')).toHaveLength(2);
+    expect(document.activeElement).toBe(bodyRowNamed('root'));
+    expect(bodyRowNamed('root')).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('open', { selector: 'th' })).toBeInTheDocument();
 
+    // Closed by the one key that can close it, Left still has nowhere above to go.
+    await press(user, '{Enter}');
+    expect(bodyRowNamed('root')).toHaveAttribute('aria-expanded', 'false');
     await press(user, '{ArrowLeft}');
     expect(document.activeElement).toBe(bodyRowNamed('root'));
   });
 
-  it('opens the row with Enter and closes it again with Space (FR3-AC12)', async () => {
+  it('opens the row with Enter and closes it again with Space (FR3-AC14)', async () => {
     const user = await enterGrid();
 
     await press(user, '{ArrowDown}{Enter}');
