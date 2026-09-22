@@ -303,6 +303,20 @@ describe('DashboardPage — failed state (FR4)', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it('shows "Unexpected data shape" for an item defining two kinds of list, one of them empty (FR2, code review F1)', async () => {
+    const body = clientsFixture();
+    body.company.branches = [
+      makeNode('b1', 'Branch 1', { employees: [makeNode('e1', 'Anna Blackwood')], channels: [] }),
+    ];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => Promise.resolve(Response.json(body)));
+    renderPage();
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(MESSAGE);
+    expect(alert).toHaveTextContent('Unexpected data shape');
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+  });
+
   it('is keyboard operable: Tab reaches Retry, Enter and Space retry, focus lands on the heading (FR4-AC11, D-11)', async () => {
     const user = userEvent.setup();
     const fetchMock = mockClientsFailing();
