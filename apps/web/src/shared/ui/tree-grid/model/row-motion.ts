@@ -77,9 +77,9 @@ export const slideRows: AutoAnimationPlugin = (el, action, box, nextBox) => {
  * which disables it outright: no animation is created at all and a closed row leaves the DOM
  * with the render that closed it (FR2-AC8), exactly the behaviour D-8 measured.
  *
- * Read once, when the grid mounts: `useAutoAnimate` keeps the first value it is given, and the
- * library reads the media query once when it starts. Changing the setting needs a reload, which
- * the README says out loud rather than working around.
+ * Read once, when the grid mounts and hands the library its configuration — which the library
+ * then keeps, reading its own media query once as it starts. Changing the setting needs a
+ * reload, which the README says out loud rather than working around.
  */
 export const rowMotion = (): AutoAnimationPlugin | Partial<AutoAnimateOptions> =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches ? NO_MOTION : slideRows;
