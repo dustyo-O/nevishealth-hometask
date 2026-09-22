@@ -35,14 +35,35 @@ const withLongBranch = () => {
 const labelOf = (ui: ClientsPage, name: string): Locator => nameOf(ui, name).locator('[title]');
 
 /**
- * Is the label's whole text painted on its own box? At least as wide *and as tall* as what it
- * holds: a reveal whose box collapses to 0 px high paints no background behind the name, and the
- * month figures it overlaps show through ("Anna Blackwood25", found at 375 on 2026-09-22).
+ * Is the label's whole text *painted*? Measured, not inferred from the label's own box:
+ *
+ * - the label's own box holds its text — as wide and as tall as what it contains. A reveal whose
+ *   box collapses to 0 px high paints no background behind the name, and the month figures it
+ *   overlaps show through ("Anna Blackwood25", found at 375 on 2026-09-22);
+ * - and the text's rectangle lies inside every box that clips it: the label itself when it hides
+ *   overflow, and each ancestor whose `overflow` is not `visible` — the table's scroller, the card.
+ *   Comparing the label with its own content alone passed while the scroller cut the revealed
+ *   name off at the edge of a 375 px screen (code review 2026-09-22, F2).
  */
 const shownWhole = (label: Locator) =>
   label.evaluate((el) => {
-    const { width, height } = el.getBoundingClientRect();
-    return width + 0.5 >= el.scrollWidth && height + 0.5 >= el.scrollHeight;
+    const EPS = 0.5;
+    const own = el.getBoundingClientRect();
+    if (own.width + EPS < el.scrollWidth || own.height + EPS < el.scrollHeight) return false;
+
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const text = range.getBoundingClientRect();
+    for (let box: Element | null = el; box; box = box.parentElement) {
+      const s = getComputedStyle(box);
+      const clipsX = s.overflowX !== 'visible';
+      const clipsY = s.overflowY !== 'visible';
+      if (!clipsX && !clipsY) continue;
+      const clip = box.getBoundingClientRect();
+      if (clipsX && (text.left + EPS < clip.left || text.right - EPS > clip.right)) return false;
+      if (clipsY && (text.top + EPS < clip.top || text.bottom - EPS > clip.bottom)) return false;
+    }
+    return true;
   });
 
 for (const [width, viewport] of Object.entries(VIEWPORT)) {
