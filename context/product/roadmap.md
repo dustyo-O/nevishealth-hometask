@@ -10,9 +10,9 @@ _Context: a 6–8 hour take-home. Phase 1 is the deliverable, in the order we wo
 
 _The highest priority features that form the core foundation of the product — the take-home deliverable._
 
-- [ ] **Clients Data & Dashboard Shell**
-  - [ ] **Client Data Served from an API:** Serve the company → branch → adviser → channel client tree, twelve months Feb 2024 – Jan 2025, from a small read-only REST API, so the dashboard has one source of truth and the data can later come from a real system.
-  - [ ] **Dashboard Page with Honest States:** A single "Clients" page that loads the data, tells the user when it is loading, and shows a clear message with a retry when loading fails — never an empty chart.
+- [x] **Clients Data & Dashboard Shell**
+  - [x] **Client Data Served from an API:** Serve the company → branch → adviser → channel client tree, twelve months Feb 2024 – Jan 2025, from a small read-only REST API, so the dashboard has one source of truth and the data can later come from a real system.
+  - [x] **Dashboard Page with Honest States:** A single "Clients" page that loads the data, tells the user when it is loading, and shows a clear message with a retry when loading fails — never an empty chart.
 
 - [ ] **Monthly Detail Table**
   - [ ] **Hierarchical Table with Expandable Rows:** One column per month, one row per node; the Company row is expanded on load to its branches, a branch expands to its advisers, an adviser to their channels, and any row collapses again. A node without children is a leaf and offers nothing to expand.

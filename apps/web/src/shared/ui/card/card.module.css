@@ -1,0 +1,8 @@
+.card {
+  width: 100%;
+  min-width: 0;
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  overflow: clip;
+  overflow-wrap: anywhere;
+}

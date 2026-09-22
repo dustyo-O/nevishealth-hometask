@@ -1,0 +1,49 @@
+{
+  "id": "company",
+  "name": "Company",
+  "values": [29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29],
+  "branches": [
+    {
+      "id": "branch-a",
+      "name": "Branch A",
+      "values": [18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18],
+      "employees": [
+        {
+          "id": "ada",
+          "name": "Ada Lovelace",
+          "values": [7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7],
+          "channels": [
+            {
+              "id": "ada-referral",
+              "name": "Referral",
+              "values": [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+            },
+            { "id": "ada-web", "name": "Web", "values": [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4] }
+          ]
+        },
+        {
+          "id": "bo",
+          "name": "Bo Nakamura",
+          "values": [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
+        },
+        {
+          "id": "cy",
+          "name": "Cy Okafor",
+          "values": [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6],
+          "channels": []
+        }
+      ]
+    },
+    {
+      "id": "branch-b",
+      "name": "Branch B",
+      "values": [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]
+    },
+    {
+      "id": "branch-c",
+      "name": "Branch C",
+      "values": [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+      "employees": []
+    }
+  ]
+}

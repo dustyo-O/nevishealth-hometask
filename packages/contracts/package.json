@@ -1,0 +1,25 @@
+{
+  "name": "@nevis/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Wire types and the zod schema for the clients API — consumed as TypeScript source (tech doc D-2).",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "check": "pnpm lint && pnpm typecheck && pnpm test"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "typescript": "~6.0.3",
+    "vitest": "^5.0.1"
+  }
+}

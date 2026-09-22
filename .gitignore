@@ -1,3 +1,21 @@
-
 # harness: per-run swarm state (briefs, pane ids, logs)
 context/spec/*/lanes/
+
+# dependencies & builds
+node_modules/
+dist/
+*.tsbuildinfo
+
+# test output
+apps/web/e2e/test-results/
+apps/web/e2e/playwright-report/
+docs/screenshots/
+
+# editors / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Playwright MCP scratch (probe scripts, snapshots, console logs) — never part of the project
+.playwright-mcp/

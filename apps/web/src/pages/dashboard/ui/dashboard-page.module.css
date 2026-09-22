@@ -1,0 +1,35 @@
+/* Design at 1440: content x=16 / width 1408, heading y=24 (h 44), chart card y=84 (430), table card y=530 (280). */
+.page {
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding: var(--space-6) var(--space-4);
+}
+
+.title {
+  font-size: var(--font-size-title);
+  line-height: var(--line-height-title);
+  font-weight: var(--font-weight-regular);
+  margin-block-end: var(--space-4);
+  overflow-wrap: anywhere;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.chartSlot {
+  min-height: var(--card-chart-min-h);
+}
+
+.tableSlot {
+  min-height: var(--card-table-min-h);
+}
+
+/* One body line reserved inside the card, so the summary lands without moving anything. */
+.summary {
+  min-height: var(--line-height-body);
+  padding: var(--space-4);
+}

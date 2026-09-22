@@ -1,0 +1,35 @@
+You are running as the **`react-frontend`** agent (`claude --agent react-frontend`): your instructions are `.claude/agents/react-frontend.md`; the skills it lists are in `.claude/skills/`. Read `CLAUDE.md` first.
+This is a **consultation**, not a lane: answer the questions below in markdown. Read, search and run read-only commands as you need (verify versions and option names — do not guess). Create or edit **no files**, with one exception: when your answer is complete, write it in full to `context/spec/001-clients-data-dashboard-shell/consults/react-frontend-web-sections-20260921-185845.md` with the Write tool (that path is pre-approved), then end your turn with exactly this line:
+
+    CONSULT react-frontend web-sections: DONE
+
+The lead quotes the file verbatim — no preamble, no restating the questions; cite the files and commands you used to verify facts.
+
+---
+
+# Consultation for the technical specification of spec 001 — web app
+
+You are drafting the frontend sections of `context/spec/001-clients-data-dashboard-shell/technical-considerations.md`. The lead assembles the document; you answer the questions below. Structures and contracts, not implementations: file paths + responsibilities, component props/API shapes, config keys and their purpose, commands. No full code, no full config files. Where you assert a version or an option name, verify it (`npm view <pkg> version`, official docs via WebFetch) and say how you verified — especially: Vitest 5 + React 19 + jsdom setup, TanStack Query v5 option names, Playwright `webServer`, and which FSD boundary lint tool is maintained (`steiger` vs `eslint-plugin-boundaries` vs `@feature-sliced/eslint-config`).
+
+Read first:
+- `context/spec/001-clients-data-dashboard-shell/functional-spec.md` — FR1, FR3–FR7 (states, Retry, timings, dev switches forwarded from the page URL, 375 px)
+- `context/product/architecture.md` — §1, §3, §4, §6 (FSD layout, TanStack Query, CSS Modules, tokens)
+- `context/inbox/clients-data-dashboard-shell.md` — decisions D5–D11, D14, risks R3–R5
+- `context/inbox/design/tokens.md` — Figma variables and layout metrics (page bg, card, text, fonts, card radius, positions)
+- `context/inbox/design/mockup-2-dashboard.png` — the 1440 px design
+
+The repo has NO application code yet: this spec also creates the pnpm workspace (`apps/web`, `apps/api`, `packages/contracts`). Node 22, pnpm 10. The wire contract is owned by `packages/contracts` and you consume it read-only: `GET /api/clients` → `{ months: string[12] (ISO "2024-02".."2025-01"), company: TreeNode }`, `TreeNode { id, name, values: number[12], branches?, employees?, channels? }`, plus a zod schema. `GET /api/health` → `{ status: "ok" }`.
+
+## Questions
+
+1. **`apps/web` layout for THIS spec only**, per FSD (architecture §6): which slices exist after this feature — `app/` (providers: QueryClientProvider, ErrorBoundary; styles), `pages/dashboard/`, `entities/clients/` (api, queries, model), `shared/` (api: http client + error types; ui: Card, Skeleton, ErrorPanel, VisuallyHidden, Button; styles: tokens.css, reset). Widgets are NOT built yet (chart/table are specs 002/003): say where the two "honest placeholder" cards live (`pages/dashboard` vs widget stubs) and why. List files with one-line responsibilities.
+2. **Data layer.** `shared/api` http client — fetch with `AbortSignal.timeout(10_000)`, an error taxonomy that yields exactly the spec's detail lines: "Network error", "Request failed with status 500", "Request timed out", "Unexpected data shape" (zod parse failure). `entities/clients/api` (fetchClients → parse with the contracts schema), `entities/clients/queries` (useClientsQuery: queryKey, `retry: 1`, `retryDelay` ≈ 500 ms, `staleTime: Infinity`, `refetchOnWindowFocus: false`, `refetchOnReconnect`?), `entities/clients/model` (formatMonth "2024-02" → "Feb 2024" with Intl.DateTimeFormat en; summaries "12 months · Feb 2024 – Jan 2025" and "Company · N branches" — where does summary derivation live).
+3. **Page states.** `pages/dashboard` composition — the three states; the Skeleton (two cards sized to the design, 1408×430 and 1408×280 at 1440, fluid below; `aria-busy` on the content region; visually-hidden live region "Loading clients…" — polite vs assertive?); the ErrorPanel (`role="alert"`, message + detail + Retry `<button>`; focus stays where it is per the spec); the loaded cards with the two summaries. Layout-shift risk between skeleton and loaded cards and how to prevent it (fixed min-heights?).
+4. **Dev switches forwarding (FR6).** Read `delay`/`fail` from `window.location.search` and append to the API request only when `import.meta.env.DEV`; how to make it testable (URL builder taking `isDev` as a parameter vs `vi.stubEnv`) and provably dead in `vite build`. Retry must reuse the same switches — query key includes them, or the fetcher re-reads location? Recommend.
+5. **Vite config.** Dev port 5173, `server.proxy['/api'] → http://localhost:3000`, React plugin, CSS Modules naming (`css.modules.localsConvention`), resolving the `@contracts` workspace dep, `build` target. Vitest config (environment jsdom, setupFiles for `@testing-library/jest-dom`, CSS modules handling) and whether it lives in `vite.config.ts` or `vitest.config.ts`.
+6. **Tokens/styling for the shell.** Turn `context/inbox/design/tokens.md` into the custom-property names for `shared/styles/tokens.css`; font stack (Inter Display, Inter, system) and how the fonts are loaded (Google Fonts link vs self-hosted vs system fallback — recommend for a take-home); reset; how CSS Modules classes are composed; the 375 px rule — what specifically guarantees no horizontal overflow (fluid width, 16 px gutters, no fixed widths).
+7. **Lint/format.** ESLint 9 flat config with typescript-eslint, react-hooks, jsx-a11y, and the FSD boundary tool you verified is maintained (name it and the rule it enforces: downward imports only + public API via `index.ts`). Prettier. Scripts: lint, typecheck (`tsc -b` or `--noEmit`), test, e2e, and the composite `check:web`.
+8. **Tests.** (a) Vitest unit: http client error taxonomy (mocked fetch), fetchClients parse failure → shape error, formatMonth, summaries, URL builder with/without dev switches. (b) Vitest + RTL component tests of the dashboard page for the three states and Retry — mocked fetch or MSW? recommend one; note fake timers vs TanStack `retryDelay`. (c) Playwright e2e in `apps/web/e2e` with `page.route('**/api/clients', …)` for success / 500 / wrong-shape / hang (never fulfil → timeout path: shorten the timeout via env, or skip?); Retry recovery by switching the route handler; 375 px viewport asserting `document.documentElement.scrollWidth <= 375`; `@axe-core/playwright` on each state; Playwright `webServer` starting only Vite. Map each test to the functional spec's ACs.
+9. **Anything from the design you still need** at implementation time that `tokens.md` doesn't carry — list it so the lead fetches it via the Figma MCP before the lane starts.
+
+Aim for ~180–220 lines. End with **Risks I see** (max 5) specific to this stack.

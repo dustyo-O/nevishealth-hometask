@@ -41,10 +41,10 @@
     "testing-expert": {
       "owns": [
         "apps/web/e2e/",
-        "apps/api/test/"
+        "apps/api/test/acceptance/"
       ],
       "gate": "pnpm check",
-      "_note": "test files and test config only; never production code"
+      "_note": "acceptance tests only (never production code); nest-backend keeps apps/api/test/*.e2e-spec.ts, slice-1 scaffold seeds apps/web/e2e/ config"
     }
   }
 }

@@ -1,0 +1,17 @@
+/* The reset gives every element the `:focus-visible` ring (tokens `--focus-ring*`). */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-card);
+  background: var(--color-text);
+  color: var(--color-text-inverse);
+  cursor: pointer;
+}
+
+.button:hover {
+  background: color-mix(in srgb, var(--color-text) 85%, var(--color-surface));
+}

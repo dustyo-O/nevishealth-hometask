@@ -25,15 +25,7 @@ prefix="$(cfg ticket_prefix TKT)"
 spec_dir=$(ls -d context/spec/"$num"-*/ | head -1); spec_dir="${spec_dir%/}"
 state="$spec_dir/lanes"; mkdir -p "$state"
 wt_root="$(dirname "$root")/wt-$(basename "$root")"
-have_herdr() { [ -z "${HARNESS_NO_HERDR:-}" ] && command -v herdr >/dev/null 2>&1; }
-pane_ids() { herdr api snapshot 2>/dev/null | python3 -c 'import json,sys
-def walk(o):
-    if isinstance(o,dict):
-        if "pane_id" in o: yield o["pane_id"]
-        for v in o.values(): yield from walk(v)
-    elif isinstance(o,list):
-        for v in o: yield from walk(v)
-print("\n".join(sorted(set(walk(json.load(sys.stdin))))))'; }
+. "$(dirname "${BASH_SOURCE[0]}")/_pane.sh"   # harness_have_herdr, harness_open_pane
 pane_status() { herdr pane get "$1" 2>/dev/null | python3 -c 'import json,sys,re
 t=sys.stdin.read(); m=re.search(r"agent_status\"?\s*[:=]\s*\"?(\w+)",t); print(m.group(1) if m else "unknown")'; }
 # The lane's final report line. Not anchored at ^ (the terminal renders it "⏺ LANE …" or indented in a code
@@ -101,13 +93,11 @@ for l in s["lanes"]:
     brief="$state/s$slice_n-$lane.md"
     launch="cd '$wt' && claude --permission-mode $perms \"\$(cat '$root/$brief')\"; echo; echo 'LANE SESSION ENDED — this pane closes in 20s (Ctrl+C to keep it)'; sleep 20"
     pane="-"
-    if have_herdr; then
-      before=$(pane_ids); herdr pane split --direction right >/dev/null 2>&1 || herdr pane split --direction down >/dev/null
-      sleep 0.5; after=$(pane_ids); pane=$(comm -13 <(echo "$before") <(echo "$after") | head -1)
-      [ -n "$pane" ] || { echo "could not find the new pane id; falling back to headless for $lane" >&2; pane="-"; }
+    if harness_have_herdr; then
+      pane=$(harness_open_pane "$num $lane" right)
+      [ -n "$pane" ] || { echo "could not open a pane; falling back to headless for $lane" >&2; pane="-"; }
     fi
     if [ "$pane" != "-" ]; then
-      herdr pane rename "$pane" "$num $lane" >/dev/null 2>&1 || true
       herdr pane run "$pane" "$launch"
     else
       mkdir -p "$state/logs"; ( cd "$wt" && nohup claude -p --permission-mode "$perms" "$(cat "$root/$brief")" > "$root/$state/logs/s$slice_n-$lane.log" 2>&1 & )

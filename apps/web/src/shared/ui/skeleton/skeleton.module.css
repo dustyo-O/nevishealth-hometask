@@ -1,0 +1,34 @@
+.skeleton {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  background: var(--color-skeleton);
+  border-radius: calc(var(--radius-card) / 2);
+}
+
+/* A soft highlight sweeping left to right; a single keyframe shared by every block on the page. */
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-surface) 70%, transparent),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+  }
+}
