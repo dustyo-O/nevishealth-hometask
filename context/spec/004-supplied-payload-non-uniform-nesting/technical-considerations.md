@@ -67,11 +67,23 @@ The floor at zero still matters: if a payload's recorded channels ever exceeded 
 
 ### 2.4 Keeping the small parts visible
 
-`<Bar minPointSize={…}>`, as a **function** so zero stays zero — but **not** `(value) => (value > 0 ? 2 : 0)`, which is what this section first said and is wrong for a stack. Measured in slice 3, in jsdom and in Chromium: Recharts 3.10 passes the callback the **running top of the stack**, not the part's own value, so February's zero parts drew at 2 px and FR4-AC2 failed. The shipped form is `floorOf(points, name)`, which looks the part's own figure up by index; the reason is commented at the call site so nobody simplifies it back.
+**Not `minPointSize`.** Slice 3 shipped it and the owner found the result still unreadable; measuring July showed why. Recharts floors a part's drawn height but leaves the stack offsets on the true figures, so the part above begins where the floored part's *figure* ends and paints over the difference: New organic drew 2 px and showed 1.51 px. Raising the floor does not help — only the topmost floored part ever gains, because every other one is covered by its neighbour.
 
-**(measured)** Both newly-acquired parts lifted in the same month leaves the upper one painted over about 0.5 px of the lower — 8 of the 12 months — because Recharts grows a floored part upward from its true offset. Accepted in FR4: both stay visible, and spacing parts by drawn height instead would push the bar further from its figures.
+So the floor moves into the **values the stack is built from**, and it is **borrowed, not added**:
 
-The cost, which the spec states and the tests must respect: a stacked bar with two floored segments draws up to about 2 px taller than its figures warrant — under 1 % of a 250-client bar. So **assert figures exactly and drawn heights within a tolerance**; the existing pixel-reading acceptance tests need that tolerance widened, and the reason recorded beside it.
+```
+for each month:
+  lifted        = every part with clients, raised to at least FLOOR (in client units)
+  borrowed      = Σ (lifted − true) over those parts
+  existing      = true existing − borrowed        // the largest part pays
+  bar total     = company figure, unchanged
+```
+
+- **The bar's total never moves**, so `bar height = Company row` keeps its tight tolerance in the acceptance suite; only per-part heights need slack. This is the whole reason for borrowing rather than adding.
+- The floor is four **pixels**, not a fixed number of clients — express it as a share of the axis domain so it holds if the figures ever change scale, and **measure it in a browser** rather than assuming today's 0.757 px per client.
+- Floor only parts with clients in them: zero stays absent (FR4-AC3).
+- **The figures never move.** The panel, the hidden table and the announcement read the true series; only the series handed to the drawing is adjusted. Keep the two visibly separate in the code so nobody later "simplifies" them into one.
+- Guard the degenerate case: if the borrowed total ever exceeded the existing part — a bar of almost nothing but newly-acquired clients — the floor must give way rather than drive a part negative. It cannot happen with the supplied figures.
 
 ### 2.6 The amendments this spec pays for
 

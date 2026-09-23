@@ -69,17 +69,15 @@ The newly acquired are the figures the business records: every "New organic" and
 
 ### FR4 — Small parts stay visible
 
-The newly acquired are a very small share of this company — never more than two clients in a month against two hundred and fifty or more. Drawn to scale they would be less than two pixels and effectively invisible, so any part with clients in it is drawn tall enough to be seen. A part with no clients in it is not drawn at all.
+The newly acquired are a very small share of this company — never more than two clients in a month against two hundred and fifty or more. Drawn to scale they would be under two pixels and effectively invisible, so **any part with clients in it is drawn at least four pixels tall**, and the height it borrows is **taken from the largest part of the same bar** rather than added on top.
 
-This makes a bar very slightly taller than its figures alone would, by about two pixels on a bar of two hundred and fifty — under one per cent. The figures the user reads are never affected: only the drawing gives way, and only enough to be seen.
-
-Where both newly-acquired parts are lifted in the same month, the upper one covers about half a pixel of the lower, so the lower shows around one and a half pixels rather than two. Both stay visible, and the alternative — spacing the parts by their drawn heights rather than their figures — would push the whole bar further from the numbers it represents. **(measured: 8 of the 12 months)**
+So the bar's total height is still exactly the figure the table shows on its Company row, and the parts above a lifted one begin where it is drawn rather than where its figure alone would put them, so nothing is covered. What gives way is the existing-clients part, by a few pixels out of two hundred and fifty — invisible where it happens, and the only place in the bar where a few pixels mean nothing. A part with no clients in it is not drawn at all, and a month with no newly acquired clients is drawn exactly to its figures.
 
 - **Acceptance Criteria:**
-  - [ ] When the user looks at July 2024, then its new organic and new paid parts are visible rather than hairlines.
+  - [ ] When the user looks at July 2024, where two clients were won organically and one was paid for, then both parts are drawn at least four pixels tall and neither is covered by the other.
+  - [ ] When the user looks at any month, then the bar's total height is the figure the table shows on its Company row, whether or not any part has been lifted.
   - [ ] When the user looks at February 2024, where no clients were newly acquired, then no new organic or new paid part is drawn at all.
   - [ ] When the user reads any month's figures, in the panel or as a screen reader, then they are the exact figures and are not adjusted for drawing.
-  - [ ] Given a month in which both new organic and new paid have clients, when the user looks at the bar, then both parts are visible, even though the upper one covers part of the lower.
 
 ### FR5 — The legend, the panel and what a screen reader reads
 
@@ -122,6 +120,8 @@ The legend names the three parts beneath the chart, always. The panel that appea
 ---
 
 ## Change Log
+
+- [2026-09-23] — the owner looking at the built chart, and a measurement of how the parts paint — **FR4: the minimum height is four pixels, and it is borrowed from the largest part rather than added to the bar.** At two pixels the owner found the newly-acquired parts still too thin to read. Measured on July: a floored part is drawn from its own true base, so the part above begins where that part's *figure* ends and covers the difference — New organic showed 1.51 px of its 2 px, and would have shown 1.51 px however large the floor grew, because only the topmost part ever benefits. The height a lifted part needs now comes out of the existing-clients part of the same bar, so **the bar's total still equals the Company row exactly** and only the one part large enough not to notice gives way.
 
 - [2026-09-23] — slice 3's measurements in the browser — **FR3-AC1 and FR4: what a bar with no newly-acquired clients looks like, and what happens when two lifted parts meet.** FR3-AC1 said every bar is divided into three parts while FR4-AC2 said a part with no clients is not drawn at all; with the supplied figures only 7 of the 12 months have all three, and February has one. FR3-AC1 now describes the order of the parts that are present rather than promising three. FR4 also records that when both newly-acquired parts are lifted to the minimum height the upper covers about half a pixel of the lower, measured in 8 of 12 months — accepted, because both stay visible and the alternative moves the whole bar further from its figures.
 
