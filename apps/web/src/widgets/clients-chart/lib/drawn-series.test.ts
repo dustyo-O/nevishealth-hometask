@@ -31,7 +31,7 @@ describe('the curve (004 FR4, §2.4)', () => {
 
   // The token is not readable from here (vitest hands CSS back empty); the browser suite catches a
   // drift, since a shorter plot box would draw July's parts under their curve.
-  it('measures the bars against the plot box `--chart-plot-h` draws: 338 less 5 above and 30 of labels', () => {
+  it('measures the bars against the plot box `PLOT_HEIGHT` draws: 338 less 5 above and 30 of labels', () => {
     expect(PLOT_HEIGHT).toBe(338);
     expect(BARS_HEIGHT).toBe(303);
   });

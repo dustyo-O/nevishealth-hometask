@@ -46,7 +46,6 @@ The other three decisions worth stating once: the y-axis is computed by a pure f
 --color-channel-existing: #b29df8;   /* decoded from the mockup: legend swatch and bar body agree */
 --color-channel-organic:  #f4beb4;
 --color-channel-paid:     #a75e6e;
---chart-plot-h:           338px;   /* the plot's own height, independent of the legend (F3) */
 ```
 
 Everything else already exists: `--color-line-dotted` is the design's grid colour, `--color-row-hover` is the tint FR4 asks for, `--card-chart-min-h: 430px` is the card height, and `--font-size-footnote` is the axis type.
