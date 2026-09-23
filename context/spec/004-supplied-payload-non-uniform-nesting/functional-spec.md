@@ -59,36 +59,45 @@ Because only one adviser's clients are attributed to a channel, most of each bar
 
 "Not recorded" means only that: the data does not say. It is never treated as a fourth way of acquiring a client, and it never takes a channel's colour.
 
+**One exception, and it cannot arise from the figures we have.** If a month's recorded channels ever came to *more* than the company's own figure for that month, there is nothing left over to show and no such thing as a negative amount of clients. In that month the bar is as tall as the recorded channels come to — taller than the Company row — and no "Not recorded" segment is drawn. The chart shows the recorded figures rather than trimming them to fit, and the disagreement is the data's, not the dashboard's. With the supplied figures this never happens: in all twelve months the company's figure exceeds its recorded channels.
+
 - **Acceptance Criteria:**
   - [ ] When the page has loaded, then each bar's total height matches the figure the table shows on its Company row for that month.
   - [ ] When the user reads any bar from the bottom up, then its parts are Not recorded, Existing clients, New organic and New paid, in that order.
   - [ ] When the user reads February 2024 in the chart, then its parts are 225 not recorded, 25 existing clients, 0 new organic and 0 new paid, totalling 250.
   - [ ] When the user compares the "Not recorded" segment with the others, then it is a neutral grey plainly different from the three channel colours.
   - [ ] When the user looks at the chart's scale, then it still reaches at least the tallest month's total, as before.
+  - [ ] Given a month whose recorded channels come to more than the company's figure for that month, when the chart is shown, then that bar is as tall as its recorded channels, no "Not recorded" segment is drawn for it, and no segment is drawn below zero.
+  - [ ] When the user reads the supplied figures, then no month has recorded channels exceeding the company's figure, so every bar matches its Company row.
 
 ### FR4 — What the legend and the month panel say
 
-The legend names every segment that is actually drawn, "Not recorded" included, in the same order as the bars. The panel that appears when the user points at, taps or moves to a month lists the same segments with their figures, and its total is the month's total — the figure the table shows.
+The legend names every segment that is actually drawn, "Not recorded" included, in the same order as the bars. The panel that appears when the user points at, taps or moves to a month lists the same segments with their figures, and its total is the month's total — the figure the table shows, except in the exempted case above, where it is what the recorded channels come to.
+
+Whether "Not recorded" appears at all is decided **once, across the whole twelve months** — not month by month. If any month has clients nobody has attributed, the segment is part of this chart: it is in the legend, it is a line in every month's panel and a column in every row a screen reader reads, and a month with nothing unattributed simply shows it as zero. A legend that changed as the pointer moved would be worse than a zero.
 
 - **Acceptance Criteria:**
   - [ ] When the page has loaded, then the legend names Not recorded, Existing clients, New organic and New paid, each with its swatch.
   - [ ] When the user points at February 2024, then the panel lists 225 not recorded, 25 existing clients, 0 new organic and 0 new paid, and a total of 250.
   - [ ] When the user reads the panel for any month, then its four figures add up to the total it shows.
+  - [ ] Given a month in which every client's channel is recorded while other months have clients unattributed, when the user points at that month, then the panel still lists "Not recorded", reading 0.
+  - [ ] When the user moves the pointer from month to month, then the legend stays the same throughout.
 
 ### FR5 — What a screen reader reads
 
 The chart's figures remain available to read as a table, one row per month, and that table now carries the not-recorded figure alongside the three channels and the total — so a screen-reader user gets exactly what a sighted user sees in the panel.
 
 - **Acceptance Criteria:**
-  - [ ] When a screen reader reads the chart's figures as a table, then each of the twelve rows gives not recorded, existing clients, new organic, new paid and the total.
+  - [ ] When a screen reader reads the chart's figures as a table, then each of the twelve rows gives not recorded, existing clients, new organic, new paid and the total, including any row whose not-recorded figure is 0.
   - [ ] When a screen-reader user moves to February 2024, then it announces the month with 225 not recorded, 25 existing clients, 0 new organic, 0 new paid and a total of 250.
 
 ### FR6 — A company whose clients are all accounted for
 
-The "Not recorded" segment exists only while there is something unaccounted for. If every client's acquisition channel were recorded, the chart would go back to three segments and a three-entry legend on its own, with nothing to configure and nothing left over.
+The "Not recorded" segment exists only while there is something unaccounted for **anywhere in the twelve months**. If every client in every month had their acquisition channel recorded, the chart would go back to three segments and a three-entry legend on its own, with nothing to configure and nothing left over — and no zero line would be left behind in the panel or in what a screen reader reads.
 
 - **Acceptance Criteria:**
   - [ ] Given figures in which every client's acquisition channel is recorded, when the chart is shown, then no "Not recorded" segment is drawn and the legend names three entries.
+  - [ ] Given figures in which every client's channel is recorded in every month, when the user points at a month, then the panel lists three figures and no "Not recorded" line.
   - [ ] Given figures in which the recorded channels come to more than the company's own figure for a month, when the chart is shown, then no negative segment is drawn.
 
 ---
