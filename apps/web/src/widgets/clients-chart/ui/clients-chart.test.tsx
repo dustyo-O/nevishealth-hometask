@@ -114,6 +114,81 @@ const tap = (
 
 const panelIn = (drawing: HTMLElement) => drawing.querySelector('dl')?.parentElement ?? null;
 
+const JUN_2024 = 4;
+const SEP_2024 = 7;
+
+/** What Anna Blackwood's channels — the only channels the supplied data records — come to. */
+const channelsIn = (data: ClientsResponse, month: number) =>
+  (data.company.branches?.[0]?.employees?.[0]?.channels ?? []).reduce(
+    (sum, channel) => sum + (channel.values[month] ?? 0),
+    0,
+  );
+
+/**
+ * The shipped company, which already has the gaps the brief describes (004 FR1): only Anna
+ * Blackwood has channels, so most of every month is attributed to none. June's company figure is
+ * set to exactly what her channels come to — a month with nothing unrecorded — and September's to
+ * less than they come to, the overshoot the chart must never draw below zero (FR3, spec review F1).
+ */
+const gappedClients = (): ClientsResponse => {
+  const data = shippedClients();
+  data.company.values[JUN_2024] = channelsIn(data, JUN_2024);
+  data.company.values[SEP_2024] = channelsIn(data, SEP_2024) - 7;
+  return data;
+};
+
+/**
+ * A company whose every client has a recorded channel: the shipped tree with each month's company
+ * figure set to what the channels come to. The shipped data can no longer be that company.
+ */
+const completeClients = (): ClientsResponse => {
+  const data = shippedClients();
+  data.company.values = data.company.values.map((_, month) => channelsIn(data, month));
+  return data;
+};
+
+const FOUR = ['Not recorded', 'Existing clients', 'New organic', 'New paid'];
+const KEYS = ['not-recorded', 'existing', 'organic', 'paid'];
+
+/**
+ * Every drawn rectangle, grouped into its month by its column. Segments are never counted: a
+ * zero part may draw no rectangle at all (004 §2.7), so each month reads what it does draw.
+ */
+const barsIn = (svg: SVGSVGElement) => {
+  const gridYs = [...svg.querySelectorAll('line')].map((line) => Number(line.getAttribute('y1')));
+  const baseline = Math.max(...gridYs);
+  const [top] = [...svg.querySelectorAll('text')]
+    .map((text) => Number(text.textContent))
+    .filter((value) => !Number.isNaN(value))
+    .sort((a, b) => b - a);
+  const pxPerClient = (baseline - Math.min(...gridYs)) / top!;
+  const rects = KEYS.flatMap((key) =>
+    [...svg.querySelectorAll(`path[fill="var(--color-channel-${key})"]`)].map((path) => ({
+      key,
+      x: Number(path.getAttribute('x')),
+      top: Number(path.getAttribute('y')),
+      height: Number(path.getAttribute('height')),
+    })),
+  );
+  const columns = [...new Set(rects.map((rect) => Math.round(rect.x)))].sort((a, b) => a - b);
+  return {
+    baseline,
+    pxPerClient,
+    months: columns.map((x) => rects.filter((rect) => Math.round(rect.x) === x)),
+  };
+};
+
+const panelRows = (drawing: HTMLElement) =>
+  [...(panelIn(drawing)?.querySelectorAll('dl > div') ?? [])].map((row) => [
+    row.querySelector('dt')?.textContent,
+    row.querySelector('dd')?.textContent,
+  ]);
+
+const legendOf = () =>
+  within(screen.getByRole('list'))
+    .getAllByRole('listitem')
+    .map((item) => item.textContent);
+
 describe('ClientsChart', () => {
   it('draws an SVG at the size it is given', () => {
     const svg = drawingOf(renderChart().container);
@@ -121,32 +196,42 @@ describe('ClientsChart', () => {
     expect(svg).toHaveAttribute('height', String(SIZE.height));
   });
 
-  it('draws twelve bars, each in three parts coloured by channel (FR1-AC1)', () => {
-    const svg = drawingOf(renderChart().container);
-    for (const key of ['existing', 'organic', 'paid']) {
-      expect(svg.querySelectorAll(`path[fill="var(--color-channel-${key})"]`)).toHaveLength(12);
-    }
+  // 004 slice 3 replaces what a bar is divided into (the rows the table shows). Until then the
+  // shipped data draws Anna Blackwood's channels on a grey base of everything else.
+  it('draws each month by series and value: Not recorded, then the three channels (FR1-AC1)', () => {
+    const data = shippedClients();
+    const { pxPerClient, months } = barsIn(drawingOf(renderChart(data).container));
+    const anna = data.company.branches![0]!.employees![0]!;
+    const [existing, organic, paid] = anna.channels!.map((channel) => channel.values);
+    expect(months).toHaveLength(12);
+    months.forEach((rects, month) => {
+      const valueOf = (key: string) =>
+        rects.filter((rect) => rect.key === key).reduce((sum, rect) => sum + rect.height, 0) /
+        pxPerClient;
+      expect(valueOf('not-recorded')).toBeCloseTo(
+        data.company.values[month]! - channelsIn(data, month),
+        1,
+      );
+      expect(valueOf('existing')).toBeCloseTo(existing![month]!, 1);
+      expect(valueOf('organic')).toBeCloseTo(organic![month]!, 1);
+      expect(valueOf('paid')).toBeCloseTo(paid![month]!, 1);
+    });
   });
 
-  it("stacks each month's parts to the Company row's figure, bottom-up in channel order (FR1-AC2/AC5)", () => {
-    const svg = drawingOf(renderChart().container);
-    // The scale, read from the drawing itself: the gridlines at 0 and at the top (400).
-    const gridYs = [...svg.querySelectorAll('line')].map((line) => Number(line.getAttribute('y1')));
-    const pxPerClient = (Math.max(...gridYs) - Math.min(...gridYs)) / 400;
-    const segments = ['existing', 'organic', 'paid'].map((key) =>
-      [...svg.querySelectorAll(`path[fill="var(--color-channel-${key})"]`)].map((path) => ({
-        top: Number(path.getAttribute('y')),
-        height: Number(path.getAttribute('height')),
-      })),
-    );
-    const company = shippedClients().company.values;
-    company.forEach((total, month) => {
-      const [existing, organic, paid] = segments.map((series) => series[month]!);
-      const drawn = (existing!.height + organic!.height + paid!.height) / pxPerClient;
-      expect(drawn).toBeCloseTo(total, 1);
-      // Each part sits directly on the one below it.
-      expect(organic!.top + organic!.height).toBeCloseTo(existing!.top, 3);
-      expect(paid!.top + paid!.height).toBeCloseTo(organic!.top, 3);
+  it("stacks each month's parts to the Company row's figure, bottom-up, each on the last (FR1-AC2/AC5)", () => {
+    const data = shippedClients();
+    const { baseline, pxPerClient, months } = barsIn(drawingOf(renderChart(data).container));
+    months.forEach((rects, month) => {
+      const drawn = rects.reduce((sum, rect) => sum + rect.height, 0) / pxPerClient;
+      expect(drawn).toBeCloseTo(data.company.values[month]!, 1);
+      const ordered = [...rects].sort((a, b) => b.top - a.top);
+      expect(ordered.map((rect) => rect.key)).toEqual(
+        KEYS.filter((key) => rects.some((rect) => rect.key === key)),
+      );
+      expect(ordered[0]!.top + ordered[0]!.height).toBeCloseTo(baseline, 3);
+      ordered.slice(1).forEach((rect, i) => {
+        expect(rect.top + rect.height).toBeCloseTo(ordered[i]!.top, 3);
+      });
     });
   });
 
@@ -182,14 +267,11 @@ describe('ClientsChart', () => {
     expect(screen.queryByText('400', readable)).toBeNull();
   });
 
-  it('names the three parts in a legend, bottom-up order, each with its swatch (FR3-AC1)', () => {
+  // 004 slice 3 replaces the legend's entries (Branch 1, Branch 2, Branch 3 at load).
+  it('names the parts in a legend, bottom-up order, each with its swatch (FR3-AC1)', () => {
     renderChart();
     const items = within(screen.getByRole('list')).getAllByRole('listitem');
-    expect(items.map((item) => item.textContent)).toEqual([
-      'Existing clients',
-      'New organic',
-      'New paid',
-    ]);
+    expect(items.map((item) => item.textContent)).toEqual(FOUR);
     for (const item of items) {
       expect(item.querySelector('[aria-hidden="true"]')).not.toBeNull();
     }
@@ -230,8 +312,9 @@ describe('ClientsChart', () => {
 
     await user.tab();
     expect(screen.getByRole('group')).toHaveFocus();
+    // 004 slice 3 replaces the parts; the month and the total are the Company row's.
     expect(status).toHaveTextContent(
-      'Feb 2024: existing clients 221, new organic 15, new paid 14, total 250',
+      'Feb 2024: not recorded 225, existing clients 25, new organic 0, new paid 0, total 250',
     );
     await user.keyboard('{ArrowRight}');
     expect(status).toHaveTextContent(/^Mar 2024: .*, total 267$/);
@@ -275,13 +358,8 @@ describe('ClientsChart', () => {
 
     const [header, ...rows] = within(table).getAllByRole('row');
     const columns = within(header!).getAllByRole('columnheader');
-    expect(columns.map((th) => th.textContent)).toEqual([
-      'Month',
-      'Existing clients',
-      'New organic',
-      'New paid',
-      'Total',
-    ]);
+    // 004 slice 3 replaces the columns (the rows the table shows); Total stays the Company row.
+    expect(columns.map((th) => th.textContent)).toEqual(['Month', ...FOUR, 'Total']);
     for (const th of columns) expect(th).toHaveAttribute('scope', 'col');
 
     expect(rows).toHaveLength(12);
@@ -293,18 +371,18 @@ describe('ClientsChart', () => {
       const cells = within(row)
         .getAllByRole('cell')
         .map((td) => Number(td.textContent));
-      expect(cells).toHaveLength(4);
-      expect(cells[0]! + cells[1]! + cells[2]!).toBe(cells[3]);
-      expect(cells[3]).toBe(company[month]);
+      expect(cells).toHaveLength(5);
+      expect(cells[0]! + cells[1]! + cells[2]! + cells[3]!).toBe(cells[4]);
+      expect(cells[4]).toBe(company[month]);
     });
     expect(
       within(rows[0]!)
         .getAllByRole('cell')
         .map((td) => td.textContent),
-    ).toEqual(['221', '15', '14', '250']);
+    ).toEqual(['225', '25', '0', '0', '250']);
   });
 
-  it("shows the pointed month's panel: the month, its three parts bottom-up, then the total (FR4-AC1/AC9)", () => {
+  it("shows the pointed month's panel: the month, its parts bottom-up, then the total (FR4-AC1/AC9)", () => {
     const drawing = drawingBox(renderChart().container);
     expect(panelIn(drawing)).toBeNull();
 
@@ -316,10 +394,12 @@ describe('ClientsChart', () => {
       row.querySelector('dt')?.textContent,
       row.querySelector('dd')?.textContent,
     ]);
+    // 004 slice 3 replaces the parts (Branch 1 147, Branch 2 76, Branch 3 27 at load).
     expect(rows).toEqual([
-      ['Existing clients', '221'],
-      ['New organic', '15'],
-      ['New paid', '14'],
+      ['Not recorded', '225'],
+      ['Existing clients', '25'],
+      ['New organic', '0'],
+      ['New paid', '0'],
       ['Total', '250'],
     ]);
   });
@@ -496,81 +576,12 @@ describe('ClientsChart', () => {
   });
 });
 
-const JUN_2024 = 4;
-const SEP_2024 = 7;
-
-/**
- * The shipped company with the gaps the brief describes (004 FR1): only the first adviser keeps
- * her channels, so most of every month is attributed to none. June's company figure is set to
- * exactly what her channels come to — a month with nothing unrecorded — and September's to less
- * than they come to, the overshoot the chart must never draw below zero (FR3, spec review F1).
- */
-const gappedClients = (): ClientsResponse => {
-  const data = shippedClients();
-  const [first, ...rest] = data.company.branches ?? [];
-  const [anna, ...others] = first?.employees ?? [];
-  for (const adviser of [...others, ...rest.flatMap((branch) => branch.employees ?? [])]) {
-    delete adviser.channels;
-  }
-  const annaIn = (month: number) =>
-    (anna?.channels ?? []).reduce((sum, channel) => sum + (channel.values[month] ?? 0), 0);
-  data.company.values[JUN_2024] = annaIn(JUN_2024);
-  data.company.values[SEP_2024] = annaIn(SEP_2024) - 7;
-  return data;
-};
-
-const FOUR = ['Not recorded', 'Existing clients', 'New organic', 'New paid'];
-const KEYS = ['not-recorded', 'existing', 'organic', 'paid'];
-
-/**
- * Every drawn rectangle, grouped into its month by its column. Segments are never counted: a
- * zero part may draw no rectangle at all (004 §2.7), so each month reads what it does draw.
- */
-const barsIn = (svg: SVGSVGElement) => {
-  const gridYs = [...svg.querySelectorAll('line')].map((line) => Number(line.getAttribute('y1')));
-  const baseline = Math.max(...gridYs);
-  const [top] = [...svg.querySelectorAll('text')]
-    .map((text) => Number(text.textContent))
-    .filter((value) => !Number.isNaN(value))
-    .sort((a, b) => b - a);
-  const pxPerClient = (baseline - Math.min(...gridYs)) / top!;
-  const rects = KEYS.flatMap((key) =>
-    [...svg.querySelectorAll(`path[fill="var(--color-channel-${key})"]`)].map((path) => ({
-      key,
-      x: Number(path.getAttribute('x')),
-      top: Number(path.getAttribute('y')),
-      height: Number(path.getAttribute('height')),
-    })),
-  );
-  const columns = [...new Set(rects.map((rect) => Math.round(rect.x)))].sort((a, b) => a - b);
-  return {
-    baseline,
-    pxPerClient,
-    months: columns.map((x) => rects.filter((rect) => Math.round(rect.x) === x)),
-  };
-};
-
-const panelRows = (drawing: HTMLElement) =>
-  [...(panelIn(drawing)?.querySelectorAll('dl > div') ?? [])].map((row) => [
-    row.querySelector('dt')?.textContent,
-    row.querySelector('dd')?.textContent,
-  ]);
-
-const legendOf = () =>
-  within(screen.getByRole('list'))
-    .getAllByRole('listitem')
-    .map((item) => item.textContent);
-
 describe('ClientsChart, when the channels account for only part of the company (004)', () => {
   it("draws every bar to its Company row's figure, with Not recorded at the base (FR3-AC1/AC2)", () => {
     const data = gappedClients();
     const { baseline, pxPerClient, months } = barsIn(drawingOf(renderChart(data).container));
     expect(months).toHaveLength(12);
-    const channels = (month: number) =>
-      (data.company.branches?.[0]?.employees?.[0]?.channels ?? []).reduce(
-        (sum, channel) => sum + (channel.values[month] ?? 0),
-        0,
-      );
+    const channels = (month: number) => channelsIn(data, month);
     months.forEach((rects, month) => {
       const drawn = rects.reduce((sum, rect) => sum + rect.height, 0) / pxPerClient;
       // As tall as the Company row — or, where the channels overshoot it, as tall as they are.
@@ -619,10 +630,10 @@ describe('ClientsChart, when the channels account for only part of the company (
     hover(drawing, SEP_2024);
     expect(panelRows(drawing)).toEqual([
       ['Not recorded', '0'],
-      ['Existing clients', '24'],
+      ['Existing clients', '25'],
       ['New organic', '1'],
       ['New paid', '2'],
-      ['Total', '27'],
+      ['Total', '28'],
     ]);
   });
 
@@ -674,7 +685,7 @@ describe('ClientsChart, when the channels account for only part of the company (
 describe('ClientsChart, when every client has a recorded channel (004 FR6)', () => {
   it('mentions Not recorded nowhere: not drawn, not in the legend, panel, table or announcement', async () => {
     const user = userEvent.setup();
-    const { container } = renderChart();
+    const { container } = renderChart(completeClients());
     const svg = drawingOf(container);
     expect(svg.querySelector('path[fill="var(--color-channel-not-recorded)"]')).toBeNull();
     expect(legendOf()).toEqual(['Existing clients', 'New organic', 'New paid']);
