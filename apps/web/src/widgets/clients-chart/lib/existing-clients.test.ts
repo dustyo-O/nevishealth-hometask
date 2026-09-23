@@ -70,6 +70,62 @@ describe('withExistingClients', () => {
     expect(points[0]?.byChannel[EXISTING]).toBe(7);
   });
 
+  it('keeps New organic, at 0, when the tree records none anywhere (code review F1)', () => {
+    const series: MonthlySeries = {
+      channels: ['Existing clients', 'New paid'],
+      points: [
+        {
+          month: '2024-02',
+          byChannel: { 'Existing clients': 8, 'New paid': 1 },
+          total: 9,
+          company: 10,
+        },
+      ],
+    };
+    const { channels, points } = withExistingClients(series);
+    expect(channels).toEqual(CHANNELS);
+    expect(points[0]).toMatchObject({
+      byChannel: { 'Existing clients': 9, 'New organic': 0, 'New paid': 1 },
+      total: 10,
+    });
+  });
+
+  it('orders the three Existing, New organic, New paid whatever order the tree lists them in (code review F1)', () => {
+    const series: MonthlySeries = {
+      channels: ['New paid', 'New organic', 'Existing clients'],
+      points: [
+        {
+          month: '2024-02',
+          byChannel: { 'New paid': 1, 'New organic': 2, 'Existing clients': 7 },
+          total: 10,
+          company: 10,
+        },
+      ],
+    };
+    expect(withExistingClients(series).channels).toEqual(CHANNELS);
+  });
+
+  it('keeps the three for a tree that records no channels at all (code review F1)', () => {
+    const series: MonthlySeries = {
+      channels: [],
+      points: [{ month: '2024-02', byChannel: {}, total: 0, company: 12 }],
+    };
+    const { channels, points } = withExistingClients(series);
+    expect(channels).toEqual(CHANNELS);
+    expect(points[0]).toMatchObject({
+      byChannel: { 'Existing clients': 12, 'New organic': 0, 'New paid': 0 },
+      total: 12,
+    });
+  });
+
+  it('throws on a channel it has no part for, rather than dropping it from every bar (003 §2.1)', () => {
+    const series: MonthlySeries = {
+      channels: ['Referral'],
+      points: [{ month: '2024-02', byChannel: { Referral: 3 }, total: 3, company: 10 }],
+    };
+    expect(() => withExistingClients(series)).toThrow('"Referral"');
+  });
+
   it("makes each month's parts add up to its total, and the total its company figure (FR3-AC2)", () => {
     const series = withExistingClients(
       seriesOf([250, [25, 0, 0]], [301, [30, 1, 0]], [20, [15, 10, 5]]),
