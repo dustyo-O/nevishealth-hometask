@@ -15,9 +15,11 @@ The supplied payload replaces the completed one. The API needs **no code change*
 
 The table needs **no change**, measured: served the real payload it already renders every childless node as a row that does not open.
 
-The chart is the whole of the work, and its model changed after slice 1 (spec Change Log, 2026-09-23). It no longer stacks acquisition channels: it divides the company by **exactly the rows the table is displaying**, so opening a row splits its slice in the chart as it reveals children in the table. That makes "which rows are open" shared state, which is the one architectural change here — a Zustand store in `features/expand-row/`, replacing the private state the tree grid held and the "no global store" line in `architecture.md` §1, both amended.
+The chart stays exactly what spec 003 built — company-wide, three stacked channels — and **one number is redefined**. "New organic" and "New paid" are summed from the tree as they always were; "Existing clients" becomes the company's own figure less those two, rather than the sum of recorded `Existing clients` nodes. That single change makes every bar equal the Company row using only supplied figures, and removes the need for any fourth category.
 
-Slice 1's remainder work carries over untouched. `withNotRecorded` already turns a series plus the node's own figure into a series whose bar equals that figure, flooring at zero and falling back to the segment sum on overshoot. Only its **input** changes — from "every channel in the tree" to "the rows currently displayed" — and everything downstream (drawing, legend, panel, hidden table, live region) reads the one series it returns, exactly as it does today.
+Slice 1 is merged and **part of it must now be undone**: the fourth segment, its colour token and the conditional legend/panel/table it drives all go. Its arithmetic survives — `max(0, company − Σ channels)` is exactly the amount Existing must absorb — so the pure function is kept and renamed for what it now does. That is the price of two wrong turns, and it is small only because slice 1 put the arithmetic in a pure function and fed every consumer from one series.
+
+The second change is `minPointSize` on the bars: the newly acquired are 0–2 clients a month, under two pixels drawn to scale.
 
 ---
 
@@ -43,38 +45,31 @@ Slice 1's remainder work carries over untouched. `withNotRecorded` already turns
 - `src/clients/consistency.spec.ts` asserts `Checked 44 nodes`. That becomes 12.
 - A test that pins the seven — each path, month, expected and actual — so a later data edit cannot silently change what we claim about the supplied figures. The seven: Company May (301 vs 279), Branch 1 Aug (214 vs 216), Anna May (31 vs 30), Jun (32 vs 33), Jul (34 vs 35), Aug (38 vs 36), Sep (27 vs 28).
 
-### 2.3 The shared store, and what the chart is given
+### 2.3 The one redefined number
 
-**`features/expand-row/model/store.ts`** — a Zustand store holding the open row ids and a `toggle`. It is the only thing the two widgets share, and it is a feature slice because opening a row is a user interaction, not a fact about clients. Both widgets subscribe with selectors so a toggle re-renders only what changed.
+`entities/clients/model/monthly-series.ts` keeps walking the tree and summing channels by name. What changes is how the widget assembles the three series it draws:
 
-The tree grid stops owning expansion privately. Its hook keeps the keyboard cursor, the roving `tabindex` and everything else that is genuinely its own; only the open-ids move out. **This is a change to spec 002's widget boundary** and is the kind of seam the Component Review item exists to find — it is being made deliberately and early rather than discovered later.
+```
+newOrganic[m] = Σ "New organic" in the tree          (as today)
+newPaid[m]    = Σ "New paid" in the tree             (as today)
+existing[m]   = company[m] − newOrganic[m] − newPaid[m]
+```
 
-**`entities/clients/model/visible-breakdown.ts`** — `visibleBreakdown(company, openIds)` → the rows the table is displaying at their deepest open level, in table order, each with its twelve figures and its branch ancestry. Pure, no DOM, no store: it takes the ids as an argument so it can be tested as a function of data. It is the same walk the table's `flattenVisibleRows` already does, stopping at rows that are not open rather than emitting them all — worth checking whether the two can share one traversal rather than drifting apart.
+**(measured)** That gives Existing `250, 266, 282, 299, 315, 331, 348, 247, 248, 248, 248, 346`, and the three sum to the Company row in all twelve months.
 
-**(measured)** It returns 3 rows at load, 7 with Branch 1 open, 9 with Anna open; 9 is this data's maximum.
+Slice 1's `notRecorded(series)` computed `max(0, company − Σ channels)` — which is precisely the amount Existing must absorb, since `company − organic − paid = recordedExisting + notRecorded`. Keep the function and its tests, rename it for its new job, and **delete `withNotRecorded`'s segment-adding behaviour** along with:
 
-The chart then builds `withNotRecorded(seriesOf(visibleBreakdown(...)))` exactly as it builds its series today. The remainder is `max(0, company − Σ visible rows)`: **(measured)** 22 in May at load, and on overshoot — August with Branch 1 open, where the rows come to 352 against 350 — no slice and a bar of 352, which is the fallback slice 1 already built and tested.
+- `--color-channel-not-recorded` and its swatch classes,
+- the `shown` flag and every conditional it drives in the legend, panel, hidden table and announcement,
+- the `'Not recorded'` entry in `channels.ts` (its throw on unknown names stays — the three channel names are data again).
 
-### 2.4 The palette — colour carries the hierarchy
+The floor at zero still matters: if a payload's recorded channels ever exceeded the company's figure, Existing would go negative. It is clamped at zero, and the bar is then the newly-acquired sum. This cannot happen with the supplied figures.
 
-Three base colours already exist as tokens (the design's purple, salmon and plum). Each **branch** takes one by its position; every row inside that branch is a **shade of its branch's colour**, derived from depth and position within the level — so Branch 1's five advisers are five purples and Anna's three channels are three purples, all recognisably Branch 1's.
+### 2.4 Keeping the small parts visible
 
-Derive the shades rather than hand-listing them: this data needs at most five in one level, but the rule must not break on a branch with more children. A lightness ramp over the base colour in `oklch` keeps perceived steps even, which a naive `color-mix` towards white does not.
+`<Bar minPointSize={…}>`, as a **function** so zero stays zero: `(value) => (value > 0 ? 2 : 0)`. Recharts applies it per segment, so a 1-client segment draws at 2 px instead of 0.85 px.
 
-`--color-channel-not-recorded` stays exactly as slice 1 built it — `color-mix(in srgb, var(--color-text) 12%, var(--color-surface))` — and is never a shade of a branch.
-
-`model/channels.ts` maps a *name* to a token and throws on anything unknown. That model no longer fits: the slices are now rows, not channels, and their names are data. It is replaced by a function from a row's ancestry and position to a colour; the throw goes with it, because an unknown row name is now normal.
-
-**Contrast is a real risk (R-8).** Five shades of one hue, side by side, must stay distinguishable — including for a colour-blind reader. The lane checks this in a browser against the card and reports what it measured; if five shades cannot be told apart, say so rather than shipping a bar nobody can read.
-
-### 2.5 The chart, the legend, the panel, the hidden table
-
-All four already read one series and follow one flag — slice 1 proved it by changing none of `bar-plot.tsx` while adding a fourth segment. They keep doing exactly that; what changes is how many members the series has and how often it changes.
-
-- **The not-recorded slice stays at the base**, with the visible rows above it in table order, so the chart reads top-to-bottom the way the table does.
-- **The legend** lists every slice, wrapping onto further lines; the card grows and **the plot's fixed height is untouched** (spec 003's `--chart-plot-h`), which is what keeps FR5's "the plot is the same height as before" true when the legend goes to three lines.
-- **The panel and the hidden table** gain rows and columns with the series. At nine slices the hidden table is eleven columns — heavy, but it is the data.
-- **The bar's height never changes while drilling**, so the axis is computed from the company's figures and does not move (FR3). Do not recompute the domain from the visible rows.
+The cost, which the spec states and the tests must respect: a stacked bar with two floored segments draws up to about 2 px taller than its figures warrant — under 1 % of a 250-client bar. So **assert figures exactly and drawn heights within a tolerance**; the existing pixel-reading acceptance tests need that tolerance widened, and the reason recorded beside it.
 
 ### 2.6 The amendments this spec pays for
 
@@ -84,7 +79,7 @@ Measured by auditing every criterion in both completed specs, not by guessing:
 |---|---|
 | **001** | The data decision it records — completing the payload — is reversed, with the reason, in its Change Log |
 | **002** | **Exactly one criterion**: "Given Branch 1 is open, when the user opens Branch 2, then Branch 1 stays open" — Branch 2 no longer opens. Rewritten against a row that still has children, plus one new criterion asserting a childless branch offers nothing to open. Everything else in 002 survives untouched, including the criterion that moves the outline *to* Branch 2, which is still a row |
-| **003** | **Its chart-composition requirements are superseded by this spec, not edited into it.** 003 FR1 (what a bar is divided into), FR3 (the legend's three fixed entries) and FR6-AC2 (the hidden table's columns) are replaced by 004 FR3–FR7; its Change Log records the supersession and why. Everything else in 003 survives **untouched and still true**, because it describes the chart's *behaviour* rather than its contents: the scale (FR2), pointing and tapping (FR4), the keyboard model (FR5), the announcement's shape (FR6), motion (FR7), narrow screens (FR8) and the loading and failure states (FR9). Splitting it this way avoids two documents both claiming to define what the bars are made of |
+| **003** | **Much less than we thought.** Its chart is still company-wide with three stacked channels and a three-entry legend, so FR1, FR3, FR5, FR6 and everything about behaviour stand. Only the *figures* in its examples change — FR1-AC3, FR4-AC1 and FR6-AC1 name February as 221 / 15 / 14, which becomes 250 / 0 / 0 — plus a Change Log entry recording that Existing is now derived and that small parts have a minimum drawn height. FR1-AC4 ("August and January are the tallest at 350") still holds |
 | **product-definition.md** | §4's "we completed the data rather than change the chart" reverses |
 | **architecture.md** | §2's consistency invariant no longer claims every parent equals its children |
 
@@ -104,15 +99,12 @@ Each spec keeps its `Completed` status; the Change Log is what records the amend
 
 | # | Risk | Mitigation |
 |---|---|---|
-| R-1 | **The chart will not look like the mockup any more** — the legend names rows rather than channels, and at depth it carries nine entries over several lines. This is a visual judgement no test can make. | A `[User]` look-and-feel step before the spec is verified, with the chart in a browser at both widths and at three depths. |
-| R-7 | **The announcement gets long.** At nine slices the live region reads nine figures and a total for every month the user moves to. Consistent with what a sighted user sees, but possibly tiring. | Build it consistently first, then judge it on a device; the `[User]` VoiceOver step is where that lands. Shortening it is a change to spec 003's FR6 shape and needs its own decision. |
-| R-8 | **Five shades of one hue must stay distinguishable**, side by side and for a colour-blind reader. A unit test cannot assert this. | The palette task checks it in a browser and reports measured contrast between adjacent shades; if five cannot be told apart, the lane says so rather than shipping an unreadable bar. |
-| R-9 | **The drawing now re-renders whenever a row opens.** Spec 003 measured that it does *not* re-render on hover — a guarantee that exists because a re-render under the pointer once cost a stuck panel (003 slice 3). That guarantee must survive a series that changes identity on expand. | Keep the memo boundary on `BarPlot` and derive the series above it; the existing fast-hover stress test stays as the regression, and the lane re-runs it after the change. |
-| R-2 | **Segment counting breaks.** Zero-valued channels may draw no rectangle, so any test asserting a fixed number of segments is unreliable with the real data. | §2.7: assert per month and per series, by colour and value. Rewrite spec 003's affected assertions rather than patching the counts. |
-| R-3 | **The agreement test must include the remainder**, or it will pass while the chart disagrees with the table by 90%. | It is the one test a reviewer will look at: bar total = Company row, with the remainder counted in. |
-| R-4 | **The axis.** The company's maximum is still 350, so the scale should return to 0–400 — but that is a consequence of the numbers, not a guarantee. | Spec 003's swept label test and the axis assertions must be re-run, not assumed. |
-| R-5 | **The four advisers lose their avatars' purpose?** No — they keep their initials; only their expandability changes. Listed because it looks like a regression in a screenshot diff and is not. | Nothing to do; noted so a reviewer does not chase it. |
-| R-6 | **The README's story.** The most valuable output of this spec is the honest account of the reversal, and it is written in a different roadmap item. | Ship-Ready quotes this spec's overview and the seven discrepancies; the spec exists so that account is accurate rather than remembered. |
+| R-1 | **The chart will look almost solid.** The newly acquired are 0–2 clients a month, so even floored at 2 px the bars read as one colour. That is the honest picture of this company, but it is unlike the mockup, whose data had roughly ten of each. | A `[User]` look-and-feel step. The README explains why the design's proportions cannot be reproduced from the supplied figures. |
+| R-2 | **`minPointSize` makes the drawing disagree with the figures**, by up to ~2 px on a 250-client bar. | Stated in FR4 and enforced by the tests: figures asserted exactly, drawn heights within a tolerance, with the reason recorded next to the tolerance so nobody later "tightens" it. |
+| R-3 | **Slice 1's segment work must be removed, not left dormant.** A dead `shown` flag and an unused token are exactly the debris a component review finds later. | Slice 3 deletes them explicitly and the gate proves nothing references them. |
+| R-4 | **The derived Existing hides a data problem.** Because it is computed from the company's own figure, a payload whose recorded `Existing clients` disagreed with it would show no sign in the chart. | The consistency guard already reports that class of disagreement on boot, and this spec makes it report seven. The README states the assumption (D32) plainly. |
+| R-5 | **The acceptance suite reads bars as pixels.** It was built that way deliberately in 003 so tests could not pass by agreeing with the code — and `minPointSize` now perturbs exactly what it measures. | Widen the tolerance to cover the floor, not to cover sloppiness: the figures come from the panel and the hidden table, which are exact. |
+| R-6 | **The tree shrinks to 12 nodes**, so any test that assumed 44 or relied on generated advisers changes. | Audited in §2.6; the API's two log assertions and the web's shipped-data expectations. |
 
 ---
 

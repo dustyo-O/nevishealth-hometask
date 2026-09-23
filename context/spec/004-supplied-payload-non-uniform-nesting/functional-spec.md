@@ -17,11 +17,11 @@ Two things follow, and they pull in different directions.
 
 The table turns out to need nothing: it was built to treat a row with nothing beneath it as a row with nothing beneath it, so the two branches and the four advisers simply appear as rows that do not open. That is the good half.
 
-The chart is the hard half, and it turned out we had built the wrong thing. It stacked each month by acquisition channel — which is what the *design's legend* shows, not what the brief asks for. The brief asks only for "a stacked bar chart showing the data over time", over data that is a tree in which every part holds the parts beneath it. With the real figures only one adviser's clients are attributed to a channel at all, about a tenth of the company, so channel-stacking could not be drawn without inventing most of it.
+The chart needed only one number redefined, though it took us two wrong turns to see it. The design stacks each month by the three acquisition channels and its bars reach the company's own figures exactly — so the chart is company-wide and channel-stacked, as it always was. What the supplied data lacks is the *recorded* channel for most clients: only one adviser's are broken down at all.
 
-So the chart shows the company sliced by **exactly the rows the table is currently showing**. On opening the page that is the three branches. Open Branch 1 and its slice divides into its five advisers; open Anna and hers divides into her three channels; close them and they merge back. "Expandable rows that reveal the level beneath" then reveals it in both halves of the page at once, which is the promise the brief opens with. The bar's height never changes as the user drills — it is always the whole company — so the scale stays still and only the composition moves.
+The three categories settle it between them. "New organic" and "New paid" are the clients newly acquired, and the data records those explicitly wherever they exist. Every other client is, by the meaning of the three names, an existing one. So the company's existing clients are its own figure less the newly acquired — which uses only supplied numbers, keeps every bar equal to the Company row, and needs no fourth category invented to hold the difference.
 
-Success looks like: a manager opening the dashboard sees three branches, two of which do not open, and is not confused by that; the figures in the table are the ones the business gave us, down to the ones that do not add up; and opening a row tells them something in the chart as well as in the table — which branch, which adviser, which channel is driving the year.
+Success looks like: a manager opening the dashboard sees three branches, two of which do not open, and is not confused by that; the figures in the table are the ones the business gave us, down to the ones that do not add up; and the chart's bars match the table month for month while showing, honestly, that almost every client this company holds is one it already had.
 
 ---
 
@@ -53,65 +53,40 @@ This matters here because the supplied figures do not always agree with each oth
   - [ ] When the user looks anywhere on the page, then no warning, badge or message about figures disagreeing is shown.
   - [ ] Given figures that disagree with each other, when the user opens the page, then the dashboard loads and shows them normally rather than failing.
 
-### FR3 — The chart shows what the table is showing
+### FR3 — The chart, its months and its three parts
 
-Every month's bar is the whole company, and it is divided into exactly the rows the table is displaying at their deepest open level. When the page opens, that is the three branches. When the user opens Branch 1, its slice divides into its five advisers and the other two branches are untouched. When the user opens Anna Blackwood, her slice divides into her three channels. Closing a row merges its slices back into one.
+The chart shows the whole company: one bar for each of the twelve months, divided into the three ways a client arrives — **Existing clients**, then **New organic**, then **New paid**, from the bottom up, each keeping the colour the design gives it.
 
-A row with nothing beneath it never divides — Branch 2, Branch 3 and the four advisers without channels each stay a single slice however much else is open.
-
-The bar's height is the company's own figure for that month, so it does not change as the user drills, and the scale stays still. Where the displayed rows do not account for the whole company — which happens because the supplied figures do not always add up — the difference is shown as a slice named **"Not recorded"** in a neutral grey at the bottom of the bar. Where the displayed rows come to *more* than the company's figure, there is nothing left over: no "Not recorded" slice is drawn and the bar is as tall as its slices come to.
+The newly acquired are the figures the business records: every "New organic" and every "New paid" in the company, added together. The existing clients are everyone else — the company's own figure for that month, less those newly acquired. So every bar is exactly as tall as the figure the table shows on its Company row, and nothing in it is invented.
 
 - **Acceptance Criteria:**
-  - [ ] When the page has loaded, then each bar is divided into Branch 1, Branch 2 and Branch 3.
-  - [ ] When the user opens Branch 1, then each bar divides that branch's slice into Anna Blackwood, James Walker, Maria Gutierrez, Robert Chen and Sarah Smith, while Branch 2 and Branch 3 each stay one slice.
-  - [ ] Given Branch 1 is open, when the user opens Anna Blackwood, then her slice divides into Existing clients, New organic and New paid, and the bars now show nine slices.
-  - [ ] Given Branch 1 is open, when the user closes it, then its five adviser slices merge back into one Branch 1 slice.
-  - [ ] When the page has loaded, then each bar's height equals the figure the table shows on its Company row for that month.
-  - [ ] When the user opens and closes rows, then the chart's scale does not change.
-  - [ ] When the user reads May 2024 on opening the page, then the bar shows a "Not recorded" slice of 22 beneath Branch 1, Branch 2 and Branch 3, which come to 279 of the company's 301.
-  - [ ] Given Branch 1 is open, when the user reads August 2024, then no "Not recorded" slice is drawn and the bar is 352 — its five advisers come to 216 where Branch 1's own figure is 214, so the rows shown exceed the company's 350.
+  - [ ] When the page has loaded, then the chart shows twelve bars labelled "Feb 2024" through "Jan 2025", each divided into Existing clients, New organic and New paid from the bottom up.
+  - [ ] When the user compares any bar with the table, then that bar's three figures add up to the figure the table shows on the Company row for the same month.
+  - [ ] When the user reads February 2024, then its parts are 250 existing clients, 0 new organic and 0 new paid.
+  - [ ] When the user reads July 2024, then its parts are 331 existing clients, 2 new organic and 1 new paid, totalling 334.
+  - [ ] When the user reads any month, then its new organic and new paid figures are the ones the business records for that month, unchanged.
+  - [ ] When the user looks at the legend, then it names exactly three parts, whatever the figures are.
 
-### FR4 — Colour carries the hierarchy
+### FR4 — Small parts stay visible
 
-Each branch takes one of the three colours the design uses, and everything inside that branch is a shade of its branch's colour. Opening Branch 1 divides its slice into five shades of the same colour rather than five unrelated colours, so a glance still shows which part of the bar belongs to which branch. "Not recorded" keeps its neutral grey and is never a shade of a branch.
+The newly acquired are a very small share of this company — never more than two clients in a month against two hundred and fifty or more. Drawn to scale they would be less than two pixels and effectively invisible, so any part with clients in it is drawn tall enough to be seen. A part with no clients in it is not drawn at all.
 
-- **Acceptance Criteria:**
-  - [ ] When the page has loaded, then the three branch slices use the three colours the design gives the chart.
-  - [ ] Given Branch 1 is open, when the user looks at a bar, then its five adviser slices are shades of Branch 1's own colour, and Branch 2 and Branch 3 keep theirs unchanged.
-  - [ ] Given Anna Blackwood is open, when the user looks at a bar, then her three channel slices are shades of Branch 1's colour, distinguishable from each other and from her four colleagues.
-  - [ ] When the user looks at a "Not recorded" slice, then it is the neutral grey and not a shade of any branch.
-
-### FR5 — The legend and the month panel follow the chart
-
-The legend names every slice that is drawn, in the same order as the bars, growing from three entries to nine as rows open and wrapping onto more lines as it needs to. The card grows to fit it rather than squeezing the chart.
-
-The panel that appears when the user points at, taps or moves to a month lists the same slices with their figures, and its total is the bar's total.
+This makes a bar very slightly taller than its figures alone would, by about two pixels on a bar of two hundred and fifty — under one per cent. The figures the user reads are never affected: only the drawing gives way, and only enough to be seen.
 
 - **Acceptance Criteria:**
-  - [ ] When the page has loaded, then the legend names Branch 1, Branch 2 and Branch 3.
-  - [ ] Given Branch 1 and Anna Blackwood are open, when the user looks at the legend, then it names all nine slices and no slice on screen is missing from it.
-  - [ ] Given Branch 1 and Anna Blackwood are open, when the legend wraps onto more than one line, then the chart's plot is the same height as it was before.
-  - [ ] When the user points at February 2024 on opening the page, then the panel lists Branch 1 147, Branch 2 76, Branch 3 27 and a total of 250.
-  - [ ] When the user reads the panel for any month, then its figures add up to the total it shows.
-  - [ ] When the user moves the pointer from month to month, then the legend does not change.
+  - [ ] When the user looks at July 2024, then its new organic and new paid parts are visible rather than hairlines.
+  - [ ] When the user looks at February 2024, where no clients were newly acquired, then no new organic or new paid part is drawn at all.
+  - [ ] When the user reads any month's figures, in the panel or as a screen reader, then they are the exact figures and are not adjusted for drawing.
 
-### FR6 — What a screen reader reads
+### FR5 — The legend, the panel and what a screen reader reads
 
-The chart's figures remain available to read as a table, one row per month, whose columns are the slices currently drawn. Moving to a month announces the month, each slice with its figure, and the total.
+The legend names the three parts beneath the chart, always. The panel that appears when the user points at, taps or moves to a month lists the same three with their figures and the month's total. The same three, with the total, are what a screen reader reads as a table of twelve rows.
 
 - **Acceptance Criteria:**
-  - [ ] When a screen reader reads the chart's figures as a table on opening the page, then each of the twelve rows gives Branch 1, Branch 2, Branch 3, any not-recorded figure, and the total.
-  - [ ] Given Branch 1 is open, when a screen reader reads that table, then its columns are the five advisers together with Branch 2 and Branch 3.
-  - [ ] When a screen-reader user moves to February 2024 on opening the page, then it announces the month with Branch 1 147, Branch 2 76, Branch 3 27 and a total of 250.
-
-### FR7 — Rows that never divide, and data that adds up
-
-A row with nothing beneath it is simply a slice: it cannot be opened in the table and it never divides in the chart. And if a company's figures ever added up exactly, no "Not recorded" slice would be drawn anywhere and nothing would be left over — the chart would be the rows and only the rows.
-
-- **Acceptance Criteria:**
-  - [ ] When the user looks at Branch 2 and Branch 3 in the chart at any level of opening, then each is a single slice.
-  - [ ] Given Branch 1 is open, when the user looks at James Walker, Maria Gutierrez, Robert Chen and Sarah Smith, then each is a single slice that never divides.
-  - [ ] Given figures in which every parent equals the rows beneath it, when the chart is shown, then no "Not recorded" slice is drawn and the legend names only the rows.
+  - [ ] When the page has loaded, then the legend names Existing clients, New organic and New paid, each with its swatch.
+  - [ ] When the user points at July 2024, then the panel reads "Jul 2024", existing clients 331, new organic 2, new paid 1, and a total of 334.
+  - [ ] When a screen reader reads the chart's figures as a table, then each of the twelve rows gives existing clients, new organic, new paid and the total.
+  - [ ] When the user reads the panel for any month, then its three figures add up to the total it shows, and that total is the figure the table shows on its Company row.
 
 ---
 
@@ -129,7 +104,7 @@ A row with nothing beneath it is simply a slice: it cannot be opened in the tabl
 - Any change to how rows open and close, to the keyboard model, or to what a screen reader is told about the table — specs 002 and 003 already cover them and the table needs no change to meet the real figures.
 - Warning the user about figures that disagree, marking the rows involved, or refusing to show them.
 - Changing any supplied figure, including where the design shows a different number from the data — the data wins, as it has since spec 001.
-- Any way of choosing what the chart shows other than opening and closing rows in the table — there is no separate selection, and no control on a row for it.
+- The chart re-scoping to a selected branch or adviser — it stays company-wide, and "Chart Follows the Drill-Down" stays a Phase 2 item.
 - Designing for figures where the recorded channels exceed their parent beyond simply never drawing a negative segment.
 - The README that explains this reversal (roadmap: "Ship-Ready") and the component review that follows it.
 - Every other roadmap item, in every phase.
@@ -144,6 +119,8 @@ A row with nothing beneath it is simply a slice: it cannot be opened in the tabl
 ---
 
 ## Change Log
+
+- [2026-09-23] — the design frame the owner found in Figma, which settles it — **FR3–FR5: the chart is company-wide and channel-stacked, and there is no "Not recorded".** The design's bars reach the Company row's own figures (250, 267, 284, 301 … 350) stacked by the three channels, so both of this spec's earlier chart models were wrong: the first invented a fourth category to hold the 90 % the data does not attribute, the second had the chart follow the table's drill-down. Neither was needed. The three category names are exhaustive between them — the data records the newly acquired, and everyone else is an existing client — so **Existing = company total − new organic − new paid**, which uses only supplied figures and equals the Company row in all twelve months. The drill-down model is withdrawn entirely and "Chart Follows the Drill-Down" returns to Phase 2. FR4 is new: the newly acquired are 0–2 clients a month, under two pixels drawn to scale, so a part with clients in it gets a minimum drawn height while the figures stay exact.
 
 - [2026-09-23] — the owner's challenge to the premise, before any of the chart work was built — **FR3–FR7: the chart stacks the rows the table is showing, not acquisition channels.** The original requirements came from the design's legend rather than from the brief, which asks only for "a stacked bar chart showing the data over time" over a tree whose every node holds the level beneath. Measured: channel-stacking at company level is off by about 90 % every month against the supplied figures, while stacking by the level beneath is exact in 11 of 12 months at every level. The chart now divides the company by exactly the rows the table displays, colour carries the hierarchy, and "Not recorded" shrinks from most of every bar to a sliver where the supplied figures do not add up. This pulls the Phase 2 roadmap item "Chart Follows the Drill-Down" into Phase 1.
 
