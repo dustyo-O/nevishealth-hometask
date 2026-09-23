@@ -154,19 +154,25 @@ const overshootingClients = (): ClientsResponse => {
 };
 
 /**
- * The least a part with clients in it is drawn (004 FR4, §2.4). The newly acquired are 0–2
- * clients a month, under two pixels to scale, so the drawing floors them here — and a floored part
- * grows upward from where it starts, into the part above it or above the bar. So a drawn height is
- * `max(to scale, FLOOR_PX)` and a bar's top may stand up to FLOOR_PX above its figure. That is the
- * one tolerance on heights, and it exists because FR4 asks for it: tightening it back to "exactly
- * to scale" fails every month with a new client in it. Figures — panel, table, announcement — are
- * still asserted exactly; only pixels give way.
+ * The least a part with clients in it is drawn, in pixels (004 FR4, §2.4). The newly acquired are
+ * 0–2 clients a month, under two pixels to scale, so the drawing lifts them to this — and takes
+ * what it adds from Existing clients in the same bar. So a bar's total is drawn **exactly** to its
+ * figure; only its parts give way: a new part is `max(to scale, FLOOR_PX)`, Existing clients is
+ * short by what the others borrowed. Figures — panel, table, announcement — are asserted exactly.
  */
-const FLOOR_PX = 2;
+const FLOOR_PX = 4;
 
-/** How tall a part of `value` clients is drawn: to scale, or the floor if that is taller; 0 stays 0. */
-const drawnPx = (value: number, pxPerClient: number) =>
-  value > 0 ? Math.max(value * pxPerClient, FLOOR_PX) : 0;
+type Parts = { existing: number; organic: number; paid: number };
+
+/**
+ * Each part's drawn height in pixels, worked out here and not by the widget: a new part with
+ * clients in it lifted to the floor, 0 staying 0, and Existing clients paying for both.
+ */
+const drawnPx = ({ existing, organic, paid }: Parts, pxPerClient: number): Parts => {
+  const lift = (value: number) => (value > 0 ? Math.max(value * pxPerClient, FLOOR_PX) : 0);
+  const borrowed = lift(organic) - organic * pxPerClient + (lift(paid) - paid * pxPerClient);
+  return { existing: existing * pxPerClient - borrowed, organic: lift(organic), paid: lift(paid) };
+};
 
 const THREE = ['Existing clients', 'New organic', 'New paid'];
 const KEYS = ['existing', 'organic', 'paid'] as const;
@@ -224,10 +230,10 @@ describe('ClientsChart', () => {
     months.forEach((rects, month) => {
       const heightOf = (key: string) =>
         rects.filter((rect) => rect.key === key).reduce((sum, rect) => sum + rect.height, 0);
-      const { existing, organic, paid } = expected(data, month);
-      expect(heightOf('existing')).toBeCloseTo(drawnPx(existing, pxPerClient), 3);
-      expect(heightOf('organic')).toBeCloseTo(drawnPx(organic, pxPerClient), 3);
-      expect(heightOf('paid')).toBeCloseTo(drawnPx(paid, pxPerClient), 3);
+      const drawn = drawnPx(expected(data, month), pxPerClient);
+      expect(heightOf('existing')).toBeCloseTo(drawn.existing, 3);
+      expect(heightOf('organic')).toBeCloseTo(drawn.organic, 3);
+      expect(heightOf('paid')).toBeCloseTo(drawn.paid, 3);
     });
   });
 
@@ -241,21 +247,16 @@ describe('ClientsChart', () => {
       expect(ordered.map((rect) => rect.key)).toEqual(
         KEYS.filter((key) => rects.some((rect) => rect.key === key)),
       );
-      // Each part starts exactly where the figures beneath it end, to scale: the floor only ever
-      // grows a part upward from there (FLOOR_PX).
-      const figures = expected(data, month);
+      // Each part starts exactly where the part beneath it is drawn to end — a lifted part moves
+      // the ones above it up rather than being covered by them (FLOOR_PX).
       let beneath = 0;
       for (const rect of ordered) {
-        expect(rect.top + rect.height).toBeCloseTo(baseline - beneath * pxPerClient, 3);
-        beneath += figures[rect.key];
+        expect(rect.top + rect.height).toBeCloseTo(baseline - beneath, 3);
+        beneath += rect.height;
       }
-      expect(beneath).toBe(data.company.values[month]);
-      // So the bar reaches its Company row's figure, and no more than the floor above it.
+      // So the bar reaches its Company row's figure exactly: the floor is borrowed, never added.
       const reach = (baseline - Math.min(...rects.map((rect) => rect.top))) / pxPerClient;
-      expect(reach).toBeGreaterThanOrEqual(data.company.values[month]! - 1e-6);
-      expect(reach - data.company.values[month]!).toBeLessThanOrEqual(
-        FLOOR_PX / pxPerClient + 1e-6,
-      );
+      expect(reach).toBeCloseTo(data.company.values[month]!, 6);
     });
   });
 
@@ -605,8 +606,8 @@ describe('ClientsChart, when the data records the channel of only part of the co
 
   it("draws July's new organic and new paid at least FLOOR_PX tall, not hairlines (FR4-AC1)", () => {
     const { pxPerClient, months } = barsIn(drawingOf(renderChart().container));
-    // To scale they would be 2 and 1 clients: under 1.5 px and under 1 px at this size.
-    expect(1 * pxPerClient).toBeLessThan(FLOOR_PX);
+    // To scale they would be 2 and 1 clients: about 1.5 px and 0.76 px at this size.
+    expect(2 * pxPerClient).toBeLessThan(FLOOR_PX);
     const july = months[JUL_2024]!;
     for (const key of ['organic', 'paid'] as const) {
       const [part] = july.filter((rect) => rect.key === key);
@@ -630,6 +631,33 @@ describe('ClientsChart, when the data records the channel of only part of the co
         else expect(height).toBeGreaterThanOrEqual(FLOOR_PX - 1e-6);
       }
     });
+  });
+
+  it('draws July lifted while its panel and hidden table read the true 331 / 2 / 1, and February identical in both (FR4-AC4)', () => {
+    const { container } = renderChart();
+    const { pxPerClient, months } = barsIn(drawingOf(container));
+    const heightOf = (month: number, key: string) =>
+      months[month]!.filter((rect) => rect.key === key).reduce((sum, r) => sum + r.height, 0);
+    // Drawn: the new parts lifted, Existing clients short by exactly what they borrowed.
+    const organic = heightOf(JUL_2024, 'organic');
+    const paid = heightOf(JUL_2024, 'paid');
+    expect(organic).toBeGreaterThan(2 * pxPerClient + 1);
+    expect(paid).toBeGreaterThan(1 * pxPerClient + 1);
+    expect(heightOf(JUL_2024, 'existing')).toBeCloseTo(334 * pxPerClient - organic - paid, 6);
+    // Read: the figures, untouched.
+    const [, ...rows] = within(screen.getByRole('table')).getAllByRole('row');
+    const cellsOf = (row: HTMLElement) =>
+      within(row)
+        .getAllByRole('cell')
+        .map((td) => td.textContent);
+    expect(cellsOf(rows[JUL_2024]!)).toEqual(['331', '2', '1', '334']);
+    const drawing = drawingBox(container);
+    hover(drawing, JUL_2024);
+    expect(panelRows(drawing).map(([, value]) => value)).toEqual(['331', '2', '1', '334']);
+    // February has nobody new: drawn exactly as it reads.
+    expect(heightOf(0, 'existing')).toBeCloseTo(250 * pxPerClient, 6);
+    expect(heightOf(0, 'organic') + heightOf(0, 'paid')).toBe(0);
+    expect(cellsOf(rows[0]!)).toEqual(['250', '0', '0', '250']);
   });
 
   it('reads February 250 / 0 / 0 and July 331 / 2 / 1 in the panel, the total its Company row (FR3-AC3/AC4, FR5-AC2/AC4)', () => {
