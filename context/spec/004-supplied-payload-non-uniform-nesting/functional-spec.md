@@ -17,9 +17,11 @@ Two things follow, and they pull in different directions.
 
 The table turns out to need nothing: it was built to treat a row with nothing beneath it as a row with nothing beneath it, so the two branches and the four advisers simply appear as rows that do not open. That is the good half.
 
-The chart is the hard half. It stacks each month by acquisition channel, but with the real figures only one adviser's clients are attributed to a channel at all — about a tenth of the company. Stacking only what is known would draw a chart whose bars are a tenth the height of the numbers in the table directly beneath it, and the two halves of the page would contradict each other. So the chart accounts for the rest: every bar still reaches the company's own figure, and the part of it nobody has attributed is shown as exactly that — **not recorded**. The reader sees the whole company, sees how little of it is explained, and is not misled about either.
+The chart is the hard half, and it turned out we had built the wrong thing. It stacked each month by acquisition channel — which is what the *design's legend* shows, not what the brief asks for. The brief asks only for "a stacked bar chart showing the data over time", over data that is a tree in which every part holds the parts beneath it. With the real figures only one adviser's clients are attributed to a channel at all, about a tenth of the company, so channel-stacking could not be drawn without inventing most of it.
 
-Success looks like: a manager opening the dashboard sees three branches, two of which do not open, and is not confused by that; the figures in the table are the ones the business gave us, down to the ones that do not add up; and the chart's bars match the table month for month while being honest that most of the company's acquisition story is missing.
+So the chart shows the company sliced by **exactly the rows the table is currently showing**. On opening the page that is the three branches. Open Branch 1 and its slice divides into its five advisers; open Anna and hers divides into her three channels; close them and they merge back. "Expandable rows that reveal the level beneath" then reveals it in both halves of the page at once, which is the promise the brief opens with. The bar's height never changes as the user drills — it is always the whole company — so the scale stays still and only the composition moves.
+
+Success looks like: a manager opening the dashboard sees three branches, two of which do not open, and is not confused by that; the figures in the table are the ones the business gave us, down to the ones that do not add up; and opening a row tells them something in the chart as well as in the table — which branch, which adviser, which channel is driving the year.
 
 ---
 
@@ -51,54 +53,65 @@ This matters here because the supplied figures do not always agree with each oth
   - [ ] When the user looks anywhere on the page, then no warning, badge or message about figures disagreeing is shown.
   - [ ] Given figures that disagree with each other, when the user opens the page, then the dashboard loads and shows them normally rather than failing.
 
-### FR3 — The chart accounts for every client
+### FR3 — The chart shows what the table is showing
 
-Each month's bar is as tall as the company's own figure for that month, so a bar and the Company row in the table always tell the same story. The bar is divided by how those clients were acquired, as far as anyone knows.
+Every month's bar is the whole company, and it is divided into exactly the rows the table is displaying at their deepest open level. When the page opens, that is the three branches. When the user opens Branch 1, its slice divides into its five advisers and the other two branches are untouched. When the user opens Anna Blackwood, her slice divides into her three channels. Closing a row merges its slices back into one.
 
-Because only one adviser's clients are attributed to a channel, most of each bar is made up of clients nobody has attributed. That part is shown as its own segment named **"Not recorded"**, in a neutral grey that is clearly not one of the three channel colours, and it sits at the **bottom** of the bar with the known channels stacked above it in their usual order.
+A row with nothing beneath it never divides — Branch 2, Branch 3 and the four advisers without channels each stay a single slice however much else is open.
 
-"Not recorded" means only that: the data does not say. It is never treated as a fourth way of acquiring a client, and it never takes a channel's colour.
-
-**One exception, and it cannot arise from the figures we have.** If a month's recorded channels ever came to *more* than the company's own figure for that month, there is nothing left over to show and no such thing as a negative amount of clients. In that month the bar is as tall as the recorded channels come to — taller than the Company row — and no "Not recorded" segment is drawn. The chart shows the recorded figures rather than trimming them to fit, and the disagreement is the data's, not the dashboard's. With the supplied figures this never happens: in all twelve months the company's figure exceeds its recorded channels.
+The bar's height is the company's own figure for that month, so it does not change as the user drills, and the scale stays still. Where the displayed rows do not account for the whole company — which happens because the supplied figures do not always add up — the difference is shown as a slice named **"Not recorded"** in a neutral grey at the bottom of the bar. Where the displayed rows come to *more* than the company's figure, there is nothing left over: no "Not recorded" slice is drawn and the bar is as tall as its slices come to.
 
 - **Acceptance Criteria:**
-  - [ ] When the page has loaded, then each bar's total height matches the figure the table shows on its Company row for that month.
-  - [ ] When the user reads any bar from the bottom up, then its parts are Not recorded, Existing clients, New organic and New paid, in that order.
-  - [ ] When the user reads February 2024 in the chart, then its parts are 225 not recorded, 25 existing clients, 0 new organic and 0 new paid, totalling 250.
-  - [ ] When the user compares the "Not recorded" segment with the others, then it is a neutral grey plainly different from the three channel colours.
-  - [ ] When the user looks at the chart's scale, then it still reaches at least the tallest month's total, as before.
-  - [ ] Given a month whose recorded channels come to more than the company's figure for that month, when the chart is shown, then that bar is as tall as its recorded channels, no "Not recorded" segment is drawn for it, and no segment is drawn below zero.
-  - [ ] When the user reads the supplied figures, then no month has recorded channels exceeding the company's figure, so every bar matches its Company row.
+  - [ ] When the page has loaded, then each bar is divided into Branch 1, Branch 2 and Branch 3.
+  - [ ] When the user opens Branch 1, then each bar divides that branch's slice into Anna Blackwood, James Walker, Maria Gutierrez, Robert Chen and Sarah Smith, while Branch 2 and Branch 3 each stay one slice.
+  - [ ] Given Branch 1 is open, when the user opens Anna Blackwood, then her slice divides into Existing clients, New organic and New paid, and the bars now show nine slices.
+  - [ ] Given Branch 1 is open, when the user closes it, then its five adviser slices merge back into one Branch 1 slice.
+  - [ ] When the page has loaded, then each bar's height equals the figure the table shows on its Company row for that month.
+  - [ ] When the user opens and closes rows, then the chart's scale does not change.
+  - [ ] When the user reads May 2024 on opening the page, then the bar shows a "Not recorded" slice of 22 beneath Branch 1, Branch 2 and Branch 3, which come to 279 of the company's 301.
+  - [ ] Given Branch 1 is open, when the user reads August 2024, then no "Not recorded" slice is drawn and the bar is 352 — its five advisers come to 216 where Branch 1's own figure is 214, so the rows shown exceed the company's 350.
 
-### FR4 — What the legend and the month panel say
+### FR4 — Colour carries the hierarchy
 
-The legend names every segment that is actually drawn, "Not recorded" included, in the same order as the bars. The panel that appears when the user points at, taps or moves to a month lists the same segments with their figures, and its total is the month's total — the figure the table shows, except in the exempted case above, where it is what the recorded channels come to.
-
-Whether "Not recorded" appears at all is decided **once, across the whole twelve months** — not month by month. If any month has clients nobody has attributed, the segment is part of this chart: it is in the legend, it is a line in every month's panel and a column in every row a screen reader reads, and a month with nothing unattributed simply shows it as zero. A legend that changed as the pointer moved would be worse than a zero.
-
-- **Acceptance Criteria:**
-  - [ ] When the page has loaded, then the legend names Not recorded, Existing clients, New organic and New paid, each with its swatch.
-  - [ ] When the user points at February 2024, then the panel lists 225 not recorded, 25 existing clients, 0 new organic and 0 new paid, and a total of 250.
-  - [ ] When the user reads the panel for any month, then its four figures add up to the total it shows.
-  - [ ] Given a month in which every client's channel is recorded while other months have clients unattributed, when the user points at that month, then the panel still lists "Not recorded", reading 0.
-  - [ ] When the user moves the pointer from month to month, then the legend stays the same throughout.
-
-### FR5 — What a screen reader reads
-
-The chart's figures remain available to read as a table, one row per month, and that table now carries the not-recorded figure alongside the three channels and the total — so a screen-reader user gets exactly what a sighted user sees in the panel.
+Each branch takes one of the three colours the design uses, and everything inside that branch is a shade of its branch's colour. Opening Branch 1 divides its slice into five shades of the same colour rather than five unrelated colours, so a glance still shows which part of the bar belongs to which branch. "Not recorded" keeps its neutral grey and is never a shade of a branch.
 
 - **Acceptance Criteria:**
-  - [ ] When a screen reader reads the chart's figures as a table, then each of the twelve rows gives not recorded, existing clients, new organic, new paid and the total, including any row whose not-recorded figure is 0.
-  - [ ] When a screen-reader user moves to February 2024, then it announces the month with 225 not recorded, 25 existing clients, 0 new organic, 0 new paid and a total of 250.
+  - [ ] When the page has loaded, then the three branch slices use the three colours the design gives the chart.
+  - [ ] Given Branch 1 is open, when the user looks at a bar, then its five adviser slices are shades of Branch 1's own colour, and Branch 2 and Branch 3 keep theirs unchanged.
+  - [ ] Given Anna Blackwood is open, when the user looks at a bar, then her three channel slices are shades of Branch 1's colour, distinguishable from each other and from her four colleagues.
+  - [ ] When the user looks at a "Not recorded" slice, then it is the neutral grey and not a shade of any branch.
 
-### FR6 — A company whose clients are all accounted for
+### FR5 — The legend and the month panel follow the chart
 
-The "Not recorded" segment exists only while there is something unaccounted for **anywhere in the twelve months**. If every client in every month had their acquisition channel recorded, the chart would go back to three segments and a three-entry legend on its own, with nothing to configure and nothing left over — and no zero line would be left behind in the panel or in what a screen reader reads.
+The legend names every slice that is drawn, in the same order as the bars, growing from three entries to nine as rows open and wrapping onto more lines as it needs to. The card grows to fit it rather than squeezing the chart.
+
+The panel that appears when the user points at, taps or moves to a month lists the same slices with their figures, and its total is the bar's total.
 
 - **Acceptance Criteria:**
-  - [ ] Given figures in which every client's acquisition channel is recorded, when the chart is shown, then no "Not recorded" segment is drawn and the legend names three entries.
-  - [ ] Given figures in which every client's channel is recorded in every month, when the user points at a month, then the panel lists three figures and no "Not recorded" line.
-  - [ ] Given figures in which the recorded channels come to more than the company's own figure for a month, when the chart is shown, then no negative segment is drawn.
+  - [ ] When the page has loaded, then the legend names Branch 1, Branch 2 and Branch 3.
+  - [ ] Given Branch 1 and Anna Blackwood are open, when the user looks at the legend, then it names all nine slices and no slice on screen is missing from it.
+  - [ ] Given Branch 1 and Anna Blackwood are open, when the legend wraps onto more than one line, then the chart's plot is the same height as it was before.
+  - [ ] When the user points at February 2024 on opening the page, then the panel lists Branch 1 147, Branch 2 76, Branch 3 27 and a total of 250.
+  - [ ] When the user reads the panel for any month, then its figures add up to the total it shows.
+  - [ ] When the user moves the pointer from month to month, then the legend does not change.
+
+### FR6 — What a screen reader reads
+
+The chart's figures remain available to read as a table, one row per month, whose columns are the slices currently drawn. Moving to a month announces the month, each slice with its figure, and the total.
+
+- **Acceptance Criteria:**
+  - [ ] When a screen reader reads the chart's figures as a table on opening the page, then each of the twelve rows gives Branch 1, Branch 2, Branch 3, any not-recorded figure, and the total.
+  - [ ] Given Branch 1 is open, when a screen reader reads that table, then its columns are the five advisers together with Branch 2 and Branch 3.
+  - [ ] When a screen-reader user moves to February 2024 on opening the page, then it announces the month with Branch 1 147, Branch 2 76, Branch 3 27 and a total of 250.
+
+### FR7 — Rows that never divide, and data that adds up
+
+A row with nothing beneath it is simply a slice: it cannot be opened in the table and it never divides in the chart. And if a company's figures ever added up exactly, no "Not recorded" slice would be drawn anywhere and nothing would be left over — the chart would be the rows and only the rows.
+
+- **Acceptance Criteria:**
+  - [ ] When the user looks at Branch 2 and Branch 3 in the chart at any level of opening, then each is a single slice.
+  - [ ] Given Branch 1 is open, when the user looks at James Walker, Maria Gutierrez, Robert Chen and Sarah Smith, then each is a single slice that never divides.
+  - [ ] Given figures in which every parent equals the rows beneath it, when the chart is shown, then no "Not recorded" slice is drawn and the legend names only the rows.
 
 ---
 
@@ -116,7 +129,7 @@ The "Not recorded" segment exists only while there is something unaccounted for 
 - Any change to how rows open and close, to the keyboard model, or to what a screen reader is told about the table — specs 002 and 003 already cover them and the table needs no change to meet the real figures.
 - Warning the user about figures that disagree, marking the rows involved, or refusing to show them.
 - Changing any supplied figure, including where the design shows a different number from the data — the data wins, as it has since spec 001.
-- Showing a not-recorded share at any level other than the company as a whole.
+- Any way of choosing what the chart shows other than opening and closing rows in the table — there is no separate selection, and no control on a row for it.
 - Designing for figures where the recorded channels exceed their parent beyond simply never drawing a negative segment.
 - The README that explains this reversal (roadmap: "Ship-Ready") and the component review that follows it.
 - Every other roadmap item, in every phase.
@@ -131,5 +144,7 @@ The "Not recorded" segment exists only while there is something unaccounted for 
 ---
 
 ## Change Log
+
+- [2026-09-23] — the owner's challenge to the premise, before any of the chart work was built — **FR3–FR7: the chart stacks the rows the table is showing, not acquisition channels.** The original requirements came from the design's legend rather than from the brief, which asks only for "a stacked bar chart showing the data over time" over a tree whose every node holds the level beneath. Measured: channel-stacking at company level is off by about 90 % every month against the supplied figures, while stacking by the level beneath is exact in 11 of 12 months at every level. The chart now divides the company by exactly the rows the table displays, colour carries the hierarchy, and "Not recorded" shrinks from most of every bar to a sliver where the supplied figures do not add up. This pulls the Phase 2 roadmap item "Chart Follows the Drill-Down" into Phase 1.
 
 _Dated amendments made after the spec was first written — typically by `/awos:spec` in Update Mode when a bug fix changed documented behavior. Each entry records the date, the source reference (bug id or fix description), and what behavior changed and why._
