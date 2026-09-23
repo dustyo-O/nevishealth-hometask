@@ -39,7 +39,9 @@ Clicking a row's **name** — the first cell, including the arrow in front of it
 
 Only the name opens and closes the row. Clicking a figure does nothing; those cells are reserved for a later feature.
 
-Opening a row that sits low on the screen would otherwise reveal its rows below the fold, where the user cannot see what their click did. So when a row opens, the page scrolls by the smallest amount that brings the opened row and as many of its new rows as will fit into view. If more rows appear than the screen can hold, the opened row and the first of them stay in view — the user is never carried past the row they clicked. Closing a row scrolls nothing.
+Opening a row that sits low on the screen would otherwise reveal its rows below the fold, where the user cannot see what their click did. So when a row opens, the page scrolls by the smallest amount that brings the opened row and as many of its new rows as will fit into view. If more rows appear than the screen can hold, the opened row and the first of them stay in view — the user is never carried past the row they clicked.
+
+Closing a row scrolls nothing. The one exception is not ours to control: at the very bottom of a page, closing removes the rows that were beneath the fold, and the browser moves the view up because the old position no longer exists.
 
 Rows can be open independently: opening one branch never closes another, and any number can be open at once.
 
@@ -51,7 +53,7 @@ Rows slide in when they appear and slide out when they disappear. A viewer whose
   - [x] When the user clicks the name of Branch 1, then its five adviser rows appear directly beneath it, indented one step further, and the arrow on Branch 1 turns to its open position.
   - [ ] Given a row sits low enough on the screen that its new rows would appear below the fold, when the user opens it, then the page scrolls just enough to bring the opened row and as many of its new rows as fit into view.
   - [ ] Given a row reveals more rows than the screen can hold, when the user opens it, then the opened row is still on screen with the first of its new rows beneath it.
-  - [ ] When the user closes a row, then the page does not scroll.
+  - [ ] When the user closes a row, then nothing scrolls the page — though at the very bottom of a page the view still shifts, because the rows that were beneath simply no longer exist and the browser has nowhere to hold the old position.
   - [x] Given Branch 1 is open, when the user clicks its name again, then its adviser rows disappear and the arrow returns to its closed position.
   - [x] Given Branch 1 is open and Anna Blackwood inside it is open, when the user closes Branch 1, then both the advisers and Anna's channels disappear; when the user opens Branch 1 again, then Anna's row is shown closed.
   - [x] Given Branch 1 is open, when the user opens Anna Blackwood inside it, then Branch 1 stays open.

@@ -168,7 +168,9 @@ test.describe('on a phone held with less height to spare', () => {
 
         // Vertically: just far enough to show the row clear of the edge (FR3, amended
         // 2026-09-23) — the cut plus the row's scroll margin, and not a pixel more.
-        const margin = await cell.evaluate((td) => parseFloat(getComputedStyle(td).scrollMarginTop));
+        const margin = await cell.evaluate((td) =>
+          parseFloat(getComputedStyle(td).scrollMarginTop),
+        );
         expect(margin, 'the outline has room to rest clear of the edge').toBeGreaterThan(0);
         const after = await rectOf(row);
         const moved = (await scrollY(page)) - before;

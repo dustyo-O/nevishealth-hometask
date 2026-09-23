@@ -155,33 +155,36 @@ export const useTreeGrid = ({
     latest.current.onToggle(rowId);
   }, []);
 
-  const handleKeyDown = useCallback((event: KeyboardEvent<HTMLElement>) => {
-    const current = latest.current;
-    const result = reduceKey(
-      current.cursor,
-      event.key,
-      current.rows,
-      current.expandedIds,
-      current.columnCount,
-    );
-    if (result === null) return;
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLElement>) => {
+      const current = latest.current;
+      const result = reduceKey(
+        current.cursor,
+        event.key,
+        current.rows,
+        current.expandedIds,
+        current.columnCount,
+      );
+      if (result === null) return;
 
-    // The grid owns this key from here, even where the outline does not move: an arrow left to
-    // the browser would scroll the months under a stationary outline, and Space would scroll
-    // the page (FR3-AC9/AC10).
-    event.preventDefault();
-    hasMovedRef.current = true;
+      // The grid owns this key from here, even where the outline does not move: an arrow left to
+      // the browser would scroll the months under a stationary outline, and Space would scroll
+      // the page (FR3-AC9/AC10).
+      event.preventDefault();
+      hasMovedRef.current = true;
 
-    if ('toggle' in result) {
-      toggle(result.toggle);
-      return;
-    }
+      if ('toggle' in result) {
+        toggle(result.toggle);
+        return;
+      }
 
-    const { cursor: next } = result;
-    setCursor((previous) =>
-      previous.rowId === next.rowId && previous.colIndex === next.colIndex ? previous : next,
-    );
-  }, [toggle]);
+      const { cursor: next } = result;
+      setCursor((previous) =>
+        previous.rowId === next.rowId && previous.colIndex === next.colIndex ? previous : next,
+      );
+    },
+    [toggle],
+  );
 
   // The defence behind the rows' `mousedown` guard (code review F1): focus can still reach an
   // element of the grid by means other than its own keys — a script, an assistive technology
