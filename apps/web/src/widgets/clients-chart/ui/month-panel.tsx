@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { formatMonth, type MonthlyPoint } from '@/entities/clients';
 import { cx } from '@/shared/lib/cx';
-import { channelKey } from '../model/channels';
+import { ChannelSwatch } from './channel-swatch';
 import styles from './month-panel.module.css';
 
 type MonthPanelProps = {
@@ -33,7 +33,7 @@ export const MonthPanel = ({ point, channels, index, months }: MonthPanelProps) 
       {channels.map((name) => (
         <div key={name} className={styles.row}>
           <dt className={styles.name}>
-            <span className={cx(styles.swatch, styles[channelKey(name)])} />
+            <ChannelSwatch name={name} />
             {name}
           </dt>
           <dd className={styles.value}>{point.byChannel[name] ?? 0}</dd>

@@ -20,22 +20,3 @@
   align-items: center;
   gap: 4px;
 }
-
-.swatch {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
-}
-
-.existing {
-  background: var(--color-channel-existing);
-}
-
-.organic {
-  background: var(--color-channel-organic);
-}
-
-.paid {
-  background: var(--color-channel-paid);
-}
