@@ -48,7 +48,7 @@ Every figure in the table is the one recorded for that row, shown exactly as sup
 This matters here because the supplied figures do not always agree with each other: in several months a parent's figure differs from the sum of the rows inside it. The dashboard shows both as they are and does not choose between them. It also does not warn the user, mark the rows, or refuse to show the data — a person reading the dashboard sees the business's own numbers, and reconciling them is the business's job, not the dashboard's.
 
 - **Acceptance Criteria:**
-  - [ ] When the user reads the Company row for May 2024, then it shows 301 — the figure as supplied — even though the three branches beneath it show 76, 27 and 156, which come to 279.
+  - [ ] When the user reads the Company row for May 2024, then it shows 301 — the figure as supplied — even though the three branches beneath it show 156, 87 and 36, which come to 279.
   - [ ] Given Branch 1 is open, when the user reads its figure for August 2024, then it shows 214, even though its five advisers come to 216.
   - [ ] When the user looks anywhere on the page, then no warning, badge or message about figures disagreeing is shown.
   - [ ] Given figures that disagree with each other, when the user opens the page, then the dashboard loads and shows them normally rather than failing.
@@ -126,6 +126,8 @@ The legend names the three parts beneath the chart, always. The panel that appea
 ---
 
 ## Change Log
+
+- [2026-09-23] — the acceptance suite, which reads the data rather than the prose — **FR2-AC1: May's branch figures corrected.** The criterion named "76, 27 and 156"; those are February's figures for Branch 2 and Branch 3 beside May's for Branch 1. May is 156, 87 and 36. The total it turns on, 279 against the Company row's 301, was right all along.
 
 - [2026-09-23] — the owner judging the built chart a second time — **FR4: small parts are drawn on a stretched scale rather than lifted to one flat height.** A flat four-pixel floor made one client and two clients identical on screen, which threw away the only comparison the newly-acquired parts can offer. They are now drawn so that one client is four pixels, two about six and three about eight, tailing off, and never smaller than the part's true height. The borrowing is unchanged, so the bar's total still equals the Company row exactly. Stated plainly in the requirement: on that scale two clients look about one and a half times one client, not twice — the figures stay exact wherever they are read.
 
