@@ -60,7 +60,7 @@ The chart shows the whole company: one bar for each of the twelve months, divide
 The newly acquired are the figures the business records: every "New organic" and every "New paid" in the company, added together. The existing clients are everyone else — the company's own figure for that month, less those newly acquired. So every bar is exactly as tall as the figure the table shows on its Company row, and nothing in it is invented.
 
 - **Acceptance Criteria:**
-  - [ ] When the page has loaded, then the chart shows twelve bars labelled "Feb 2024" through "Jan 2025", each divided into Existing clients, New organic and New paid from the bottom up.
+  - [ ] When the page has loaded, then the chart shows twelve bars labelled "Feb 2024" through "Jan 2025", each carrying its parts in the order Existing clients, New organic, New paid from the bottom up, and omitting any part with no clients in it.
   - [ ] When the user compares any bar with the table, then that bar's three figures add up to the figure the table shows on the Company row for the same month.
   - [ ] When the user reads February 2024, then its parts are 250 existing clients, 0 new organic and 0 new paid.
   - [ ] When the user reads July 2024, then its parts are 331 existing clients, 2 new organic and 1 new paid, totalling 334.
@@ -73,10 +73,13 @@ The newly acquired are a very small share of this company — never more than tw
 
 This makes a bar very slightly taller than its figures alone would, by about two pixels on a bar of two hundred and fifty — under one per cent. The figures the user reads are never affected: only the drawing gives way, and only enough to be seen.
 
+Where both newly-acquired parts are lifted in the same month, the upper one covers about half a pixel of the lower, so the lower shows around one and a half pixels rather than two. Both stay visible, and the alternative — spacing the parts by their drawn heights rather than their figures — would push the whole bar further from the numbers it represents. **(measured: 8 of the 12 months)**
+
 - **Acceptance Criteria:**
   - [ ] When the user looks at July 2024, then its new organic and new paid parts are visible rather than hairlines.
   - [ ] When the user looks at February 2024, where no clients were newly acquired, then no new organic or new paid part is drawn at all.
   - [ ] When the user reads any month's figures, in the panel or as a screen reader, then they are the exact figures and are not adjusted for drawing.
+  - [ ] Given a month in which both new organic and new paid have clients, when the user looks at the bar, then both parts are visible, even though the upper one covers part of the lower.
 
 ### FR5 — The legend, the panel and what a screen reader reads
 
@@ -119,6 +122,8 @@ The legend names the three parts beneath the chart, always. The panel that appea
 ---
 
 ## Change Log
+
+- [2026-09-23] — slice 3's measurements in the browser — **FR3-AC1 and FR4: what a bar with no newly-acquired clients looks like, and what happens when two lifted parts meet.** FR3-AC1 said every bar is divided into three parts while FR4-AC2 said a part with no clients is not drawn at all; with the supplied figures only 7 of the 12 months have all three, and February has one. FR3-AC1 now describes the order of the parts that are present rather than promising three. FR4 also records that when both newly-acquired parts are lifted to the minimum height the upper covers about half a pixel of the lower, measured in 8 of 12 months — accepted, because both stay visible and the alternative moves the whole bar further from its figures.
 
 - [2026-09-23] — the design frame the owner found in Figma, which settles it — **FR3–FR5: the chart is company-wide and channel-stacked, and there is no "Not recorded".** The design's bars reach the Company row's own figures (250, 267, 284, 301 … 350) stacked by the three channels, so both of this spec's earlier chart models were wrong: the first invented a fourth category to hold the 90 % the data does not attribute, the second had the chart follow the table's drill-down. Neither was needed. The three category names are exhaustive between them — the data records the newly acquired, and everyone else is an existing client — so **Existing = company total − new organic − new paid**, which uses only supplied figures and equals the Company row in all twelve months. The drill-down model is withdrawn entirely and "Chart Follows the Drill-Down" returns to Phase 2. FR4 is new: the newly acquired are 0–2 clients a month, under two pixels drawn to scale, so a part with clients in it gets a minimum drawn height while the figures stay exact.
 

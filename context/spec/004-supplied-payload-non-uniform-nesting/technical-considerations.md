@@ -67,7 +67,9 @@ The floor at zero still matters: if a payload's recorded channels ever exceeded 
 
 ### 2.4 Keeping the small parts visible
 
-`<Bar minPointSize={…}>`, as a **function** so zero stays zero: `(value) => (value > 0 ? 2 : 0)`. Recharts applies it per segment, so a 1-client segment draws at 2 px instead of 0.85 px.
+`<Bar minPointSize={…}>`, as a **function** so zero stays zero — but **not** `(value) => (value > 0 ? 2 : 0)`, which is what this section first said and is wrong for a stack. Measured in slice 3, in jsdom and in Chromium: Recharts 3.10 passes the callback the **running top of the stack**, not the part's own value, so February's zero parts drew at 2 px and FR4-AC2 failed. The shipped form is `floorOf(points, name)`, which looks the part's own figure up by index; the reason is commented at the call site so nobody simplifies it back.
+
+**(measured)** Both newly-acquired parts lifted in the same month leaves the upper one painted over about 0.5 px of the lower — 8 of the 12 months — because Recharts grows a floored part upward from its true offset. Accepted in FR4: both stay visible, and spacing parts by drawn height instead would push the bar further from its figures.
 
 The cost, which the spec states and the tests must respect: a stacked bar with two floored segments draws up to about 2 px taller than its figures warrant — under 1 % of a 250-client bar. So **assert figures exactly and drawn heights within a tolerance**; the existing pixel-reading acceptance tests need that tolerance widened, and the reason recorded beside it.
 
