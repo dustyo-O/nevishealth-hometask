@@ -54,3 +54,24 @@ _Reverses a decision made in spec 001. The brief says: "The nesting is not unifo
 - When the user looks at the legend, then it names all four segments, with "Not recorded" in a neutral grey distinct from the three channel colours.
 - Given a payload in which every client's channel is recorded, when the chart is shown, then no "Not recorded" segment is drawn and the legend names three entries.
 - When a screen reader reads the chart's figures as a table, then each of the twelve rows carries not recorded, existing clients, new organic, new paid and the total.
+
+---
+
+## Round 3 — the chart model, reopened 2026-09-23 (after slice 1)
+
+_The owner challenged the premise: "what is 'not recorded'? maybe we were wrong in our chart idea". They were right, and the arithmetic settled it._
+
+- **D20:** Our chart model came from **the design's legend, not from the task**. The brief says only "a stacked bar chart showing the data over time"; the design's three channel names are what we turned into a requirement. **(measured)** Channel-stacking at company level is off by ~90 % every month against the supplied data, which is why it needed an invented category to stand up.
+- **D21:** The data is a tree whose every node holds the level beneath, and stacking by that level nearly closes: **(measured)** Company → 3 branches is exact in 11 of 12 months (May 279 vs 301); Branch 1 → 5 advisers exact in 11 of 12 (Aug 216 vs 214); Anna → 3 channels off by ±1–2 in five months. The 7 discrepancies are the only gaps.
+- **D22:** **The chart shows the whole company sliced by exactly the rows the table is currently showing** — every visible row that is not itself opened. Opening a row splits its segment into its children; closing merges them back. "Expandable rows that reveal the level beneath" then reveals it in both cards at once, which is the brief's headline promise.
+- **D23:** **(measured)** The segment count runs 3 → 7 → 9 as the user opens Branch 1 and then Anna; 9 is the maximum this data can reach. The bar's height stays the company's own figure throughout, so the scale never moves as the user drills.
+- **D24:** The remainder primitive built in slice 1 carries over unchanged — `max(0, company − Σ visible rows)` — and keeps the name **"Not recorded"**, which still reads correctly: those clients are in the company's figure but recorded against no visible row. It shrinks from ~90 % of every bar to a sliver in one month. Where the visible rows *overshoot* the company figure (Aug, once Branch 1 is open), the existing fallback applies: no remainder, and the bar is the segments' sum.
+- **D25:** **Colour carries the hierarchy.** Each branch takes one of the design's three colours, and its descendants are shades of it — at load the chart is the design's three colours; opening Branch 1 splits its purple into five purples. "Not recorded" keeps the neutral grey and is never a shade of anything.
+- **D26:** The legend lists whatever is drawn, growing from three entries to nine and wrapping onto further lines. The card already grows rather than squeezing the plot, so nothing else is disturbed.
+- **D27:** This pulls the Phase 2 roadmap item "Chart Follows the Drill-Down" into Phase 1, and reverses `product-definition.md`'s "the chart is company-level and independent of the table".
+
+### Open risks added by round 3
+
+- **R7 — the announcement gets long.** At nine segments the live region reads nine figures plus a total for every month. Consistent, but possibly tiring; worth the owner's ear once it exists.
+- **R8 — nine shades must stay distinguishable**, including for a colour-blind reader, and the shades within one branch are by definition close together. Needs checking in a browser, not asserting in a unit test.
+- **R9 — the chart now re-renders on every expand/collapse.** Spec 003 measured that the drawing does not re-render on hover; that guarantee must survive a changing series.
