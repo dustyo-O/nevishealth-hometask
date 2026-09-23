@@ -19,6 +19,7 @@ import {
 } from '@/entities/clients';
 import { VisuallyHidden } from '@/shared/ui/visually-hidden';
 import { describeMonth } from '../lib/describe-month';
+import { toDrawing } from '../lib/drawn-series';
 import { withExistingClients } from '../lib/existing-clients';
 import {
   COLUMNS_LEFT,
@@ -92,13 +93,17 @@ export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
   const [switches] = useState(() => readDevSwitches(window.location.search));
   const { data } = useClientsQuery(switches);
   // Memoised so a refetch with the same figures hands the drawing the same series (FR7-AC1).
-  // Existing clients is derived here, from the Company row less the newly acquired (004 §2.3):
-  // the drawing, the legend, the panel, the hidden table and the announcement all read this one
-  // series.
+  // Existing clients is derived here, from the Company row less the newly acquired (004 §2.3).
+  //
+  // TWO SERIES, ON PURPOSE. `series` holds the figures: the legend, the panel, the hidden table
+  // and the announcement read it, exactly. `drawing` is what the bars are built from: small parts
+  // lifted to four pixels, Existing clients short by what they borrowed (004 FR4, §2.4). They are
+  // different types so neither can be handed where the other belongs; do not merge them.
   const series = useMemo(
     () => (data === undefined ? undefined : withExistingClients(toMonthlySeries(data))),
     [data],
   );
+  const drawing = useMemo(() => (series === undefined ? undefined : toDrawing(series)), [series]);
   const [reader, dispatch] = useReducer(readMonth, CLOSED);
   // The live region speaks for the outline only; a pointer sweeping the year is for the eye.
   const [focused, setFocused] = useState(false);
@@ -134,7 +139,7 @@ export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
   }, [drawn]);
 
   // The page only mounts the chart once the figures are here; this is the belt to that braces.
-  if (series === undefined) return null;
+  if (series === undefined || drawing === undefined) return null;
 
   const name = nameOf(series);
   const months = series.points.length;
@@ -207,7 +212,7 @@ export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
               style={{ '--month-index': reader.index } as CSSProperties}
             />
           )}
-          <BarPlot series={series} initialDimension={initialDimension} />
+          <BarPlot drawing={drawing} initialDimension={initialDimension} />
           {point !== undefined && (
             <MonthPanel
               point={point}

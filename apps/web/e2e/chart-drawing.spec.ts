@@ -77,8 +77,8 @@ test(
     const chart = await openChart(page);
     const { bars, perClient } = await readBars(chart);
     const figures = figuresOf(shippedClients());
-    // Read as drawn, each within the floor of its figure (FR4) — and the floor is too small to
-    // lift any other month (July, 334) up to them.
+    // Read as drawn: every bar reaches exactly its total, the floor borrowed rather than added
+    // (FR4-AC2) — so no other month (July, 334) comes near them.
     const byReach = bars.map(({ reach }, i) => ({ reach, i })).sort((a, b) => b.reach - a.reach);
     expect(
       byReach
@@ -106,14 +106,11 @@ test(
       const names = parts.map(({ name }) => name);
       // In stacking order, whichever parts this month draws.
       expect(names).toEqual(CHANNELS.filter((part) => names.includes(part)));
-      // Stacked: each part starts where the one beneath it ends. A part floored to FLOOR_PX
-      // (FR4) grows upward from its start, so the part above may overlap it by up to the floor —
-      // never more, and never a gap (see FLOOR_PX in support/chart.ts before tightening this).
+      // Stacked, not overlapping: each part starts where the one beneath it ends. A part lifted
+      // to FLOOR_PX (FR4) moves the parts above it up; nothing covers it (FR4-AC1).
       expect(Math.abs(parts[0]!.y + parts[0]!.height - floor)).toBeLessThan(0.5);
       parts.slice(1).forEach((part, i) => {
-        const overlap = part.y + part.height - parts[i]!.y;
-        expect(overlap).toBeGreaterThan(-0.5);
-        expect(overlap).toBeLessThan(FLOOR_PX + 0.5);
+        expect(Math.abs(part.y + part.height - parts[i]!.y)).toBeLessThan(0.5);
       });
       // And each part keeps the colour the design gives it.
       for (const segment of bar)
@@ -278,7 +275,7 @@ test(
 );
 
 test(
-  'FR4-AC1: July 2024’s new organic and new paid are drawn at least FLOOR_PX tall, not hairlines',
+  'FR4-AC1: July 2024’s new organic and new paid are each drawn at least FLOOR_PX tall, neither covering the other, and the bar is still 334',
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
@@ -290,6 +287,13 @@ test(
       const segment = july.find(({ name }) => name === part);
       expect(segment?.height, part).toBeGreaterThanOrEqual(FLOOR_PX - 0.01);
     }
+    // Neither covers the other: New paid starts where New organic ends.
+    const organic = july.find(({ name }) => name === 'New organic')!;
+    const paid = july.find(({ name }) => name === 'New paid')!;
+    expect(Math.abs(paid.y + paid.height - organic.y)).toBeLessThan(0.01);
+    // And the floor was borrowed, not added: the bar reaches exactly 334 (FR4-AC2).
+    const { bars } = await readBars(chart);
+    expect(Math.abs(bars[5]!.reach - 334)).toBeLessThan(0.05);
   },
 );
 

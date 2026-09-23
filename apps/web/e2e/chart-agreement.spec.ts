@@ -35,7 +35,8 @@ const expectAgreement = async (page: Page, body: ClientsBody): Promise<void> => 
 
   const table = await tableCompanyRow(chart);
   // The chart's exact figures, as its hidden table says them; the drawing is checked against
-  // them below, heights within the FR4 floor and nothing looser (FLOOR_PX, support/chart.ts).
+  // them below: each bar's total exactly, only its parts within the FR4 floor (FLOOR_PX,
+  // support/chart.ts).
   const months = await readTable(chart);
   expect(months).toHaveLength(12);
   expect(table).toHaveLength(12);
