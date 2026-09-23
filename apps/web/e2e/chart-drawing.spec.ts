@@ -8,6 +8,9 @@ import { expect, test } from '@playwright/test';
 import {
   FEBRUARY,
   CHANNELS,
+  expectBarShows,
+  figuresOf,
+  FLOOR_PX,
   januaryRaisedBy,
   openChart,
   readBars,
@@ -15,7 +18,7 @@ import {
   type Chart,
   type Segment,
 } from './support/chart';
-import { MONTH_HEADINGS } from './support/table';
+import { MONTH_HEADINGS, shippedClients } from './support/table';
 
 /** The part tokens as the browser computes them (003 §2.2). */
 const COLOURS = {
@@ -36,7 +39,7 @@ test(
   async ({ page }) => {
     const chart = await openChart(page);
     const drawn = await readDrawing(chart);
-    const { months } = await readBars(chart);
+    const months = figuresOf(shippedClients());
 
     expect(drawn.xTicks.map(({ text }) => text)).toEqual([...MONTH_HEADINGS]);
     expect(drawn.bars).toHaveLength(12);
@@ -59,9 +62,11 @@ test(
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
-    const { months, exactness } = await readBars(chart);
-    expect(months[0]).toEqual(FEBRUARY);
-    expect(exactness).toBeLessThan(0.05);
+    expect(figuresOf(shippedClients())[0]).toEqual(FEBRUARY);
+    // Nothing new to floor in February: its one part is drawn exactly to scale (FR4-AC2).
+    const { bars, perClient } = await readBars(chart);
+    expectBarShows(bars[0]!, FEBRUARY, perClient, 'Feb 2024');
+    expect(bars[0]!.reach).toBeCloseTo(250, 1);
   },
 );
 
@@ -70,11 +75,22 @@ test(
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
-    const totals = (await readBars(chart)).months.map(({ total }) => total);
-    const tallest = Math.max(...totals);
-    expect(tallest).toBe(350);
-    const at = totals.flatMap((total, i) => (total === tallest ? [MONTH_HEADINGS[i]] : []));
-    expect(at).toEqual(['Aug 2024', 'Jan 2025']);
+    const { bars, perClient } = await readBars(chart);
+    const figures = figuresOf(shippedClients());
+    // Read as drawn, each within the floor of its figure (FR4) — and the floor is too small to
+    // lift any other month (July, 334) up to them.
+    const byReach = bars.map(({ reach }, i) => ({ reach, i })).sort((a, b) => b.reach - a.reach);
+    expect(
+      byReach
+        .slice(0, 2)
+        .map(({ i }) => MONTH_HEADINGS[i])
+        .sort(),
+    ).toEqual(['Aug 2024', 'Jan 2025']);
+    for (const { i } of byReach.slice(0, 2)) {
+      expect(figures[i]!.total).toBe(350);
+      expectBarShows(bars[i]!, figures[i]!, perClient, MONTH_HEADINGS[i]!);
+    }
+    expect(byReach[2]!.reach).toBeLessThan(350);
   },
 );
 
@@ -90,10 +106,14 @@ test(
       const names = parts.map(({ name }) => name);
       // In stacking order, whichever parts this month draws.
       expect(names).toEqual(CHANNELS.filter((part) => names.includes(part)));
-      // Stacked, not overlapping: each part starts where the one beneath it ends.
+      // Stacked: each part starts where the one beneath it ends. A part floored to FLOOR_PX
+      // (FR4) grows upward from its start, so the part above may overlap it by up to the floor —
+      // never more, and never a gap (see FLOOR_PX in support/chart.ts before tightening this).
       expect(Math.abs(parts[0]!.y + parts[0]!.height - floor)).toBeLessThan(0.5);
       parts.slice(1).forEach((part, i) => {
-        expect(Math.abs(part.y + part.height - parts[i]!.y)).toBeLessThan(0.5);
+        const overlap = part.y + part.height - parts[i]!.y;
+        expect(overlap).toBeGreaterThan(-0.5);
+        expect(overlap).toBeLessThan(FLOOR_PX + 0.5);
       });
       // And each part keeps the colour the design gives it.
       for (const segment of bar)
@@ -158,8 +178,10 @@ test(
     // January 350 → 420: the scale reads to 500, and the tallest bar still sits under the ceiling.
     const chart = await openChart(page, { body: januaryRaisedBy(70) });
     expect(await yLabels(chart)).toEqual(['500', '400', '300', '200', '100', '0']);
-    const { months } = await readBars(chart);
-    expect(months[11]!.total).toBe(420);
+    const { bars, perClient } = await readBars(chart);
+    const january = figuresOf(januaryRaisedBy(70))[11]!;
+    expect(january.total).toBe(420);
+    expectBarShows(bars[11]!, january, perClient, 'Jan 2025');
     const drawn = await readDrawing(chart);
     expect(Math.min(...drawn.bars.flat().map(({ y }) => y))).toBeGreaterThan(
       Math.min(...drawn.gridlines),
@@ -173,7 +195,10 @@ test(
   async ({ page }) => {
     const chart = await openChart(page, { body: januaryRaisedBy(50) });
     expect(await yLabels(chart)).toEqual(['500', '400', '300', '200', '100', '0']);
-    expect((await readBars(chart)).months[11]!.total).toBe(400);
+    const { bars, perClient } = await readBars(chart);
+    const january = figuresOf(januaryRaisedBy(50))[11]!;
+    expect(january.total).toBe(400);
+    expectBarShows(bars[11]!, january, perClient, 'Jan 2025');
   },
 );
 
@@ -249,5 +274,33 @@ test(
     }
     await expect(chart.legend.getByRole('button')).toHaveCount(0);
     expect(await readDrawing(chart)).toEqual(before);
+  },
+);
+
+test(
+  'FR4-AC1: July 2024’s new organic and new paid are drawn at least FLOOR_PX tall, not hairlines',
+  { tag: '@regression' },
+  async ({ page }) => {
+    const chart = await openChart(page);
+    const july = (await readDrawing(chart)).bars[5]!;
+    const { perClient } = await readBars(chart);
+    // To scale, 2 clients and 1 client would be under FLOOR_PX: that is why the floor exists.
+    expect(2 * perClient).toBeLessThan(FLOOR_PX);
+    for (const part of ['New organic', 'New paid']) {
+      const segment = july.find(({ name }) => name === part);
+      expect(segment?.height, part).toBeGreaterThanOrEqual(FLOOR_PX - 0.01);
+    }
+  },
+);
+
+test(
+  'FR4-AC2: February 2024, where nobody was newly acquired, draws no new organic or new paid part at all',
+  { tag: '@regression' },
+  async ({ page }) => {
+    const chart = await openChart(page);
+    const february = (await readDrawing(chart)).bars[0]!;
+    expect(february.filter(({ height }) => height > 0).map(({ name }) => name)).toEqual([
+      'Existing clients',
+    ]);
   },
 );

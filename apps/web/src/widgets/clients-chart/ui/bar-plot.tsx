@@ -17,6 +17,23 @@ type BarPlotProps = {
 /** Left at 0 so the plot starts exactly at the y-axis; right 16 or January's label clips (§2.5). */
 const MARGIN = { ...PLOT_MARGIN };
 const STACK = 'clients';
+/**
+ * The least a part with clients in it is drawn (004 FR4, §2.4): the newly acquired are 0–2 clients
+ * a month, under two pixels to scale. The figures are untouched; only the drawing gives way.
+ */
+const MIN_PART_PX = 2;
+
+/**
+ * A function, so zero stays zero (FR4-AC2) — and keyed on the part's **own** figure, found by the
+ * month's index. In a stack the library hands the callback the running top of the stack, not the
+ * part (measured, recharts 3.10: February's New organic is called with 250 and would be drawn 2 px
+ * tall at 0 clients), so the tech doc's `(value) => (value > 0 ? 2 : 0)` would draw every zero.
+ */
+const floorOf =
+  (points: readonly MonthlyPoint[], name: string) =>
+  (_top: number | null | undefined, index: number): number =>
+    (points[index]?.byChannel[name] ?? 0) > 0 ? MIN_PART_PX : 0;
+
 /** The design rounds the top of each bar only. */
 const TOP_RADIUS: [number, number, number, number] = [2, 2, 0, 0];
 
@@ -69,6 +86,7 @@ export const BarPlot = memo(function BarPlot({ series, initialDimension }: BarPl
             dataKey={(point: MonthlyPoint) => point.byChannel[name] ?? 0}
             stackId={STACK}
             fill={channelColour(name)}
+            minPointSize={floorOf(series.points, name)}
             {...(name === topChannel && { radius: TOP_RADIUS })}
           />
         ))}

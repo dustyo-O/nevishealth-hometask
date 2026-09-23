@@ -13,9 +13,10 @@ import {
   expectTintOver,
   FEBRUARY_PANEL,
   FEBRUARY_SAID,
+  expectBarsShow,
+  figuresOf,
   hoverMonth,
   openChart,
-  readBars,
   readDrawing,
   readPanel,
   type Chart,
@@ -106,7 +107,7 @@ test(
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
-    const { months } = await readBars(chart);
+    const months = figuresOf(shippedClients());
     await tabToChart(page, chart);
     await page.keyboard.press('ArrowRight');
     await expectReading(chart, '2024-03');
@@ -121,7 +122,8 @@ test(
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
-    const { months } = await readBars(chart);
+    const months = figuresOf(shippedClients());
+    await expectBarsShow(chart, months);
     await tabToChart(page, chart);
     for (const [index, heading] of MONTH_HEADINGS.entries()) {
       if (index > 0) await page.keyboard.press('ArrowRight');
@@ -238,7 +240,9 @@ test(
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
-    const { months } = await readBars(chart);
+    // The figures the served data implies; the drawing shows them, within the floor (FR4).
+    const months = figuresOf(shippedClients());
+    await expectBarsShow(chart, months);
     await expect(chart.table.getByRole('columnheader')).toHaveText([
       'Month',
       'Existing clients',

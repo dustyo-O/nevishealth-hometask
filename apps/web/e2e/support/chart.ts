@@ -1,7 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import type { Item } from './clients-double';
 import { clientsPage, type ClientsPage } from './clients-page';
-import { openTable, shippedClients, type ClientsBody } from './table';
+import { MONTH_HEADINGS, openTable, shippedClients, type ClientsBody } from './table';
 
 /**
  * Spec 003's browser suite reads the chart the way a person does — from what is drawn — and never
@@ -157,37 +157,129 @@ export const readDrawing = (chart: Chart): Promise<Drawn> =>
 export type MonthFigures = Record<Part, number> & { total: number };
 
 /**
+ * The least a part with clients in it is drawn, in pixels (004 FR4, §2.4). The newly acquired are
+ * 0–2 clients a month — under two pixels to scale — so the chart floors them, and a floored part
+ * grows upward from where it starts: into the part above it, or above the top of its bar.
+ *
+ * WHY THIS TOLERANCE EXISTS, AND WHY IT MUST NOT BE TIGHTENED: every height below is checked
+ * against `max(figure to scale, FLOOR_PX)`, and a bar's top against its total plus at most
+ * FLOOR_PX. Checking heights "exactly to scale" again — as spec 003's suite did, to 0.05 of a
+ * client — fails every month with a new client in it, because FR4 asks the drawing to differ from
+ * the figures by up to this much. It covers the floor and nothing else: the figures a person
+ * reads — the panel, the hidden table, the announcement — are still asserted exactly, and every
+ * part the floor does not touch is still read to within PRECISION.
+ */
+export const FLOOR_PX = 2;
+
+/** How close a drawn edge must be to where the figures put it, in clients: a hundredth-ish. */
+const PRECISION = 0.05;
+
+/** A bar as drawn, in clients and unrounded: each part's height, and how high the bar reaches. */
+export type BarReading = Record<Part, number> & { reach: number };
+
+/**
  * Every bar's parts as numbers of clients, read as a person reads a chart: each segment's height
- * against the distance between the "0" and the top gridline and what the top label says.
- * `exactness` is how far the raw reading was from a whole client — a drawing that is right
- * lands within a hundredth.
+ * against the distance between the "0" and the top gridline and what the top label says. Not
+ * rounded: with the floor (FLOOR_PX) a reading is not a whole number of clients, so a rounded one
+ * would be a figure the chart never showed. Compare it to figures with `expectBarShows`.
  */
 export const readBars = async (
   chart: Chart,
-): Promise<{ months: MonthFigures[]; exactness: number }> => {
+): Promise<{ bars: BarReading[]; perClient: number }> => {
   const drawn = await readDrawing(chart);
   const top = Math.max(...drawn.yTicks.map(({ text }) => Number(text)));
   const ceiling = Math.min(...drawn.gridlines);
   const floor = Math.max(...drawn.gridlines);
   const perClient = (floor - ceiling) / top;
-  let exactness = 0;
-  const months = drawn.bars.map((segments) => {
-    const figures = { total: 0 } as MonthFigures;
+  const bars = drawn.bars.map((segments) => {
+    const bar = {
+      reach: (floor - Math.min(...segments.map(({ y }) => y))) / perClient,
+    } as BarReading;
     for (const part of CHANNELS) {
       // A part missing from the drawing is a part that is zero that month.
       const segment = segments.find(({ name }) => name === part);
-      const raw = segment === undefined ? 0 : segment.height / perClient;
-      exactness = Math.max(exactness, Math.abs(raw - Math.round(raw)));
-      figures[part] = Math.round(raw);
+      bar[part] = segment === undefined ? 0 : segment.height / perClient;
     }
-    const tallest = Math.min(...segments.map(({ y }) => y));
-    const raw = (floor - tallest) / perClient;
-    exactness = Math.max(exactness, Math.abs(raw - Math.round(raw)));
-    figures.total = Math.round(raw);
-    return figures;
+    return bar;
   });
-  return { months, exactness };
+  return { bars, perClient };
 };
+
+/**
+ * The bar shows these figures: a zero part is not drawn at all; any other part is its figure to
+ * scale, or FLOOR_PX if that is taller (FR4); and the bar reaches its total, and no further than
+ * the floor can lift it.
+ */
+export const expectBarShows = (
+  bar: BarReading,
+  figures: MonthFigures,
+  perClient: number,
+  month: string,
+): void => {
+  const floor = FLOOR_PX / perClient;
+  for (const part of CHANNELS) {
+    const drawn = figures[part] === 0 ? 0 : Math.max(figures[part], floor);
+    expect(Math.abs(bar[part] - drawn), `${month}: ${part} drawn as ${figures[part]}`).toBeLessThan(
+      PRECISION,
+    );
+  }
+  expect(bar.reach, `${month}: the bar reaches its total`).toBeGreaterThan(
+    figures.total - PRECISION,
+  );
+  expect(bar.reach, `${month}: and no more than the floor above it`).toBeLessThan(
+    figures.total + floor + PRECISION,
+  );
+};
+
+/** Every bar shows its month's figures (`expectBarShows`), twelve of each. */
+export const expectBarsShow = async (chart: Chart, figures: MonthFigures[]): Promise<void> => {
+  const { bars, perClient } = await readBars(chart);
+  expect(bars).toHaveLength(figures.length);
+  bars.forEach((bar, i) => expectBarShows(bar, figures[i]!, perClient, MONTH_HEADINGS[i]!));
+};
+
+/** Every channel named `name` in the tree, month by month: what the data records. */
+const recorded = (node: Item, name: string): number[] =>
+  node.name === name
+    ? node.values
+    : [...(node.branches ?? []), ...(node.employees ?? []), ...(node.channels ?? [])]
+        .map((child) => recorded(child, name))
+        .reduce(
+          (sum, values) => sum.map((value, i) => value + (values[i] ?? 0)),
+          node.values.map(() => 0),
+        );
+
+/**
+ * What the chart must say about `body`, worked out here from the served figures and not by the
+ * widget: New organic and New paid as the tree records them; Existing clients the Company row
+ * less those two, never below zero (004 §2.3); the total, the three added up.
+ */
+export const figuresOf = (body: ClientsBody): MonthFigures[] => {
+  const organic = recorded(body.company, 'New organic');
+  const paid = recorded(body.company, 'New paid');
+  return body.company.values.map((company, i) => {
+    const figures = {
+      'Existing clients': Math.max(0, company - organic[i]! - paid[i]!),
+      'New organic': organic[i]!,
+      'New paid': paid[i]!,
+    };
+    return { ...figures, total: CHANNELS.reduce((sum, part) => sum + figures[part], 0) };
+  });
+};
+
+/** What the visually-hidden table says, month by month (FR6-AC2): exact figures, as text. */
+export const readTable = (chart: Chart): Promise<MonthFigures[]> =>
+  chart.table.evaluate(
+    (table, parts) =>
+      [...table.querySelectorAll('tbody tr')].map((row) => {
+        const cells = [...row.querySelectorAll('td')].map((td) => Number(td.textContent));
+        return Object.fromEntries([
+          ...parts.map((part, i) => [part, cells[i]]),
+          ['total', cells[parts.length]],
+        ]) as MonthFigures;
+      }),
+    [...CHANNELS],
+  );
 
 /** The centre of month `index`'s column, halfway up the plot — a point a pointer can rest on. */
 export const columnPoint = async (

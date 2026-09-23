@@ -153,6 +153,21 @@ const overshootingClients = (): ClientsResponse => {
   return data;
 };
 
+/**
+ * The least a part with clients in it is drawn (004 FR4, §2.4). The newly acquired are 0–2
+ * clients a month, under two pixels to scale, so the drawing floors them here — and a floored part
+ * grows upward from where it starts, into the part above it or above the bar. So a drawn height is
+ * `max(to scale, FLOOR_PX)` and a bar's top may stand up to FLOOR_PX above its figure. That is the
+ * one tolerance on heights, and it exists because FR4 asks for it: tightening it back to "exactly
+ * to scale" fails every month with a new client in it. Figures — panel, table, announcement — are
+ * still asserted exactly; only pixels give way.
+ */
+const FLOOR_PX = 2;
+
+/** How tall a part of `value` clients is drawn: to scale, or the floor if that is taller; 0 stays 0. */
+const drawnPx = (value: number, pxPerClient: number) =>
+  value > 0 ? Math.max(value * pxPerClient, FLOOR_PX) : 0;
+
 const THREE = ['Existing clients', 'New organic', 'New paid'];
 const KEYS = ['existing', 'organic', 'paid'] as const;
 
@@ -202,35 +217,45 @@ describe('ClientsChart', () => {
     expect(svg).toHaveAttribute('height', String(SIZE.height));
   });
 
-  it('draws each month by series and value: Existing clients derived, the new ones as recorded (FR3-AC1/AC5)', () => {
+  it('draws each month by series and value: Existing clients derived, the new ones as recorded (FR3-AC1/AC5, FR4)', () => {
     const data = shippedClients();
     const { pxPerClient, months } = barsIn(drawingOf(renderChart(data).container));
     expect(months).toHaveLength(12);
     months.forEach((rects, month) => {
-      const valueOf = (key: string) =>
-        rects.filter((rect) => rect.key === key).reduce((sum, rect) => sum + rect.height, 0) /
-        pxPerClient;
+      const heightOf = (key: string) =>
+        rects.filter((rect) => rect.key === key).reduce((sum, rect) => sum + rect.height, 0);
       const { existing, organic, paid } = expected(data, month);
-      expect(valueOf('existing')).toBeCloseTo(existing, 1);
-      expect(valueOf('organic')).toBeCloseTo(organic, 1);
-      expect(valueOf('paid')).toBeCloseTo(paid, 1);
+      expect(heightOf('existing')).toBeCloseTo(drawnPx(existing, pxPerClient), 3);
+      expect(heightOf('organic')).toBeCloseTo(drawnPx(organic, pxPerClient), 3);
+      expect(heightOf('paid')).toBeCloseTo(drawnPx(paid, pxPerClient), 3);
     });
   });
 
-  it("stacks each month's parts to the Company row's figure, bottom-up, each on the last (FR1-AC2/AC5)", () => {
+  it("stacks each month's parts to the Company row's figure, bottom-up, each on the last (FR1-AC2/AC5, FR4)", () => {
     const data = shippedClients();
     const { baseline, pxPerClient, months } = barsIn(drawingOf(renderChart(data).container));
+    expect(months).toHaveLength(12);
     months.forEach((rects, month) => {
-      const drawn = rects.reduce((sum, rect) => sum + rect.height, 0) / pxPerClient;
-      expect(drawn).toBeCloseTo(data.company.values[month]!, 1);
-      const ordered = [...rects].sort((a, b) => b.top - a.top);
+      // Bottom-up in the order Existing, New organic, New paid, whichever this month draws.
+      const ordered = [...rects].sort((a, b) => b.top + b.height - (a.top + a.height));
       expect(ordered.map((rect) => rect.key)).toEqual(
         KEYS.filter((key) => rects.some((rect) => rect.key === key)),
       );
-      expect(ordered[0]!.top + ordered[0]!.height).toBeCloseTo(baseline, 3);
-      ordered.slice(1).forEach((rect, i) => {
-        expect(rect.top + rect.height).toBeCloseTo(ordered[i]!.top, 3);
-      });
+      // Each part starts exactly where the figures beneath it end, to scale: the floor only ever
+      // grows a part upward from there (FLOOR_PX).
+      const figures = expected(data, month);
+      let beneath = 0;
+      for (const rect of ordered) {
+        expect(rect.top + rect.height).toBeCloseTo(baseline - beneath * pxPerClient, 3);
+        beneath += figures[rect.key];
+      }
+      expect(beneath).toBe(data.company.values[month]);
+      // So the bar reaches its Company row's figure, and no more than the floor above it.
+      const reach = (baseline - Math.min(...rects.map((rect) => rect.top))) / pxPerClient;
+      expect(reach).toBeGreaterThanOrEqual(data.company.values[month]! - 1e-6);
+      expect(reach - data.company.values[month]!).toBeLessThanOrEqual(
+        FLOOR_PX / pxPerClient + 1e-6,
+      );
     });
   });
 
@@ -571,21 +596,39 @@ describe('ClientsChart', () => {
 });
 
 describe('ClientsChart, when the data records the channel of only part of the company (004)', () => {
-  it("draws every bar to its Company row's figure, Existing clients at the base (FR3-AC1/AC2)", () => {
+  it('draws no new-client part at all in February, where nobody was newly acquired (FR4-AC2)', () => {
+    const { months } = barsIn(drawingOf(renderChart().container));
+    const february = months[0]!;
+    expect(february.filter((rect) => rect.key !== 'existing' && rect.height > 0)).toEqual([]);
+    expect(february.filter((rect) => rect.key === 'existing')).toHaveLength(1);
+  });
+
+  it("draws July's new organic and new paid at least FLOOR_PX tall, not hairlines (FR4-AC1)", () => {
+    const { pxPerClient, months } = barsIn(drawingOf(renderChart().container));
+    // To scale they would be 2 and 1 clients: under 1.5 px and under 1 px at this size.
+    expect(1 * pxPerClient).toBeLessThan(FLOOR_PX);
+    const july = months[JUL_2024]!;
+    for (const key of ['organic', 'paid'] as const) {
+      const [part] = july.filter((rect) => rect.key === key);
+      expect(part?.height).toBeGreaterThanOrEqual(FLOOR_PX - 1e-6);
+    }
+  });
+
+  it('floors no month with a new client in it below FLOOR_PX, and draws every zero as nothing (FR4)', () => {
     const data = shippedClients();
-    const { baseline, pxPerClient, months } = barsIn(drawingOf(renderChart(data).container));
-    expect(months).toHaveLength(12);
+    const { months } = barsIn(drawingOf(renderChart(data).container));
     months.forEach((rects, month) => {
-      const drawn = rects.reduce((sum, rect) => sum + rect.height, 0) / pxPerClient;
-      expect(drawn).toBeCloseTo(data.company.values[month]!, 1);
-      // Bottom-up in the order Existing, New organic, New paid; each resting on the last.
-      const drawnKeys = KEYS.filter((key) => rects.some((rect) => rect.key === key));
-      const ordered = [...rects].sort((a, b) => b.top - a.top);
-      expect(ordered.map((rect) => rect.key)).toEqual(drawnKeys);
-      expect(ordered[0]!.top + ordered[0]!.height).toBeCloseTo(baseline, 3);
-      ordered.slice(1).forEach((rect, i) => {
-        expect(rect.top + rect.height).toBeCloseTo(ordered[i]!.top, 3);
-      });
+      const { organic, paid } = expected(data, month);
+      for (const [key, value] of [
+        ['organic', organic],
+        ['paid', paid],
+      ] as const) {
+        const height = rects
+          .filter((rect) => rect.key === key)
+          .reduce((sum, r) => sum + r.height, 0);
+        if (value === 0) expect(height).toBe(0);
+        else expect(height).toBeGreaterThanOrEqual(FLOOR_PX - 1e-6);
+      }
     });
   });
 

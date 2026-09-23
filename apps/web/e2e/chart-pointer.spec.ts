@@ -12,6 +12,8 @@ import {
   expectTintOver,
   FEBRUARY_PANEL,
   FEBRUARY_SAID,
+  expectBarShows,
+  figuresOf,
   hoverMonth,
   openChart,
   readBars,
@@ -20,7 +22,7 @@ import {
   CHANNELS,
 } from './support/chart';
 import { MONTHS } from './support/clients-double';
-import { MONTH_HEADINGS } from './support/table';
+import { MONTH_HEADINGS, shippedClients } from './support/table';
 
 test(
   'FR4-AC1: pointing at February 2024 opens a panel reading "Feb 2024", 250, 0, 0 and a total of 250, in stacking order',
@@ -97,7 +99,8 @@ test(
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
-    const { months } = await readBars(chart);
+    const { bars, perClient } = await readBars(chart);
+    const months = figuresOf(shippedClients());
     for (const [index, heading] of MONTH_HEADINGS.entries()) {
       await hoverMonth(chart, index);
       await expectReading(chart, MONTHS[index]!);
@@ -108,6 +111,19 @@ test(
       const total = values.pop();
       expect(values.reduce((sum, value) => sum + value, 0)).toBe(total);
       expect(total).toBe(months[index]!.total);
+      // And the bar drawn shows the panel's figures — heights within the floor only (FR4).
+      const [existing, organic, paid] = values;
+      expectBarShows(
+        bars[index]!,
+        {
+          'Existing clients': existing!,
+          'New organic': organic!,
+          'New paid': paid!,
+          total: total!,
+        },
+        perClient,
+        heading,
+      );
       // The panel stays inside the card for every month.
       const card = (await chart.ui.chartCard.boundingBox())!;
       const box = (await chart.panel.boundingBox())!;
