@@ -13,8 +13,9 @@ type MonthPanelProps = {
 };
 
 /**
- * The month being read, as a small panel beside its column (FR4-AC1): the month, the three parts
- * in the order they are stacked, and the total last. Its text comes from the widget's own state,
+ * The month being read, as a small panel beside its column (FR4-AC1): the month, its parts in
+ * the order they are stacked — "Not recorded" included, at 0 too, when the year has any (004
+ * FR4) — and the total last. Its text comes from the widget's own state,
  * never from the library's payload — the library's hover index was measured disagreeing with
  * ours when a resting pointer met a Tab (003 §3 R-4). Months in the first half of the year open
  * it to the right of their column, the rest to the left, so it stays over the plot at any width.

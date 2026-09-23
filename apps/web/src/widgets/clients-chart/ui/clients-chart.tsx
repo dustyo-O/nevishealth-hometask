@@ -19,6 +19,7 @@ import {
 } from '@/entities/clients';
 import { VisuallyHidden } from '@/shared/ui/visually-hidden';
 import { describeMonth } from '../lib/describe-month';
+import { withNotRecorded } from '../lib/not-recorded';
 import {
   COLUMNS_LEFT,
   COLUMNS_RIGHT,
@@ -91,7 +92,12 @@ export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
   const [switches] = useState(() => readDevSwitches(window.location.search));
   const { data } = useClientsQuery(switches);
   // Memoised so a refetch with the same figures hands the drawing the same series (FR7-AC1).
-  const series = useMemo(() => (data === undefined ? undefined : toMonthlySeries(data)), [data]);
+  // "Not recorded" is decided here, once for the whole year (004 §2.3): the drawing, the legend,
+  // the panel, the hidden table and the announcement all read this one series.
+  const series = useMemo(
+    () => (data === undefined ? undefined : withNotRecorded(toMonthlySeries(data))),
+    [data],
+  );
   const [reader, dispatch] = useReducer(readMonth, CLOSED);
   // The live region speaks for the outline only; a pointer sweeping the year is for the eye.
   const [focused, setFocused] = useState(false);

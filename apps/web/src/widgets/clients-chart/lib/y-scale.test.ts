@@ -5,7 +5,12 @@ import { yScale } from './y-scale';
 /** A series whose months total the given figures; the channel split does not matter here. */
 const seriesOf = (...totals: number[]): MonthlySeries => ({
   channels: ['Only'],
-  points: totals.map((total, i) => ({ month: `2024-${i + 1}`, byChannel: { Only: total }, total })),
+  points: totals.map((total, i) => ({
+    month: `2024-${i + 1}`,
+    byChannel: { Only: total },
+    total,
+    company: total,
+  })),
 });
 
 describe('yScale', () => {

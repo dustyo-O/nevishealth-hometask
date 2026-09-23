@@ -1,3 +1,4 @@
+import type { ClientsResponse } from '@nevis/contracts';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -49,9 +50,9 @@ const preferLessMotion = () => {
 beforeEach(preferLessMotion);
 
 /** The page mounts the chart only once the figures are in the cache; so does this. */
-const renderChart = () => {
+const renderChart = (data: ClientsResponse = shippedClients()) => {
   const client = createQueryClient();
-  client.setQueryData(clientsQueryOptions().queryKey, shippedClients());
+  client.setQueryData(clientsQueryOptions().queryKey, data);
   return render(
     <QueryClientProvider client={client}>
       <ClientsChart initialDimension={SIZE} />
@@ -492,5 +493,198 @@ describe('ClientsChart', () => {
     await user.tab();
     await user.keyboard('{ArrowRight}');
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+const JUN_2024 = 4;
+const SEP_2024 = 7;
+
+/**
+ * The shipped company with the gaps the brief describes (004 FR1): only the first adviser keeps
+ * her channels, so most of every month is attributed to none. June's company figure is set to
+ * exactly what her channels come to — a month with nothing unrecorded — and September's to less
+ * than they come to, the overshoot the chart must never draw below zero (FR3, spec review F1).
+ */
+const gappedClients = (): ClientsResponse => {
+  const data = shippedClients();
+  const [first, ...rest] = data.company.branches ?? [];
+  const [anna, ...others] = first?.employees ?? [];
+  for (const adviser of [...others, ...rest.flatMap((branch) => branch.employees ?? [])]) {
+    delete adviser.channels;
+  }
+  const annaIn = (month: number) =>
+    (anna?.channels ?? []).reduce((sum, channel) => sum + (channel.values[month] ?? 0), 0);
+  data.company.values[JUN_2024] = annaIn(JUN_2024);
+  data.company.values[SEP_2024] = annaIn(SEP_2024) - 7;
+  return data;
+};
+
+const FOUR = ['Not recorded', 'Existing clients', 'New organic', 'New paid'];
+const KEYS = ['not-recorded', 'existing', 'organic', 'paid'];
+
+/**
+ * Every drawn rectangle, grouped into its month by its column. Segments are never counted: a
+ * zero part may draw no rectangle at all (004 §2.7), so each month reads what it does draw.
+ */
+const barsIn = (svg: SVGSVGElement) => {
+  const gridYs = [...svg.querySelectorAll('line')].map((line) => Number(line.getAttribute('y1')));
+  const baseline = Math.max(...gridYs);
+  const [top] = [...svg.querySelectorAll('text')]
+    .map((text) => Number(text.textContent))
+    .filter((value) => !Number.isNaN(value))
+    .sort((a, b) => b - a);
+  const pxPerClient = (baseline - Math.min(...gridYs)) / top!;
+  const rects = KEYS.flatMap((key) =>
+    [...svg.querySelectorAll(`path[fill="var(--color-channel-${key})"]`)].map((path) => ({
+      key,
+      x: Number(path.getAttribute('x')),
+      top: Number(path.getAttribute('y')),
+      height: Number(path.getAttribute('height')),
+    })),
+  );
+  const columns = [...new Set(rects.map((rect) => Math.round(rect.x)))].sort((a, b) => a - b);
+  return {
+    baseline,
+    pxPerClient,
+    months: columns.map((x) => rects.filter((rect) => Math.round(rect.x) === x)),
+  };
+};
+
+const panelRows = (drawing: HTMLElement) =>
+  [...(panelIn(drawing)?.querySelectorAll('dl > div') ?? [])].map((row) => [
+    row.querySelector('dt')?.textContent,
+    row.querySelector('dd')?.textContent,
+  ]);
+
+const legendOf = () =>
+  within(screen.getByRole('list'))
+    .getAllByRole('listitem')
+    .map((item) => item.textContent);
+
+describe('ClientsChart, when the channels account for only part of the company (004)', () => {
+  it("draws every bar to its Company row's figure, with Not recorded at the base (FR3-AC1/AC2)", () => {
+    const data = gappedClients();
+    const { baseline, pxPerClient, months } = barsIn(drawingOf(renderChart(data).container));
+    expect(months).toHaveLength(12);
+    const channels = (month: number) =>
+      (data.company.branches?.[0]?.employees?.[0]?.channels ?? []).reduce(
+        (sum, channel) => sum + (channel.values[month] ?? 0),
+        0,
+      );
+    months.forEach((rects, month) => {
+      const drawn = rects.reduce((sum, rect) => sum + rect.height, 0) / pxPerClient;
+      // As tall as the Company row — or, where the channels overshoot it, as tall as they are.
+      expect(drawn).toBeCloseTo(Math.max(data.company.values[month]!, channels(month)), 1);
+      // Bottom-up in the order Not recorded, Existing, New organic, New paid; each on the last.
+      const drawnKeys = KEYS.filter((key) => rects.some((rect) => rect.key === key));
+      const ordered = [...rects].sort((a, b) => b.top - a.top);
+      expect(ordered.map((rect) => rect.key)).toEqual(drawnKeys);
+      expect(ordered[0]!.top + ordered[0]!.height).toBeCloseTo(baseline, 3);
+      ordered.slice(1).forEach((rect, i) => {
+        expect(rect.top + rect.height).toBeCloseTo(ordered[i]!.top, 3);
+      });
+    });
+    // February is mostly unrecorded; June and September have nothing unrecorded to draw.
+    const unrecorded = (month: number) =>
+      months[month]!.filter((rect) => rect.key === 'not-recorded').reduce(
+        (sum, rect) => sum + rect.height / pxPerClient,
+        0,
+      );
+    expect(unrecorded(0)).toBeCloseTo(225, 1);
+    expect(unrecorded(JUN_2024)).toBe(0);
+    expect(unrecorded(SEP_2024)).toBe(0);
+  });
+
+  it('names four entries in the legend, Not recorded first, each with its swatch (FR4-AC1)', () => {
+    renderChart(gappedClients());
+    expect(legendOf()).toEqual(FOUR);
+    const swatch = within(screen.getByRole('list'))
+      .getByText('Not recorded')
+      .querySelector('[aria-hidden="true"]');
+    expect(swatch?.className).toMatch(/not-recorded/);
+  });
+
+  it('lists Not recorded in the panel, reading 0 in a month with nothing unrecorded (FR4-AC2/AC3/AC4)', () => {
+    const drawing = drawingBox(renderChart(gappedClients()).container);
+    hover(drawing, 0);
+    expect(panelRows(drawing)).toEqual([
+      ['Not recorded', '225'],
+      ['Existing clients', '25'],
+      ['New organic', '0'],
+      ['New paid', '0'],
+      ['Total', '250'],
+    ]);
+    hover(drawing, JUN_2024);
+    expect(panelRows(drawing)[0]).toEqual(['Not recorded', '0']);
+    hover(drawing, SEP_2024);
+    expect(panelRows(drawing)).toEqual([
+      ['Not recorded', '0'],
+      ['Existing clients', '24'],
+      ['New organic', '1'],
+      ['New paid', '2'],
+      ['Total', '27'],
+    ]);
+  });
+
+  it('keeps the legend the same while the pointer moves from month to month (FR4-AC5)', () => {
+    const drawing = drawingBox(renderChart(gappedClients()).container);
+    for (let month = 0; month < 12; month += 1) {
+      hover(drawing, month);
+      expect(legendOf()).toEqual(FOUR);
+    }
+  });
+
+  it('gives the hidden table a Not recorded column, in every row, zero included (FR5-AC1)', () => {
+    renderChart(gappedClients());
+    const [header, ...rows] = within(screen.getByRole('table')).getAllByRole('row');
+    expect(
+      within(header!)
+        .getAllByRole('columnheader')
+        .map((th) => th.textContent),
+    ).toEqual(['Month', ...FOUR, 'Total']);
+    const cells = rows.map((row) =>
+      within(row)
+        .getAllByRole('cell')
+        .map((td) => td.textContent),
+    );
+    expect(cells).toHaveLength(12);
+    expect(cells[0]).toEqual(['225', '25', '0', '0', '250']);
+    expect(cells[JUN_2024]?.[0]).toBe('0');
+    for (const row of cells) {
+      const [notRecorded, existing, organic, paid, total] = row.map(Number);
+      expect(notRecorded! + existing! + organic! + paid!).toBe(total);
+    }
+  });
+
+  it('announces Not recorded first when a screen-reader user moves to a month (FR5-AC2)', async () => {
+    const user = userEvent.setup();
+    renderChart(gappedClients());
+    await user.tab();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Feb 2024: not recorded 225, existing clients 25, new organic 0, new paid 0, total 250',
+    );
+  });
+
+  it('has no accessibility violations', async () => {
+    const { container } = renderChart(gappedClients());
+    expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+describe('ClientsChart, when every client has a recorded channel (004 FR6)', () => {
+  it('mentions Not recorded nowhere: not drawn, not in the legend, panel, table or announcement', async () => {
+    const user = userEvent.setup();
+    const { container } = renderChart();
+    const svg = drawingOf(container);
+    expect(svg.querySelector('path[fill="var(--color-channel-not-recorded)"]')).toBeNull();
+    expect(legendOf()).toEqual(['Existing clients', 'New organic', 'New paid']);
+    const drawing = drawingBox(container);
+    for (let month = 0; month < 12; month += 1) {
+      hover(drawing, month);
+      expect(panelRows(drawing).map(([name]) => name)).not.toContain('Not recorded');
+    }
+    expect(screen.queryAllByText('Not recorded')).toEqual([]);
+    await user.tab();
+    expect(screen.getByRole('status')).not.toHaveTextContent(/not recorded/);
   });
 });

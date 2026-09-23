@@ -39,3 +39,7 @@
 .paid {
   background: var(--color-channel-paid);
 }
+
+.not-recorded {
+  background: var(--color-channel-not-recorded);
+}
