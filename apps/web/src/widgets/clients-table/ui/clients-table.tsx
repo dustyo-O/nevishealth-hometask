@@ -3,6 +3,7 @@ import { flattenVisibleRows, formatMonth, type ClientsData } from '@/entities/cl
 import { TreeGrid, useExpandedIds, useTreeGrid } from '@/shared/ui/tree-grid';
 import { VisuallyHidden } from '@/shared/ui/visually-hidden';
 import { ClientsRow } from './clients-row';
+import styles from './clients-table.module.css';
 
 const GRID_ID = 'clients-table';
 
@@ -38,6 +39,7 @@ export const ClientsTable = ({ data }: ClientsTableProps) => {
     <TreeGrid
       id={GRID_ID}
       label="Clients by month"
+      className={styles.grid}
       columnCount={months.length}
       onKeyDown={grid.gridProps.onKeyDown}
       onFocus={grid.gridProps.onFocus}

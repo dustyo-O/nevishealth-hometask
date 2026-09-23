@@ -111,7 +111,7 @@ export const useTreeGrid = ({
       if (result === null) return;
 
       // The grid owns this key from here, even where the outline does not move: an arrow left to
-      // the browser would scroll the months under a stationary outline, and Space would scroll
+      // the browser would scroll the figures under a stationary outline, and Space would scroll
       // the page (FR3-AC9/AC10).
       event.preventDefault();
       hasMovedRef.current = true;

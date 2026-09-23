@@ -91,7 +91,7 @@ Takes `data: ClientsData` from the page, which owns the one query and its loadin
 
 ### 2.5 Tokens (`shared/styles/tokens.css`)
 
-Geometry, all from Figma `1:2901`: `--table-row-h: 56px`, `--table-header-h: 56px`, `--table-name-col-w: 264px`, `--table-indent-step: 28px`, `--table-cell-pad-inline-start: 16px`, `--table-cell-pad-inline-end: 24px`, `--table-chevron-size: 16px`, `--table-chevron-gap: 8px`, `--table-avatar-size: 20px`, plus `--table-month-col-min-w: 88px` _(D-17, re-measured in the browser)_.
+Geometry, all from Figma `1:2901`: `--table-row-h: 56px`, `--table-header-h: 56px`, `--table-name-col-w: 264px`, `--table-indent-step: 28px`, `--table-cell-pad-inline-start: 16px`, `--table-cell-pad-inline-end: 24px`, `--table-chevron-size: 16px`, `--table-chevron-gap: 8px`, `--table-avatar-size: 20px`, plus `--table-month-col-min-w: 88px` _(D-17, re-measured in the browser)_. _(Amended by 005 shared F2: `shared/ui/tree-grid` no longer reads these app tokens. It reads grid-scoped parameters with defaults — `--tree-grid-name-col-w`, `--tree-grid-col-min-w`, `--tree-grid-row-h`, `--tree-grid-header-h`, `--tree-grid-cell-pad-start`/`-end`, `--tree-grid-indent-step`, `--tree-grid-toggle-size`, `--tree-grid-scroll-margin-block` — and `widgets/clients-table` sets them from the tokens above on the grid's scroller, D-17a's narrow name column included. D-7's scroll padding reads `--tree-grid-name-col-w`.)_
 
 Row states, measured from Figma `0:1533`: `--color-row-hover: rgba(20,20,19,0.04)` and its opaque twin `--color-row-hover-solid` (D-5). No token for the opened row — it has no background change.
 

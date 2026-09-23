@@ -44,7 +44,7 @@
   --table-name-col-w: 264px;
   /* Below ~600 px the design's 264 left 79 px beside it at 375 — less than one month, clipped at
      every scroll position. 160 leaves 183: two whole months (002 FR6, D-17a). Applied by the
-     tree grid's scroller, the one place the column width is read. */
+     table widget, which hands these values to the tree grid as its `--tree-grid-*` parameters. */
   --table-name-col-w-narrow: 160px;
   --table-indent-step: 28px;
   --table-cell-pad-inline-start: 16px;
