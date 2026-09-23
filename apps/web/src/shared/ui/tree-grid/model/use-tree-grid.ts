@@ -9,8 +9,9 @@ import {
 } from 'react';
 import { treeGridIds } from './ids';
 import { reduceKey } from './keyboard';
-import { revealRows } from './reveal';
 import { ROW_COL_INDEX, type TreeGridCursor, type TreeGridRow } from './types';
+import { useFocusCursor } from './use-focus-cursor';
+import { useRevealOnOpen } from './use-reveal-on-open';
 
 export type UseTreeGridOptions = {
   /** The same id given to `<TreeGrid>`: both sides name elements through `treeGridIds` (D-11). */
@@ -81,79 +82,27 @@ export const useTreeGrid = ({
   // FR2's focus recovery (D-10). Closing a row can take the row the outline is on with it —
   // by mouse, which is exactly when the user is not watching the keyboard — and a keyboard user
   // must never be left with nothing selected. Corrected here, during render, so the focus
-  // effect below runs once against the cursor that survives rather than twice.
+  // effect runs once against the cursor that survives rather than twice.
   const firstRow = rows[0];
   if (firstRow !== undefined && !rows.some((row) => row.id === cursor.rowId)) {
     const closed = lastToggled !== null && rows.some((row) => row.id === lastToggled);
     setCursor({ rowId: closed ? lastToggled : firstRow.id, colIndex: ROW_COL_INDEX });
   }
 
-  // D-7, measured: Blink's own focus-scroll path ignores `scroll-padding`, so it oscillates and
-  // drops cells under the sticky name column. Take the scrolling away from focus and ask for it
-  // explicitly — `nearest` does nothing at all while the cell is already in view, which is what
-  // "the page does not move" means (FR3-AC14), and the least it can while it is not (AC15).
-  useLayoutEffect(() => {
-    if (!hasMovedRef.current) return;
-    // A row that has just been closed away is still in the DOM for a moment (D-8); the cursor
-    // is about to be moved off it by the correction above, so leave it where it is until then.
-    if (!rows.some((row) => row.id === cursor.rowId)) return;
-    const target = document.getElementById(ids.cellId(cursor.rowId, cursor.colIndex));
-    if (target === null) return;
-    // Focus that arrived on its own — a script, an assistive technology — has already been placed
-    // and scrolled by the browser; the cursor has only caught up with it (see `handleFocus`).
-    if (target === document.activeElement) return;
-    target.focus({ preventScroll: true });
-    target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  // Layout-effect order is load-bearing: focus and its scroll run before an opening's reveal
+  // scroll, so the reveal has the last word on where the page comes to rest.
+  useFocusCursor(ids, cursor, rows, hasMovedRef);
+  const markOpening = useRevealOnOpen(ids, rows, expandedIds);
 
-    // D-7 measured that the one `scroll-padding-inline-start` line lands every figure flush
-    // with the sticky name column, never under it. Re-measured at 375 in Chrome 153 on
-    // 2026-09-22, after D-17 widened a month column from 72 px to 88: the column is now wider
-    // than the 79 px of scrollport the 264 px name column leaves (343 − 264), and walking
-    // *left* Blink then aligns the cell's end edge rather than its start — `cellLeft 271`
-    // against a sticky edge at 280. At 72 px it fitted, so the original measurement was right
-    // when it was taken. CSSOM-View says `nearest` aligns the *start* edge when the target
-    // cannot fit, so asking for `start` here restores the specified behaviour rather than
-    // inventing one; it is asked for only once the cell has actually landed under the column,
-    // so `nearest` still does nothing whenever nothing is needed, and no `scrollLeft`
-    // arithmetic is involved (D-7 rejected that, and rightly).
-    if (cursor.colIndex === ROW_COL_INDEX) return;
-    const stickyEdge = target.closest('tr')?.querySelector('th')?.getBoundingClientRect().right;
-    if (stickyEdge !== undefined && target.getBoundingClientRect().left < stickyEdge) {
-      target.scrollIntoView({ block: 'nearest', inline: 'start' });
-    }
-  }, [cursor, rows, ids]);
-
-  // FR2, amended: opening a row low on the screen would leave what it revealed below the fold,
-  // where the user cannot see what their click did. Which row was just *opened* — closing scrolls
-  // nothing — is kept until the render that shows its new rows has committed.
-  const openingRef = useRef<string | null>(null);
-
-  useLayoutEffect(() => {
-    const openedId = openingRef.current;
-    if (openedId === null) return;
-    openingRef.current = null;
-    if (!expandedIds.has(openedId)) return;
-    const index = rows.findIndex((row) => row.id === openedId);
-    const opened = rows[index];
-    if (opened === undefined) return;
-    // What it revealed: every row after it that sits deeper, up to the first that does not.
-    const end = rows.findIndex((row, at) => at > index && row.level <= opened.level);
-    const revealed = rows.slice(index + 1, end === -1 ? undefined : end);
-
-    const element = document.getElementById(ids.cellId(opened.id, ROW_COL_INDEX));
-    if (element === null) return;
-    revealRows(
-      element,
-      revealed.flatMap((row) => document.getElementById(ids.cellId(row.id, ROW_COL_INDEX)) ?? []),
-    );
-  }, [rows, expandedIds, ids]);
-
-  const toggle = useCallback((rowId: string) => {
-    // Whether this opens the row (to be revealed) or closes it (to be left alone).
-    openingRef.current = latest.current.expandedIds.has(rowId) ? null : rowId;
-    setLastToggled(rowId);
-    latest.current.onToggle(rowId);
-  }, []);
+  const toggle = useCallback(
+    (rowId: string) => {
+      // Whether this opens the row (to be revealed) or closes it (to be left alone).
+      markOpening(latest.current.expandedIds.has(rowId) ? null : rowId);
+      setLastToggled(rowId);
+      latest.current.onToggle(rowId);
+    },
+    [markOpening],
+  );
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLElement>) => {
