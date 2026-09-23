@@ -6,7 +6,6 @@
 // its own file (chart-touch.spec.ts).
 import { expect, test } from '@playwright/test';
 import {
-  CHANNELS,
   columnPoint,
   expectNothingRead,
   expectReading,
@@ -18,12 +17,13 @@ import {
   readBars,
   readDrawing,
   readPanel,
+  SEGMENTS,
 } from './support/chart';
 import { MONTHS } from './support/clients-double';
 import { MONTH_HEADINGS } from './support/table';
 
 test(
-  'FR4-AC1: pointing at February 2024 opens a panel reading "Feb 2024", 221, 15, 14 and a total of 250, in stacking order',
+  'FR4-AC1: pointing at February 2024 opens a panel reading "Feb 2024", 225, 25, 0, 0 and a total of 250, in stacking order',
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
@@ -93,7 +93,7 @@ test(
 );
 
 test(
-  'FR4-AC9: for every month, the panel’s three figures add up to the total it shows — and to the bar drawn',
+  'FR4-AC9: for every month, the panel’s figures add up to the total it shows — and to the bar drawn',
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
@@ -103,9 +103,11 @@ test(
       await expectReading(chart, MONTHS[index]!);
       const panel = await readPanel(chart);
       expect(panel.month).toBe(heading);
-      expect(panel.rows.map(([name]) => name)).toEqual([...CHANNELS, 'Total']);
-      const [existing, organic, paid, total] = panel.rows.map(([, value]) => value);
-      expect(existing! + organic! + paid!).toBe(total);
+      // 004 slice 3 replaces the parts; the arithmetic stays.
+      expect(panel.rows.map(([name]) => name)).toEqual([...SEGMENTS, 'Total']);
+      const values = panel.rows.map(([, value]) => value);
+      const total = values.pop();
+      expect(values.reduce((sum, value) => sum + value, 0)).toBe(total);
       expect(total).toBe(months[index]!.total);
       // The panel stays inside the card for every month.
       const card = (await chart.ui.chartCard.boundingBox())!;

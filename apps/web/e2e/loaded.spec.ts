@@ -10,6 +10,7 @@
 import { expect, test } from '@playwright/test';
 import { clientsOk, companyWith, installClientsDouble, noBranches } from './support/clients-double';
 import { clientsPage, expectTableLoaded, TEXT, expectChartLoaded } from './support/clients-page';
+import { nameOf, namesAsRead, rowOf, settled } from './support/table';
 
 test(
   'FR5-AC1: the heading, the chart in the chart card (003 FR9: it replaced "12 months · Feb 2024 – Jan 2025"), the Company row and its three branches in the table card',
@@ -52,6 +53,37 @@ test(
     await page.goto('/');
 
     await expectTableLoaded(ui, ['Company']);
+    await expect(ui.alert).toHaveCount(0);
+  },
+);
+
+test(
+  '004 FR1: an unevenly nested company loads whole — only the rows with something beneath them open',
+  { tag: '@regression' },
+  async ({ page }) => {
+    // The default double: Branch 1 → Adviser 1 (one channel) and Adviser 2; Branches 2, 3 alone.
+    await installClientsDouble(page);
+    const ui = clientsPage(page);
+
+    await page.goto('/');
+    await expectTableLoaded(ui);
+    await expectChartLoaded(ui);
+
+    for (const leaf of ['Branch 2', 'Branch 3']) {
+      await expect(rowOf(ui, leaf)).not.toHaveAttribute('aria-expanded');
+    }
+    await nameOf(ui, 'Branch 1').click();
+    await settled(ui);
+    await expect(namesAsRead(ui)).toHaveText([
+      'Company',
+      'Branch 1',
+      'Adviser 1',
+      'Adviser 2',
+      'Branch 2',
+      'Branch 3',
+    ]);
+    await expect(rowOf(ui, 'Adviser 1')).toHaveAttribute('aria-expanded', 'false');
+    await expect(rowOf(ui, 'Adviser 2')).not.toHaveAttribute('aria-expanded');
     await expect(ui.alert).toHaveCount(0);
   },
 );

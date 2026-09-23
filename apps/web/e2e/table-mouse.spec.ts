@@ -91,17 +91,29 @@ test(
   },
 );
 
-test('FR2-AC4: opening Branch 2 leaves Branch 1 open', { tag: '@regression' }, async ({ page }) => {
-  const ui = await openTable(page);
+// Spec 002's "opening Branch 2 leaves Branch 1 open" cannot be run on the supplied data: Branch 2
+// has no advisers (004 §2.6; 002's wording is amended in 004 slice 4). The same promise — opening
+// one row never closes another — against rows that still have children, and a click on Branch 2
+// that opens nothing and closes nothing.
+test(
+  'FR2-AC4: opening another row leaves Branch 1 open; clicking Branch 2 opens nothing and closes nothing',
+  { tag: '@regression' },
+  async ({ page }) => {
+    const ui = await openTable(page);
 
-  await toggleByName(ui, 'Branch 1');
-  await toggleByName(ui, 'Branch 2');
+    await toggleByName(ui, 'Branch 1');
+    await toggleByName(ui, 'Anna Blackwood');
+    await expect(rowOf(ui, 'Branch 1')).toHaveAttribute('aria-expanded', 'true');
+    await expect(rowOf(ui, 'Anna Blackwood')).toHaveAttribute('aria-expanded', 'true');
 
-  await expect(rowOf(ui, 'Branch 1')).toHaveAttribute('aria-expanded', 'true');
-  await expect(rowOf(ui, 'Branch 2')).toHaveAttribute('aria-expanded', 'true');
-  await expect(rowOf(ui, 'Anna Blackwood')).toBeVisible();
-  await expect(rowOf(ui, 'Priya Nair')).toBeVisible();
-});
+    const rows = await ui.table.locator('tbody tr:not([inert])').count();
+    await nameOf(ui, 'Branch 2').click();
+    await expect(rowOf(ui, 'Branch 2')).not.toHaveAttribute('aria-expanded');
+    await expect(rowOf(ui, 'Branch 1')).toHaveAttribute('aria-expanded', 'true');
+    await expect(rowOf(ui, ANNA_CHANNELS[0])).toBeVisible();
+    await expect(ui.table.locator('tbody tr:not([inert])')).toHaveCount(rows);
+  },
+);
 
 test(
   'FR2-AC5: clicking a monthly figure opens, closes and changes nothing',

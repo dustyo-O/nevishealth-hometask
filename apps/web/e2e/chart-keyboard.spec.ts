@@ -68,7 +68,7 @@ test(
 );
 
 test(
-  'FR5-AC2 / FR6-AC1: arriving reads February — its column tinted, its panel shown, and "Feb 2024" with all four numbers announced',
+  'FR5-AC2 / FR6-AC1: arriving reads February — its column tinted, its panel shown, and "Feb 2024" with every part and the total announced',
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
@@ -129,7 +129,7 @@ test(
       await expectTintOver(chart, index);
       const figures = months[index]!;
       await expect(chart.live).toHaveText(
-        `${heading}: existing clients ${figures['Existing clients']}, new organic ${figures['New organic']}, new paid ${figures['New paid']}, total ${figures.total}`,
+        `${heading}: not recorded ${figures['Not recorded']}, existing clients ${figures['Existing clients']}, new organic ${figures['New organic']}, new paid ${figures['New paid']}, total ${figures.total}`,
       );
     }
   },
@@ -234,13 +234,15 @@ test(
 );
 
 test(
-  'FR6-AC2: the chart’s figures are also a table of twelve rows, one per month, with existing, organic, paid and total',
+  'FR6-AC2: the chart’s figures are also a table of twelve rows, one per month, with each part and the total',
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
     const { months } = await readBars(chart);
+    // 004 slice 3 replaces the columns (the rows the table shows); Total stays the Company row.
     await expect(chart.table.getByRole('columnheader')).toHaveText([
       'Month',
+      'Not recorded',
       'Existing clients',
       'New organic',
       'New paid',
@@ -253,6 +255,7 @@ test(
       await expect(row.getByRole('rowheader')).toHaveText(heading);
       const m = months[i]!;
       await expect(row.getByRole('cell')).toHaveText([
+        String(m['Not recorded']),
         String(m['Existing clients']),
         String(m['New organic']),
         String(m['New paid']),
