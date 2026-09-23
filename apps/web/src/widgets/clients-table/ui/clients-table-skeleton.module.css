@@ -31,15 +31,15 @@
   gap: var(--space-2);
 }
 
-/* Company at indent 0, its branches one level in (28 px per level). */
+/* Company at indent 0, its branches one level in. */
 .row:nth-child(n + 3) .name {
-  padding-inline-start: 28px;
+  padding-inline-start: var(--table-indent-step);
 }
 
 .chevron {
   flex: none;
-  width: 16px;
-  height: 16px;
+  width: var(--table-chevron-size);
+  height: var(--table-chevron-size);
 }
 
 .nameText {

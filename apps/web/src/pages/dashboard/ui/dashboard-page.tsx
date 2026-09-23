@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { ClientsChart, ClientsChartSkeleton } from '@/widgets/clients-chart';
-import { ClientsTable } from '@/widgets/clients-table';
+import { ClientsTable, ClientsTableSkeleton } from '@/widgets/clients-table';
 import { readDevSwitches, useClientsQuery } from '@/entities/clients';
 import { describeError } from '@/shared/api';
 import { Card } from '@/shared/ui/card';
 import { ErrorPanel } from '@/shared/ui/error-panel';
 import { VisuallyHidden } from '@/shared/ui/visually-hidden';
 import styles from './dashboard-page.module.css';
-import { TableCardSkeleton } from './table-card-skeleton';
 
 type View = 'loading' | 'loaded' | 'error';
 
@@ -84,7 +83,7 @@ export const DashboardPage = () => {
               {data ? <ClientsChart data={data} /> : <ClientsChartSkeleton />}
             </Card>
             <Card label="Monthly detail" className={styles.tableSlot}>
-              {data ? <ClientsTable data={data} /> : <TableCardSkeleton />}
+              {data ? <ClientsTable data={data} /> : <ClientsTableSkeleton />}
             </Card>
           </>
         )}
