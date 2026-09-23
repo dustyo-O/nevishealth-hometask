@@ -1,10 +1,8 @@
 import { MONTHS, type ClientsResponse } from '@nevis/contracts';
-import { QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { axe } from 'jest-axe';
-import { describe, expect, it, vi } from 'vitest';
-import { createQueryClient } from '@/shared/api';
+import { describe, expect, it } from 'vitest';
 import { ClientsTable } from './clients-table';
 import { clientsFixture } from '@/test/fixtures/clients';
 
@@ -50,15 +48,7 @@ const fixture = (): ClientsResponse => ({
   },
 });
 
-const mockClients = (body: ClientsResponse = fixture()) =>
-  vi.spyOn(globalThis, 'fetch').mockImplementation(() => Promise.resolve(Response.json(body)));
-
-const renderTable = () =>
-  render(
-    <QueryClientProvider client={createQueryClient({ retryDelay: 0 })}>
-      <ClientsTable />
-    </QueryClientProvider>,
-  );
+const renderTable = (data: ClientsResponse = fixture()) => render(<ClientsTable data={data} />);
 
 const rowNamed = (name: string): HTMLTableRowElement => {
   const header = screen.getByRole('rowheader', { name });
@@ -72,7 +62,6 @@ const figuresOf = (name: string) =>
 
 describe('ClientsTable (FR1)', () => {
   it('heads the twelve months in order and names the blank first column for assistive technology (FR1-AC3, FR4-AC3)', async () => {
-    mockClients();
     renderTable();
     await screen.findByRole('treegrid');
 
@@ -89,7 +78,6 @@ describe('ClientsTable (FR1)', () => {
   });
 
   it('opens with the company showing its branches, each indented one step further (FR1-AC1)', async () => {
-    mockClients();
     renderTable();
     await screen.findByRole('treegrid');
 
@@ -109,7 +97,6 @@ describe('ClientsTable (FR1)', () => {
   });
 
   it('shows every figure exactly as it is stored, never the sum of the rows beneath (FR1-AC2)', async () => {
-    mockClients();
     renderTable();
     await screen.findByRole('treegrid');
 
@@ -122,7 +109,6 @@ describe('ClientsTable (FR1)', () => {
   });
 
   it('points every figure at its own month and its own row (FR4-AC2)', async () => {
-    mockClients();
     renderTable();
     await screen.findByRole('treegrid');
 
@@ -133,11 +119,10 @@ describe('ClientsTable (FR1)', () => {
   });
 
   it('shows a company with no branches as one row with nothing to open (FR7-AC3)', async () => {
-    mockClients({
+    renderTable({
       months: [...MONTHS],
       company: { id: 'company', name: 'Company', values: [...COMPANY] },
     });
-    renderTable();
     await screen.findByRole('treegrid');
 
     expect(screen.getAllByRole('rowheader')).toHaveLength(1);
@@ -146,7 +131,6 @@ describe('ClientsTable (FR1)', () => {
   });
 
   it('has no accessibility violations', async () => {
-    mockClients();
     const { container } = renderTable();
     await screen.findByRole('treegrid');
 
@@ -174,9 +158,8 @@ const visibleNames = () =>
  */
 describe('ClientsTable — opening and closing a row with the mouse (FR2)', () => {
   it('opens a row when its name is clicked, one level at a time (FR2-AC1)', async () => {
-    mockClients(clientsFixture());
     const user = userEvent.setup();
-    renderTable();
+    renderTable(clientsFixture());
     await screen.findByRole('treegrid');
 
     await clickName(user, 'Branch 1');
@@ -194,9 +177,8 @@ describe('ClientsTable — opening and closing a row with the mouse (FR2)', () =
   });
 
   it('closes it again when the name is clicked a second time (FR2-AC2)', async () => {
-    mockClients(clientsFixture());
     const user = userEvent.setup();
-    renderTable();
+    renderTable(clientsFixture());
     await screen.findByRole('treegrid');
 
     await clickName(user, 'Branch 1');
@@ -210,9 +192,8 @@ describe('ClientsTable — opening and closing a row with the mouse (FR2)', () =
   });
 
   it('shows a re-opened branch with its own children closed again (FR2-AC3)', async () => {
-    mockClients(clientsFixture());
     const user = userEvent.setup();
-    renderTable();
+    renderTable(clientsFixture());
     await screen.findByRole('treegrid');
 
     await clickName(user, 'Branch 1');
@@ -231,9 +212,8 @@ describe('ClientsTable — opening and closing a row with the mouse (FR2)', () =
   });
 
   it('leaves the branches beside it open (FR2-AC4)', async () => {
-    mockClients(clientsFixture());
     const user = userEvent.setup();
-    renderTable();
+    renderTable(clientsFixture());
     await screen.findByRole('treegrid');
 
     await clickName(user, 'Branch 1');
@@ -252,9 +232,8 @@ describe('ClientsTable — opening and closing a row with the mouse (FR2)', () =
   });
 
   it('does nothing at all when a monthly figure is clicked (FR2-AC5)', async () => {
-    mockClients(clientsFixture());
     const user = userEvent.setup();
-    renderTable();
+    renderTable(clientsFixture());
     await screen.findByRole('treegrid');
 
     const before = visibleNames();
@@ -269,9 +248,8 @@ describe('ClientsTable — opening and closing a row with the mouse (FR2)', () =
   });
 
   it('offers nothing to open on a row with nothing beneath it (FR1-AC4)', async () => {
-    mockClients(clientsFixture());
     const user = userEvent.setup();
-    renderTable();
+    renderTable(clientsFixture());
     await screen.findByRole('treegrid');
 
     const before = visibleNames();
@@ -282,9 +260,8 @@ describe('ClientsTable — opening and closing a row with the mouse (FR2)', () =
   });
 
   it('has no accessibility violations with rows opened (FR2)', async () => {
-    mockClients(clientsFixture());
     const user = userEvent.setup();
-    const { container } = renderTable();
+    const { container } = renderTable(clientsFixture());
     await screen.findByRole('treegrid');
 
     await clickName(user, 'Branch 1');
@@ -298,9 +275,8 @@ const avatarIn = (name: string) => rowNamed(name).querySelector('[class*="avatar
 
 describe('ClientsTable — reading a row (FR5)', () => {
   it('puts an adviser’s initials before the name and nobody else’s (FR5-AC1)', async () => {
-    mockClients(clientsFixture());
     const user = userEvent.setup();
-    renderTable();
+    renderTable(clientsFixture());
     await screen.findByRole('treegrid');
 
     await clickName(user, 'Branch 1');
@@ -315,9 +291,8 @@ describe('ClientsTable — reading a row (FR5)', () => {
   });
 
   it('lets a screen reader read the name and pass over the circle (FR5-AC2)', async () => {
-    mockClients(clientsFixture());
     const user = userEvent.setup();
-    renderTable();
+    renderTable(clientsFixture());
     await screen.findByRole('treegrid');
 
     await clickName(user, 'Branch 1');
@@ -328,8 +303,7 @@ describe('ClientsTable — reading a row (FR5)', () => {
   });
 
   it('carries the full name for a pointer, however the column shortens it (FR5-AC3)', async () => {
-    mockClients(clientsFixture());
-    renderTable();
+    renderTable(clientsFixture());
     await screen.findByRole('treegrid');
 
     const label = rowNamed('Branch 1').querySelector('[class*="label"]');
@@ -344,20 +318,20 @@ describe('ClientsTable — reading a row (FR5)', () => {
  * tests; what is proved here is that this widget wires the same model to the real names and
  * the real months — a missing `onKeyDown` would leave those tests perfectly green.
  */
-const renderPage = () =>
+const renderPage = (data: ClientsResponse) =>
   render(
-    <QueryClientProvider client={createQueryClient({ retryDelay: 0 })}>
+    <>
       <button type="button">before</button>
-      <ClientsTable />
+      <ClientsTable data={data} />
       <button type="button">after</button>
-    </QueryClientProvider>,
+    </>,
   );
 
 const tabStops = () => [...screen.getByRole('treegrid').querySelectorAll('[tabindex="0"]')];
 
-const enterTable = async (): Promise<UserEvent> => {
+const enterTable = async (data: ClientsResponse): Promise<UserEvent> => {
   const user = userEvent.setup();
-  renderPage();
+  renderPage(data);
   await screen.findByRole('treegrid');
   screen.getByRole('button', { name: 'before' }).focus();
   await user.tab();
@@ -383,8 +357,7 @@ const press = async (user: UserEvent, keys: string) => {
 
 describe('ClientsTable — operating the real table from the keyboard (FR3)', () => {
   it('takes one Tab to reach the Company row and one more to leave (FR3-AC1)', async () => {
-    mockClients(clientsFixture());
-    const user = await enterTable();
+    const user = await enterTable(clientsFixture());
 
     expect(document.activeElement).toBe(rowNamed('Company'));
 
@@ -393,8 +366,7 @@ describe('ClientsTable — operating the real table from the keyboard (FR3)', ()
   });
 
   it('enters Branch 1’s figures with Right whether it is closed or open (FR3-AC2, FR3-AC3)', async () => {
-    mockClients(clientsFixture());
-    const user = await enterTable();
+    const user = await enterTable(clientsFixture());
 
     // Closed: Right moves into the months and leaves the row shut (FR3-AC2).
     await press(user, '{ArrowDown}{ArrowRight}');
@@ -413,8 +385,7 @@ describe('ClientsTable — operating the real table from the keyboard (FR3)', ()
   });
 
   it('moves the outline onto Branch 1 when a click closes the row it was inside (FR2-AC6, FR2-AC7)', async () => {
-    mockClients(clientsFixture());
-    const user = await enterTable();
+    const user = await enterTable(clientsFixture());
 
     // Company → Branch 1 → Enter → Anna Blackwood → Enter → Referral → into its months.
     await press(user, '{ArrowDown}{Enter}{ArrowDown}{Enter}{ArrowDown}');
@@ -435,9 +406,8 @@ describe('ClientsTable — operating the real table from the keyboard (FR3)', ()
   });
 
   it('leaves the keyboard where it was when a figure is clicked, so the next key acts there (FR2-AC5, code review F1)', async () => {
-    mockClients(clientsFixture());
     const user = userEvent.setup();
-    renderPage();
+    renderPage(clientsFixture());
     await screen.findByRole('treegrid');
     const before = screen.getByRole('button', { name: 'before' });
     before.focus();
@@ -469,8 +439,7 @@ describe('ClientsTable — operating the real table from the keyboard (FR3)', ()
   });
 
   it('follows focus that arrives by other means than its own keys (code review F1)', async () => {
-    mockClients(clientsFixture());
-    const user = await enterTable();
+    const user = await enterTable(clientsFixture());
 
     // A figure focused from outside the keyboard model — a script, an assistive technology.
     const figure = rowNamed('Branch 1').querySelectorAll('td')[4] as HTMLTableCellElement;
@@ -487,8 +456,7 @@ describe('ClientsTable — operating the real table from the keyboard (FR3)', ()
   });
 
   it('has no accessibility violations with the outline inside the table', async () => {
-    mockClients(clientsFixture());
-    const { container } = renderPage();
+    const { container } = renderPage(clientsFixture());
     await screen.findByRole('treegrid');
     const user = userEvent.setup();
     screen.getByRole('button', { name: 'before' }).focus();

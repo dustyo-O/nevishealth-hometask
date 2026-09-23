@@ -2,7 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { expect, it, vi } from 'vitest';
-import { clientsQueryOptions } from '@/entities/clients';
+import { clientsQueryOptions, useClientsQuery } from '@/entities/clients';
 import { createQueryClient } from '@/shared/api';
 import type { BarPlot } from './bar-plot';
 import { ClientsChart } from './clients-chart';
@@ -21,12 +21,19 @@ vi.mock('./bar-plot', () => ({
   },
 }));
 
+/** The page's part, and only that: it holds the query and hands the chart its figures. */
+const Host = () => {
+  const { data } = useClientsQuery();
+  return data ? <ClientsChart data={data} /> : null;
+};
+
 /**
  * FR7-AC1: the bars grow once. A refetch that brings back the same figures must hand the plot
  * the very same drawing, so nothing downstream can mistake it for new data and grow the bars
  * again. It rests on three things together: the query's structural sharing keeps `data` the same
- * object, the widget memoises the series on `data`, and the drawing on the series. Reading a
- * month afterwards re-renders the widget, so the memos are exercised and not merely left unreached.
+ * object, which the page hands straight down; the widget memoises the series on `data`; and the
+ * drawing on the series. Reading a month afterwards re-renders the widget, so the memos are
+ * exercised and not merely left unreached.
  */
 it('hands the plot the same drawing after a refetch with unchanged figures (FR7-AC1)', async () => {
   vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
@@ -37,7 +44,7 @@ it('hands the plot the same drawing after a refetch with unchanged figures (FR7-
   client.setQueryData(queryKey, shippedClients());
   render(
     <QueryClientProvider client={client}>
-      <ClientsChart />
+      <Host />
     </QueryClientProvider>,
   );
 

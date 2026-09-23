@@ -1,9 +1,8 @@
-import { useId, useMemo, useState, type CSSProperties } from 'react';
+import { useId, useMemo, type CSSProperties } from 'react';
 import {
   formatMonth,
-  readDevSwitches,
   toMonthlySeries,
-  useClientsQuery,
+  type ClientsData,
   type MonthlySeries,
 } from '@/entities/clients';
 import { VisuallyHidden } from '@/shared/ui/visually-hidden';
@@ -24,6 +23,8 @@ import styles from './clients-chart.module.css';
 import { MonthPanel } from './month-panel';
 
 type ClientsChartProps = {
+  /** The loaded figures; the page owns the query and mounts the chart only once they are here. */
+  data: ClientsData;
   /**
    * The size to draw at before the plot box has been measured. **A test seam: the page never
    * passes it.** jsdom has no `ResizeObserver`, so without it the drawing renders no SVG at all
@@ -68,12 +69,7 @@ const columnsOf = (months: number) =>
  * shows, Left and Right reading a month at a time into a polite live region, and the same
  * figures as a hidden table beside it (FR5, FR6).
  */
-export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
-  // Read once, like the page: changing a switch means changing the address, which reloads.
-  const [switches] = useState(() => readDevSwitches(window.location.search));
-  const { data } = useClientsQuery(switches);
-  // The page mounts the chart only once the figures are in the cache (`dashboard-page.tsx`).
-  if (data === undefined) throw new Error('The clients chart was mounted before its figures');
+export const ClientsChart = ({ data, initialDimension }: ClientsChartProps) => {
   // Memoised so a refetch with the same figures hands the drawing the same series (FR7-AC1).
   // Existing clients is derived here, from the Company row less the newly acquired (004 §2.3).
   //

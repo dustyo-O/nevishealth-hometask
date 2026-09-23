@@ -87,7 +87,7 @@ Nothing wraps at any edge. **The arrows never change the table's shape** — onl
 
 ### 2.4 `widgets/clients-table`
 
-Owns: `useClientsQuery` → tree; `useExpandedIds(new Set([company.id]))`; `useMemo(flattenVisibleRows)`; `useTreeGrid`. Renders `<TreeGrid>` with a `NameCell` of its own (chevron slot always reserved so names and figures line up; `Avatar` for advisers; indent via `--tree-grid-level`; ellipsis + reveal overlay) and twelve `TreeGrid.Cell`s. **Only the name `th` carries `onClick`** (D3 in the grill); figure cells carry nothing — verified to raise no `jsx-a11y` error. `pages/dashboard` replaces the placeholder summary with this widget and changes nothing else.
+Takes `data: ClientsData` from the page, which owns the one query and its loading and failed states _(amended by 005 table F1: the widget used to run `useClientsQuery` itself, re-reading the dev switches and guarding `data === undefined` a second time)_. Owns: `useExpandedIds(new Set([company.id]))`; `useMemo(flattenVisibleRows)`; `useTreeGrid`. Renders `<TreeGrid>` with the name cell inlined in its row component `ClientsRow` (chevron slot always reserved so names and figures line up; `Avatar` for advisers; indent via `--tree-grid-level`; ellipsis + reveal overlay) and twelve `TreeGrid.Cell`s. **Only the name `th` carries `onClick`** (D3 in the grill); figure cells carry nothing — verified to raise no `jsx-a11y` error. `pages/dashboard` replaces the placeholder summary with this widget and changes nothing else.
 
 ### 2.5 Tokens (`shared/styles/tokens.css`)
 

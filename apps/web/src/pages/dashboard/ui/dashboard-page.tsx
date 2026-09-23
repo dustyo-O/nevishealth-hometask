@@ -81,10 +81,10 @@ export const DashboardPage = () => {
         ) : (
           <>
             <Card label="Clients chart" className={styles.chartSlot}>
-              {data ? <ClientsChart /> : <ClientsChartSkeleton />}
+              {data ? <ClientsChart data={data} /> : <ClientsChartSkeleton />}
             </Card>
             <Card label="Monthly detail" className={styles.tableSlot}>
-              {data ? <ClientsTable /> : <TableCardSkeleton />}
+              {data ? <ClientsTable data={data} /> : <TableCardSkeleton />}
             </Card>
           </>
         )}

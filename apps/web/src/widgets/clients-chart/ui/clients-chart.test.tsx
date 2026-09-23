@@ -1,11 +1,8 @@
 import type { ClientsResponse, TreeNode } from '@nevis/contracts';
-import { QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { clientsQueryOptions } from '@/entities/clients';
-import { createQueryClient } from '@/shared/api';
 import { ClientsChart } from './clients-chart';
 import { shippedClients } from '@/test/fixtures/shipped-clients';
 
@@ -49,16 +46,9 @@ const preferLessMotion = () => {
 
 beforeEach(preferLessMotion);
 
-/** The page mounts the chart only once the figures are in the cache; so does this. */
-const renderChart = (data: ClientsResponse = shippedClients()) => {
-  const client = createQueryClient();
-  client.setQueryData(clientsQueryOptions().queryKey, data);
-  return render(
-    <QueryClientProvider client={client}>
-      <ClientsChart initialDimension={SIZE} />
-    </QueryClientProvider>,
-  );
-};
+/** The page mounts the chart only once it holds the figures, and hands them over; so does this. */
+const renderChart = (data: ClientsResponse = shippedClients()) =>
+  render(<ClientsChart data={data} initialDimension={SIZE} />);
 
 const drawingOf = (container: HTMLElement) => {
   const svg = container.querySelector('svg');
