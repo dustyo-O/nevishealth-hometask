@@ -1,7 +1,7 @@
 # Technical Specification: The Data As Supplied, And An Uneven Company
 
 - **Functional Specification:** `context/spec/004-supplied-payload-non-uniform-nesting/functional-spec.md`
-- **Status:** Draft
+- **Status:** Completed
 - **Author(s):** Alexander Shleyko (lead)
 - **Note on method:** no specialist consultation this time, deliberately. Spec 003 needed one because Recharts' behaviour was unknown; here every fact was measured during the grill and the audit below — the payload's real shape, the seven discrepancies, the remainder series, the table needing no change, and exactly which criteria in the completed specs stop being true. The one thing no document can settle is how the chart reads once colour carries the hierarchy — five shades of one hue, side by side — and that can only be answered by building it and looking (R-1, R-8).
 

@@ -1,7 +1,7 @@
 # Functional Specification: The Data As Supplied, And An Uneven Company
 
 - **Roadmap Item:** Phase 1 — correction to "Clients Data & Dashboard Shell": serve the figures exactly as the brief supplies them, and let the dashboard handle a company whose parts are not all broken down to the same depth.
-- **Status:** Draft
+- **Status:** Completed
 - **Author:** Alexander Shleyko
 - **Sources:** `context/inbox/supplied-payload-non-uniform-nesting.md` (grill decisions D1–D19), the brief's own data section (`context/inbox/brief.md`), `context/product/product-definition.md`, and specs 001, 002 and 003 (all Completed) whose behaviour this one corrects
 
@@ -34,12 +34,12 @@ The table shows the company exactly as the business describes it. The Company ro
 A row with nothing beneath it offers no control to open it and gives no sign that anything is hidden. Nothing about it is greyed out or marked as incomplete — it is simply a row that goes no deeper.
 
 - **Acceptance Criteria:**
-  - [ ] When the page has loaded, then the table shows a Company row followed by Branch 1, Branch 2 and Branch 3, each with twelve figures.
-  - [ ] When the user looks at Branch 2 and Branch 3, then neither shows any control to open it.
-  - [ ] When the user opens Branch 1, then five adviser rows appear — Anna Blackwood, James Walker, Maria Gutierrez, Robert Chen and Sarah Smith.
-  - [ ] Given Branch 1 is open, when the user looks at its five advisers, then only Anna Blackwood shows a control to open her row.
-  - [ ] When the user opens Anna Blackwood, then her three acquisition channels appear — Existing clients, New organic and New paid.
-  - [ ] When the user tries to open Branch 2, Branch 3, or any adviser other than Anna Blackwood, then nothing opens and nothing changes.
+  - [x] When the page has loaded, then the table shows a Company row followed by Branch 1, Branch 2 and Branch 3, each with twelve figures.
+  - [x] When the user looks at Branch 2 and Branch 3, then neither shows any control to open it.
+  - [x] When the user opens Branch 1, then five adviser rows appear — Anna Blackwood, James Walker, Maria Gutierrez, Robert Chen and Sarah Smith.
+  - [x] Given Branch 1 is open, when the user looks at its five advisers, then only Anna Blackwood shows a control to open her row.
+  - [x] When the user opens Anna Blackwood, then her three acquisition channels appear — Existing clients, New organic and New paid.
+  - [x] When the user tries to open Branch 2, Branch 3, or any adviser other than Anna Blackwood, then nothing opens and nothing changes.
 
 ### FR2 — The figures are the ones we were given
 
@@ -48,10 +48,10 @@ Every figure in the table is the one recorded for that row, shown exactly as sup
 This matters here because the supplied figures do not always agree with each other: in several months a parent's figure differs from the sum of the rows inside it. The dashboard shows both as they are and does not choose between them. It also does not warn the user, mark the rows, or refuse to show the data — a person reading the dashboard sees the business's own numbers, and reconciling them is the business's job, not the dashboard's.
 
 - **Acceptance Criteria:**
-  - [ ] When the user reads the Company row for May 2024, then it shows 301 — the figure as supplied — even though the three branches beneath it show 156, 87 and 36, which come to 279.
-  - [ ] Given Branch 1 is open, when the user reads its figure for August 2024, then it shows 214, even though its five advisers come to 216.
-  - [ ] When the user looks anywhere on the page, then no warning, badge or message about figures disagreeing is shown.
-  - [ ] Given figures that disagree with each other, when the user opens the page, then the dashboard loads and shows them normally rather than failing.
+  - [x] When the user reads the Company row for May 2024, then it shows 301 — the figure as supplied — even though the three branches beneath it show 156, 87 and 36, which come to 279.
+  - [x] Given Branch 1 is open, when the user reads its figure for August 2024, then it shows 214, even though its five advisers come to 216.
+  - [x] When the user looks anywhere on the page, then no warning, badge or message about figures disagreeing is shown.
+  - [x] Given figures that disagree with each other, when the user opens the page, then the dashboard loads and shows them normally rather than failing.
 
 ### FR3 — The chart, its months and its three parts
 
@@ -60,12 +60,12 @@ The chart shows the whole company: one bar for each of the twelve months, divide
 The newly acquired are the figures the business records: every "New organic" and every "New paid" in the company, added together. The existing clients are everyone else — the company's own figure for that month, less those newly acquired. So every bar is exactly as tall as the figure the table shows on its Company row, and nothing in it is invented.
 
 - **Acceptance Criteria:**
-  - [ ] When the page has loaded, then the chart shows twelve bars labelled "Feb 2024" through "Jan 2025", each carrying its parts in the order Existing clients, New organic, New paid from the bottom up, and omitting any part with no clients in it.
-  - [ ] When the user compares any bar with the table, then that bar's three figures add up to the figure the table shows on the Company row for the same month.
-  - [ ] When the user reads February 2024, then its parts are 250 existing clients, 0 new organic and 0 new paid.
-  - [ ] When the user reads July 2024, then its parts are 331 existing clients, 2 new organic and 1 new paid, totalling 334.
-  - [ ] When the user reads any month, then its new organic and new paid figures are the ones the business records for that month, unchanged.
-  - [ ] When the user looks at the legend, then it names exactly three parts, whatever the figures are.
+  - [x] When the page has loaded, then the chart shows twelve bars labelled "Feb 2024" through "Jan 2025", each carrying its parts in the order Existing clients, New organic, New paid from the bottom up, and omitting any part with no clients in it.
+  - [x] When the user compares any bar with the table, then that bar's three figures add up to the figure the table shows on the Company row for the same month.
+  - [x] When the user reads February 2024, then its parts are 250 existing clients, 0 new organic and 0 new paid.
+  - [x] When the user reads July 2024, then its parts are 331 existing clients, 2 new organic and 1 new paid, totalling 334.
+  - [x] When the user reads any month, then its new organic and new paid figures are the ones the business records for that month, unchanged.
+  - [x] When the user looks at the legend, then it names exactly three parts, whatever the figures are.
 
 ### FR4 — Small parts stay visible
 
@@ -78,22 +78,22 @@ The height a stretched part gains is **taken from the largest part of the same b
 This is a deliberate distortion and it is worth naming: on the stretched scale two clients do not look twice one client, they look about one and a half times. It buys the only thing that matters here — that a month with new clients can be told from a month without. **Every figure the user reads is exact**: the stretch lives only in the drawing.
 
 - **Acceptance Criteria:**
-  - [ ] When the user looks at a month where one client was newly acquired, then that part is about four pixels tall.
-  - [ ] When the user looks at a month where two clients were newly acquired, then that part is visibly taller than a part of one client, at about six pixels.
-  - [ ] When the user looks at July 2024, where two clients were won organically and one was paid for, then both parts are visible and neither is covered by the other.
-  - [ ] When the user looks at any month, then the bar's total height is the figure the table shows on its Company row, whether or not any part has been stretched.
-  - [ ] When the user looks at February 2024, where no clients were newly acquired, then no new organic or new paid part is drawn at all.
-  - [ ] When the user reads any month's figures, in the panel or as a screen reader, then they are the exact figures and are not adjusted for drawing.
+  - [x] When the user looks at a month where one client was newly acquired, then that part is about four pixels tall.
+  - [x] When the user looks at a month where two clients were newly acquired, then that part is visibly taller than a part of one client, at about six pixels.
+  - [x] When the user looks at July 2024, where two clients were won organically and one was paid for, then both parts are visible and neither is covered by the other.
+  - [x] When the user looks at any month, then the bar's total height is the figure the table shows on its Company row, whether or not any part has been stretched.
+  - [x] When the user looks at February 2024, where no clients were newly acquired, then no new organic or new paid part is drawn at all.
+  - [x] When the user reads any month's figures, in the panel or as a screen reader, then they are the exact figures and are not adjusted for drawing.
 
 ### FR5 — The legend, the panel and what a screen reader reads
 
 The legend names the three parts beneath the chart, always. The panel that appears when the user points at, taps or moves to a month lists the same three with their figures and the month's total. The same three, with the total, are what a screen reader reads as a table of twelve rows.
 
 - **Acceptance Criteria:**
-  - [ ] When the page has loaded, then the legend names Existing clients, New organic and New paid, each with its swatch.
-  - [ ] When the user points at July 2024, then the panel reads "Jul 2024", existing clients 331, new organic 2, new paid 1, and a total of 334.
-  - [ ] When a screen reader reads the chart's figures as a table, then each of the twelve rows gives existing clients, new organic, new paid and the total.
-  - [ ] When the user reads the panel for any month, then its three figures add up to the total it shows, and that total is the figure the table shows on its Company row.
+  - [x] When the page has loaded, then the legend names Existing clients, New organic and New paid, each with its swatch.
+  - [x] When the user points at July 2024, then the panel reads "Jul 2024", existing clients 331, new organic 2, new paid 1, and a total of 334.
+  - [x] When a screen reader reads the chart's figures as a table, then each of the twelve rows gives existing clients, new organic, new paid and the total.
+  - [x] When the user reads the panel for any month, then its three figures add up to the total it shows, and that total is the figure the table shows on its Company row.
 
 ---
 

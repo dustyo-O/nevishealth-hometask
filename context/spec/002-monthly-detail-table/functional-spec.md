@@ -51,9 +51,9 @@ Rows slide in when they appear and slide out when they disappear. A viewer whose
 
 - **Acceptance Criteria:**
   - [x] When the user clicks the name of Branch 1, then its five adviser rows appear directly beneath it, indented one step further, and the arrow on Branch 1 turns to its open position.
-  - [ ] Given a row sits low enough on the screen that its new rows would appear below the fold, when the user opens it, then the page scrolls just enough to bring the opened row and as many of its new rows as fit into view.
-  - [ ] Given a row reveals more rows than the screen can hold, when the user opens it, then the opened row is still on screen with the first of its new rows beneath it.
-  - [ ] When the user closes a row, then nothing scrolls the page — though at the very bottom of a page the view still shifts, because the rows that were beneath simply no longer exist and the browser has nowhere to hold the old position.
+  - [x] Given a row sits low enough on the screen that its new rows would appear below the fold, when the user opens it, then the page scrolls just enough to bring the opened row and as many of its new rows as fit into view.
+  - [x] Given a row reveals more rows than the screen can hold, when the user opens it, then the opened row is still on screen with the first of its new rows beneath it.
+  - [x] When the user closes a row, then nothing scrolls the page — though at the very bottom of a page the view still shifts, because the rows that were beneath simply no longer exist and the browser has nowhere to hold the old position.
   - [x] Given Branch 1 is open, when the user clicks its name again, then its adviser rows disappear and the arrow returns to its closed position.
   - [x] Given Branch 1 is open and Anna Blackwood inside it is open, when the user closes Branch 1, then both the advisers and Anna's channels disappear; when the user opens Branch 1 again, then Anna's row is shown closed.
   - [x] Given Branch 1 is open, when the user opens Anna Blackwood inside it, then Branch 1 stays open.
@@ -98,7 +98,7 @@ Movement stops at the edges rather than wrapping: Up on the Company row, Down on
   - [x] Given the outline is on a row deep in the table, when the user presses Home, then the outline moves to the Company row, and pressing End moves it to the last visible row.
   - [x] Given the row is fully visible and the window is narrow enough that later months are out of sight, when the user moves the outline onto one of them, then it scrolls into view sideways and the page does not scroll up or down.
   - [x] Given a row is only partly visible because the page is scrolled, when the user moves the outline onto one of that row's months, then the month scrolls into view sideways and the page scrolls only as far as needed to bring that row fully into view.
-  - [ ] When the outline moves to a row or a month that the page must scroll to reach, then it comes to rest clear of the window's edge rather than flush against it.
+  - [x] When the outline moves to a row or a month that the page must scroll to reach, then it comes to rest clear of the window's edge rather than flush against it.
 
 ### FR4 — What a screen reader reports
 
