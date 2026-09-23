@@ -3,8 +3,8 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { clientsQueryOptions, type MonthlySeries } from '@/entities/clients';
 import { createQueryClient } from '@/shared/api';
-import { shippedClients } from '@/test/fixtures/shipped-clients';
 import { ClientsChart } from './clients-chart';
+import { shippedClients } from '@/test/fixtures/shipped-clients';
 
 /** Every series the drawing is handed, in order. The drawing itself is not this test's subject. */
 const drawn = vi.hoisted(() => [] as unknown[]);
