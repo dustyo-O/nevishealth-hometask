@@ -158,18 +158,18 @@ export type MonthFigures = Record<Part, number> & { total: number };
 
 /**
  * The least a part with clients in it is drawn, in pixels (004 FR4, §2.4). The newly acquired are
- * 0–2 clients a month — under two pixels to scale — so the chart floors them, and a floored part
- * grows upward from where it starts: into the part above it, or above the top of its bar.
+ * 0–2 clients a month — about a pixel and a half to scale — so the chart lifts them to this, and
+ * takes what it adds **from Existing clients in the same bar**.
  *
- * WHY THIS TOLERANCE EXISTS, AND WHY IT MUST NOT BE TIGHTENED: every height below is checked
- * against `max(figure to scale, FLOOR_PX)`, and a bar's top against its total plus at most
- * FLOOR_PX. Checking heights "exactly to scale" again — as spec 003's suite did, to 0.05 of a
- * client — fails every month with a new client in it, because FR4 asks the drawing to differ from
- * the figures by up to this much. It covers the floor and nothing else: the figures a person
- * reads — the panel, the hidden table, the announcement — are still asserted exactly, and every
- * part the floor does not touch is still read to within PRECISION.
+ * WHAT IS EXACT AND WHAT GIVES WAY: a bar's total is drawn exactly to its figure — `reach` is
+ * checked to within PRECISION, as spec 003's suite checked it before slice 3 widened it; do not
+ * widen it again. Only the parts give way: a new part is at least FLOOR_PX and never more than the
+ * floor above its figure, and Existing clients is short by what the others borrowed. Checking the
+ * parts "exactly to scale" fails every month with a new client in it, because FR4 asks the drawing
+ * to differ there. The figures a person reads — the panel, the hidden table, the announcement —
+ * are still asserted exactly, and a month with nobody new is drawn to its figures to PRECISION.
  */
-export const FLOOR_PX = 2;
+export const FLOOR_PX = 4;
 
 /** How close a drawn edge must be to where the figures put it, in clients: a hundredth-ish. */
 const PRECISION = 0.05;
@@ -206,9 +206,10 @@ export const readBars = async (
 };
 
 /**
- * The bar shows these figures: a zero part is not drawn at all; any other part is its figure to
- * scale, or FLOOR_PX if that is taller (FR4); and the bar reaches its total, and no further than
- * the floor can lift it.
+ * The bar shows these figures: its total exactly (FR4-AC2); a zero part not drawn at all; a new
+ * part with clients in it at least FLOOR_PX and no more than the floor above its figure; Existing
+ * clients short by no more than the two new parts borrowed (FR4-AC1). A month with no newly
+ * acquired clients borrows nothing, so its every part is exact.
  */
 export const expectBarShows = (
   bar: BarReading,
@@ -217,18 +218,23 @@ export const expectBarShows = (
   month: string,
 ): void => {
   const floor = FLOOR_PX / perClient;
+  expect(Math.abs(bar.reach - figures.total), `${month}: the bar reaches its total`).toBeLessThan(
+    PRECISION,
+  );
+  const lifted = figures['New organic'] > 0 || figures['New paid'] > 0;
   for (const part of CHANNELS) {
-    const drawn = figures[part] === 0 ? 0 : Math.max(figures[part], floor);
-    expect(Math.abs(bar[part] - drawn), `${month}: ${part} drawn as ${figures[part]}`).toBeLessThan(
-      PRECISION,
-    );
+    const figure = figures[part];
+    const drawn = `${month}: ${part} drawn as ${figure}`;
+    if (figure === 0) expect(bar[part], drawn).toBeLessThan(PRECISION);
+    else if (!lifted) expect(Math.abs(bar[part] - figure), drawn).toBeLessThan(PRECISION);
+    else if (part === 'Existing clients') {
+      expect(bar[part], drawn).toBeLessThan(figure + PRECISION);
+      expect(bar[part], drawn).toBeGreaterThan(figure - 2 * floor - PRECISION);
+    } else {
+      expect(bar[part], drawn).toBeGreaterThan(Math.max(figure, floor) - PRECISION);
+      expect(bar[part], drawn).toBeLessThan(figure + floor + PRECISION);
+    }
   }
-  expect(bar.reach, `${month}: the bar reaches its total`).toBeGreaterThan(
-    figures.total - PRECISION,
-  );
-  expect(bar.reach, `${month}: and no more than the floor above it`).toBeLessThan(
-    figures.total + floor + PRECISION,
-  );
 };
 
 /** Every bar shows its month's figures (`expectBarShows`), twelve of each. */
