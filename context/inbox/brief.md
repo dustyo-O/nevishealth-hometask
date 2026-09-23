@@ -35,7 +35,7 @@ The UI and behaviour should closely match the design: Web engineer home task.
   above, and what you would do next.
 - Aim for about 6–8 hours. If you run out of time, ship the parts that matter most.
 
-### Data model (verbatim, supplied 2026-09-21; original payload in `context/inbox/data.original.json`)
+### Data model (verbatim, supplied 2026-09-21; payload in `context/inbox/data.json`, served unchanged since spec 004)
 
 The data is a tree: a company holds branches, a branch holds employees, and an employee holds
 acquisition channels. Every node has an `id`, a `name` and a `values` array of 12 monthly figures in
@@ -45,6 +45,8 @@ has channels. Your UI has to handle that.
 Serve the payload below from your API. You can copy it straight out of this PDF.
 
 ### Data adjustments (owner's decision 2026-09-21 — "keep the data structure; adjustments are fine")
+
+> **Reversed by spec 004 (2026-09-23).** The adjustments below inverted the brief's "your UI has to handle that"; `data.json` is again the payload exactly as supplied, figures that do not add up included. The completed variant lives only in git history (before commit `004 s2/shared`). Kept here as the record of what was decided and undone.
 
 `context/inbox/data.json` is the payload the API serves. Same structure as the original
 (`branches → employees → channels`, every node `{id, name, values[12]}`), generated deterministically

@@ -65,24 +65,27 @@ export const item = (id: string, name: string, lists: Lists = {}): Item => ({
 });
 
 /**
- * `n` branches; each with one adviser with one channel, so every level of the shape is present.
- * The channel carries a name the service serves: the chart colours exactly the three channels it
- * knows, and refuses one it does not (spec 003 §2.1).
+ * `n` branches, as unevenly nested as the supplied data (spec 004 FR1): only Branch 1 has
+ * advisers, and of its two only Adviser 1 has a channel. Every level is present, and so is a leaf
+ * at every level — Adviser 2 and every other branch end their line — so a suite served this double
+ * meets rows that do not open, not only rows that do. The channel carries a name the service
+ * serves: the chart colours exactly the three channels it knows (spec 003 §2.1).
  */
 export const companyWith = (n: number): Item =>
   item('company', 'Company', {
     branches: Array.from({ length: n }, (_, i) =>
-      item(`b${i + 1}`, `Branch ${i + 1}`, {
-        employees: [
-          item(`e${i + 1}`, `Adviser ${i + 1}`, {
-            channels: [item(`c${i + 1}`, 'Existing clients')],
-          }),
-        ],
-      }),
+      i === 0
+        ? item('b1', 'Branch 1', {
+            employees: [
+              item('e1', 'Adviser 1', { channels: [item('c1', 'Existing clients')] }),
+              item('e2', 'Adviser 2'),
+            ],
+          })
+        : item(`b${i + 1}`, `Branch ${i + 1}`),
     ),
   });
 
-/** A valid envelope in the shipped shape: Company with three branches. Fresh object per call. */
+/** A valid envelope in the shipped shape: Company with three unevenly nested branches. Fresh per call. */
 export const clientsOk = (company: Item = companyWith(3)) => ({ months: MONTHS, company });
 
 /** A company whose `branches` key is absent altogether (FR5-AC3). */

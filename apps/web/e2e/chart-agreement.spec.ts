@@ -10,7 +10,7 @@
 // card that drifts is caught by both comparisons. The second test serves figures that are not the
 // shipped ones, so neither card can pass by holding a copy of the shipped year.
 import { expect, test, type Page } from '@playwright/test';
-import { openChart, readBars, reshaped, type Chart } from './support/chart';
+import { openChart, readBars, reshaped, SEGMENTS, type Chart } from './support/chart';
 import { figureOf, MONTH_HEADINGS, shippedClients, type ClientsBody } from './support/table';
 
 const tableCompanyRow = async (chart: Chart): Promise<number[]> => {
@@ -35,9 +35,10 @@ const expectAgreement = async (page: Page, body: ClientsBody): Promise<void> => 
 
   MONTH_HEADINGS.forEach((month, i) => {
     const bar = months[i]!;
-    const parts = bar['Existing clients'] + bar['New organic'] + bar['New paid'];
-    // The three parts add up to the whole bar, and the whole bar to the table's Company row.
-    expect(parts, `${month}: the three parts add up to the bar`).toBe(bar.total);
+    // The remainder counts (004 R-3): without "Not recorded" the parts are a tenth of the bar.
+    const parts = SEGMENTS.reduce((sum, part) => sum + bar[part], 0);
+    // The parts add up to the whole bar, and the whole bar to the table's Company row.
+    expect(parts, `${month}: the parts add up to the bar`).toBe(bar.total);
     expect(bar.total, `${month}: chart against table`).toBe(table[i]);
   });
   // And both are the company the page was served — the Company row's own stored figures.
@@ -57,7 +58,7 @@ test(
   'FR1-AC2: on figures that are not the shipped ones, the two cards still agree — neither is holding a copy of the year',
   { tag: '@regression' },
   async ({ page }) => {
-    // Every channel moves by a different amount each month; the stored totals above are resummed.
+    // Every channel moves by a different amount each month; the stored figures above move with it.
     const body = reshaped((value, channel, month) => value + ((channel.length + month) % 5) * 3);
     expect(body.company.values).not.toEqual(shippedClients().company.values);
     await expectAgreement(page, body);

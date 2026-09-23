@@ -6,35 +6,50 @@
 // height against the labelled axis — never from the widget's state (support/chart.ts).
 import { expect, test } from '@playwright/test';
 import {
-  CHANNELS,
   FEBRUARY,
+  SEGMENTS,
   januaryRaisedBy,
   openChart,
   readBars,
   readDrawing,
   type Chart,
+  type Segment,
 } from './support/chart';
 import { MONTH_HEADINGS } from './support/table';
 
-/** The three channel tokens as the browser computes them (003 §2.2). */
+/** `--color-channel-not-recorded`: 12 % of the text colour into the surface (004 slice 1). */
+const NOT_RECORDED_GREY = 'color(srgb 0.889412 0.889412 0.888941)';
+
+/** The part tokens as the browser computes them (003 §2.2, 004 slice 1's neutral grey). */
 const COLOURS = {
+  'Not recorded': NOT_RECORDED_GREY,
   'Existing clients': 'rgb(178, 157, 248)',
   'New organic': 'rgb(244, 190, 180)',
   'New paid': 'rgb(167, 94, 110)',
 } as const;
 
+/** Each bar's parts from the bottom up, as painted. */
+const bottomUp = (bar: Segment[]) => [...bar].sort((a, b) => b.y + b.height - (a.y + a.height));
+
 const yLabels = async (chart: Chart) => (await readDrawing(chart)).yTicks.map(({ text }) => text);
 
+// 004 slice 3 replaces what the parts are (the rows the table shows). Until then: Not recorded
+// in every month, and each channel wherever it is not zero — never a count of rectangles.
 test(
-  'FR1-AC1: twelve bars labelled "Feb 2024" through "Jan 2025" in order, each divided into three parts',
+  'FR1-AC1: twelve bars labelled "Feb 2024" through "Jan 2025" in order, each divided into its parts',
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
     const drawn = await readDrawing(chart);
+    const { months } = await readBars(chart);
 
     expect(drawn.xTicks.map(({ text }) => text)).toEqual([...MONTH_HEADINGS]);
     expect(drawn.bars).toHaveLength(12);
-    for (const bar of drawn.bars) expect(bar.map(({ name }) => name)).toEqual([...CHANNELS]);
+    drawn.bars.forEach((bar, i) => {
+      const drawnParts = bar.map(({ name }) => name).sort();
+      const nonZero = SEGMENTS.filter((part) => months[i]![part] > 0);
+      expect(drawnParts).toEqual([...nonZero].sort());
+    });
     // Each label sits beneath its own bar.
     drawn.bars.forEach((bar, i) => {
       const centre = bar[0]!.x + bar[0]!.width / 2;
@@ -45,7 +60,7 @@ test(
 );
 
 test(
-  'FR1-AC3: February 2024 reads 221 existing clients, 15 new organic and 14 new paid, totalling 250',
+  'FR1-AC3: February 2024 reads 225 not recorded, 25 existing clients, 0 new organic and 0 new paid, totalling 250',
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
@@ -69,19 +84,22 @@ test(
 );
 
 test(
-  'FR1-AC5: from the bottom up, every bar is Existing clients, then New organic, then New paid — each resting on the last',
+  'FR1-AC5: from the bottom up, every bar is Not recorded, then Existing clients, New organic, New paid — each resting on the last',
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
     const drawn = await readDrawing(chart);
     const floor = Math.max(...drawn.gridlines);
     for (const bar of drawn.bars) {
-      const bottomUp = [...bar].sort((a, b) => b.y + b.height - (a.y + a.height));
-      expect(bottomUp.map(({ name }) => name)).toEqual([...CHANNELS]);
+      const parts = bottomUp(bar);
+      const names = parts.map(({ name }) => name);
+      // In stacking order, whichever parts this month draws.
+      expect(names).toEqual(SEGMENTS.filter((part) => names.includes(part)));
       // Stacked, not overlapping: each part starts where the one beneath it ends.
-      expect(Math.abs(bottomUp[0]!.y + bottomUp[0]!.height - floor)).toBeLessThan(0.5);
-      expect(Math.abs(bottomUp[1]!.y + bottomUp[1]!.height - bottomUp[0]!.y)).toBeLessThan(0.5);
-      expect(Math.abs(bottomUp[2]!.y + bottomUp[2]!.height - bottomUp[1]!.y)).toBeLessThan(0.5);
+      expect(Math.abs(parts[0]!.y + parts[0]!.height - floor)).toBeLessThan(0.5);
+      parts.slice(1).forEach((part, i) => {
+        expect(Math.abs(part.y + part.height - parts[i]!.y)).toBeLessThan(0.5);
+      });
       // And each part keeps the colour the design gives it.
       for (const segment of bar)
         expect(segment.fill).toBe(COLOURS[segment.name as keyof typeof COLOURS]);
@@ -180,12 +198,13 @@ const readLegend = (chart: Chart) =>
     };
   });
 
+// 004 slice 3 replaces the entries (Branch 1, Branch 2, Branch 3 at load).
 test(
-  'FR3-AC1: a legend centred beneath the chart names Existing clients, New organic and New paid, each with a small swatch',
+  'FR3-AC1: a legend centred beneath the chart names Not recorded and the three channels, each with a small swatch',
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
-    await expect(chart.legend.getByRole('listitem')).toHaveText([...CHANNELS]);
+    await expect(chart.legend.getByRole('listitem')).toHaveText([...SEGMENTS]);
     const legend = await readLegend(chart);
     for (const swatch of legend.swatches) {
       // Small: a swatch, not a bar.
@@ -208,9 +227,9 @@ test(
     const chart = await openChart(page);
     const legend = await readLegend(chart);
     const drawn = await readDrawing(chart);
-    expect(legend.swatches).toHaveLength(CHANNELS.length);
+    expect(legend.swatches).toHaveLength(SEGMENTS.length);
     legend.swatches.forEach((swatch, i) => {
-      const channel = CHANNELS[i]!;
+      const channel = SEGMENTS[i]!;
       const fills = new Set(
         drawn.bars
           .flat()

@@ -297,11 +297,15 @@ describe('FR2 — starting the service with other datasets (AC3, AC5, AC6)', () 
   });
 
   // @regression
-  it('AC5: the delivered dataset starts with no data warnings', async () => {
+  // Spec 004 FR2 supersedes 001's "no data warnings": the supplied figures disagree in seven
+  // places, the service names each one, and the request still succeeds.
+  it('AC5 (as amended by 004 FR2): the delivered dataset starts with seven data warnings and is served anyway', async () => {
     const started = await startWith();
-    await request(started.getHttpServer()).get('/api/clients').expect(200);
+    const res = await request(started.getHttpServer()).get('/api/clients').expect(200);
 
-    expect(warn).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledTimes(7);
+    expect(warn).toHaveBeenCalledWith('"Company" 2024-05: parent 301, children sum 279');
+    expect((res.body as ClientsResponse).company.values[3]).toBe(301);
   });
 
   // @regression

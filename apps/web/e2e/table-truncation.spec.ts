@@ -132,8 +132,9 @@ for (const [width, viewport] of Object.entries(VIEWPORT)) {
           // Measure at rest: the pointer is still over the last name `expandAll` clicked.
           await page.mouse.move(0, 0);
 
+          // The supplied tree fully open: Company, 3 branches, 5 advisers, 3 channels (004 FR1).
           const labels = await namesAsRead(ui).all();
-          expect(labels.length).toBeGreaterThan(40);
+          expect(labels).toHaveLength(12);
           const cut = [];
           for (const label of labels) {
             if (!(await shownWhole(label))) cut.push(await label.textContent());
@@ -153,7 +154,7 @@ for (const [width, viewport] of Object.entries(VIEWPORT)) {
           await page.mouse.move(0, 0);
 
           const labels = await namesAsRead(ui).all();
-          expect(labels.length).toBeGreaterThan(40);
+          expect(labels).toHaveLength(12);
           const cut: Locator[] = [];
           for (const label of labels) if (!(await shownWhole(label))) cut.push(label);
           // The narrowed column (D-17a) does shorten the deepest names; if none were, this
