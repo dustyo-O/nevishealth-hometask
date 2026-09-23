@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -67,6 +67,51 @@ const drawingOf = (container: HTMLElement) => {
 
 const textsOf = (svg: SVGSVGElement) =>
   [...svg.querySelectorAll('text')].map((text) => text.textContent);
+
+/**
+ * The `aria-hidden` wrapper around everything drawn. jsdom lays nothing out, so it is given the
+ * size the drawing was given, at the viewport's origin — the pointer's coordinates then mean what
+ * they mean in a browser.
+ */
+const drawingBox = (container: HTMLElement) => {
+  const drawing = drawingOf(container).closest<HTMLElement>('[aria-hidden="true"]');
+  if (drawing === null) throw new Error('The drawing is not hidden');
+  vi.spyOn(drawing, 'getBoundingClientRect').mockReturnValue(
+    new DOMRect(0, 0, SIZE.width, SIZE.height),
+  );
+  return drawing;
+};
+
+/** The middle of a month's column: 32 px of y-axis on the left, 16 px of margin on the right. */
+const columnOf = (month: number) => ({
+  clientX: 32 + (month + 0.5) * ((SIZE.width - 32 - 16) / 12),
+  clientY: SIZE.height / 2,
+});
+
+const JUN = 4;
+
+const hover = (drawing: HTMLElement, month: number) =>
+  fireEvent.pointerMove(drawing, { ...columnOf(month), pointerType: 'mouse' });
+
+/**
+ * What the drawing shows about a month — the tint, then the panel — each marked with the month
+ * it stands on.
+ */
+const shownIn = (drawing: HTMLElement) =>
+  [...drawing.querySelectorAll<HTMLElement>('[data-month]')].map((node) => ({
+    month: node.dataset['month'],
+    panel: node.querySelector('dl') !== null,
+  }));
+
+const tintIn = (drawing: HTMLElement) =>
+  drawing.querySelector<HTMLElement>('[data-month]:not(:has(dl))');
+
+const tap = (
+  target: Element,
+  at: { clientX: number; clientY: number } = { clientX: 0, clientY: 0 },
+) => fireEvent.pointerDown(target, { ...at, pointerType: 'touch' });
+
+const panelIn = (drawing: HTMLElement) => drawing.querySelector('dl')?.parentElement ?? null;
 
 describe('ClientsChart', () => {
   it('draws an SVG at the size it is given', () => {
@@ -256,6 +301,189 @@ describe('ClientsChart', () => {
         .getAllByRole('cell')
         .map((td) => td.textContent),
     ).toEqual(['221', '15', '14', '250']);
+  });
+
+  it("shows the pointed month's panel: the month, its three parts bottom-up, then the total (FR4-AC1/AC9)", () => {
+    const drawing = drawingBox(renderChart().container);
+    expect(panelIn(drawing)).toBeNull();
+
+    hover(drawing, 0);
+    const panel = panelIn(drawing);
+    expect(panel).toHaveAttribute('data-month', '2024-02');
+    expect(panel?.querySelector('p')).toHaveTextContent('Feb 2024');
+    const rows = [...(panel?.querySelectorAll('dl > div') ?? [])].map((row) => [
+      row.querySelector('dt')?.textContent,
+      row.querySelector('dd')?.textContent,
+    ]);
+    expect(rows).toEqual([
+      ['Existing clients', '221'],
+      ['New organic', '15'],
+      ['New paid', '14'],
+      ['Total', '250'],
+    ]);
+  });
+
+  it('moves the panel with the pointer and hides it when the pointer leaves (FR4-AC3)', () => {
+    const drawing = drawingBox(renderChart().container);
+    hover(drawing, JUN);
+    expect(panelIn(drawing)).toHaveAttribute('data-month', '2024-06');
+    hover(drawing, 6);
+    expect(panelIn(drawing)).toHaveAttribute('data-month', '2024-08');
+    fireEvent.pointerLeave(drawing, { pointerType: 'mouse' });
+    expect(panelIn(drawing)).toBeNull();
+  });
+
+  it('hides the panel on a leave the browser reports with no pointerout before it (FR4-AC3)', () => {
+    const drawing = drawingBox(renderChart().container);
+    hover(drawing, JUN);
+    // Measured in Chromium: when the node under the pointer has been replaced, the exit arrives
+    // as a bare `pointerleave` on the wrapper — no `pointerout`, which is what React's
+    // `onPointerLeave` is built from. Twenty fast exits left the panel behind that way.
+    act(() => {
+      drawing.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }));
+    });
+    expect(shownIn(drawing)).toEqual([]);
+  });
+
+  it('hides the panel when the pointer moves onto the axes, off every column (FR4-AC3)', () => {
+    const drawing = drawingBox(renderChart().container);
+    hover(drawing, JUN);
+    fireEvent.pointerMove(drawing, { clientX: 10, clientY: SIZE.height / 2, pointerType: 'mouse' });
+    expect(panelIn(drawing)).toBeNull();
+  });
+
+  it('shows nothing to the pointer that the live region would say: pointing is for the eye (FR6-AC3)', () => {
+    const drawing = drawingBox(renderChart().container);
+    hover(drawing, JUN);
+    expect(screen.getByRole('status')).toHaveTextContent(/^$/);
+  });
+
+  it('closes the panel when the outline leaves (FR4-AC8)', async () => {
+    const user = userEvent.setup();
+    const drawing = drawingBox(renderChart().container);
+    await user.tab();
+    expect(panelIn(drawing)).toHaveAttribute('data-month', '2024-02');
+    await user.tab();
+    expect(panelIn(drawing)).toBeNull();
+  });
+
+  it('hover June, then Tab: the tint, the panel and the live region all say February (FR5-AC2, tech review F1)', async () => {
+    const user = userEvent.setup();
+    const drawing = drawingBox(renderChart().container);
+    hover(drawing, JUN);
+    expect(shownIn(drawing)).toEqual([
+      { month: '2024-06', panel: false },
+      { month: '2024-06', panel: true },
+    ]);
+
+    // The pointer stays on June; the outline arrives.
+    await user.tab();
+    expect(shownIn(drawing)).toEqual([
+      { month: '2024-02', panel: false },
+      { month: '2024-02', panel: true },
+    ]);
+    expect(panelIn(drawing)?.querySelector('p')).toHaveTextContent('Feb 2024');
+    expect(screen.getByRole('status')).toHaveTextContent(/^Feb 2024: /);
+  });
+
+  it("tints the month being read, in that month's column only, and follows the keys (FR4-AC2, FR5-AC3)", async () => {
+    const user = userEvent.setup();
+    const drawing = drawingBox(renderChart().container);
+    expect(tintIn(drawing)).toBeNull();
+
+    hover(drawing, 6);
+    const tint = tintIn(drawing);
+    expect(tint).toHaveAttribute('data-month', '2024-08');
+    // One column, placed by the widget's own index: the stylesheet turns it into pixels.
+    expect(tint?.style.getPropertyValue('--month-index')).toBe('6');
+    expect(drawing.querySelectorAll('[data-month]')).toHaveLength(2);
+
+    fireEvent.pointerLeave(drawing, { pointerType: 'mouse' });
+    await user.tab();
+    await user.keyboard('{ArrowRight}');
+    expect(tintIn(drawing)?.style.getPropertyValue('--month-index')).toBe('1');
+  });
+
+  it("draws no tint of the library's own: its cursor follows its index, not ours (tech review F1)", () => {
+    const drawing = drawingBox(renderChart().container);
+    hover(drawing, JUN);
+    expect(drawing.querySelector('.recharts-tooltip-cursor')).toBeNull();
+  });
+
+  it('takes the tint away with the panel on Escape, and keeps the outline (FR5-AC6)', async () => {
+    const user = userEvent.setup();
+    const drawing = drawingBox(renderChart().container);
+    await user.tab();
+    expect(tintIn(drawing)).not.toBeNull();
+    await user.keyboard('{Escape}');
+    expect(shownIn(drawing)).toEqual([]);
+    expect(screen.getByRole('group')).toHaveFocus();
+  });
+
+  it('opens a tapped month, and a tap on another month replaces it (FR4-AC4/AC5)', () => {
+    const drawing = drawingBox(renderChart().container);
+    tap(drawing, columnOf(0));
+    expect(shownIn(drawing).map(({ month }) => month)).toEqual(['2024-02', '2024-02']);
+    tap(drawing, columnOf(6));
+    expect(shownIn(drawing).map(({ month }) => month)).toEqual(['2024-08', '2024-08']);
+  });
+
+  it('selects a month tapped anywhere in its column, above its bar too (FR4)', () => {
+    const drawing = drawingBox(renderChart().container);
+    // Six pixels below the top of the plot: every bar ends far lower (the tallest is 350 of 400).
+    tap(drawing, { clientX: columnOf(JUN).clientX, clientY: 11 });
+    expect(panelIn(drawing)).toHaveAttribute('data-month', '2024-06');
+  });
+
+  it('keeps a tapped panel when the finger lifts: a touch pointer leaving is not the pointer moving off (FR4-AC4)', () => {
+    const drawing = drawingBox(renderChart().container);
+    tap(drawing, columnOf(JUN));
+    fireEvent.pointerUp(drawing, { ...columnOf(JUN), pointerType: 'touch' });
+    fireEvent.pointerLeave(drawing, { pointerType: 'touch' });
+    expect(panelIn(drawing)).toHaveAttribute('data-month', '2024-06');
+  });
+
+  it('dismisses on a tap on the legend (FR4-AC6)', () => {
+    const drawing = drawingBox(renderChart().container);
+    tap(drawing, columnOf(JUN));
+    tap(within(screen.getByRole('list')).getByText('New organic'));
+    expect(shownIn(drawing)).toEqual([]);
+  });
+
+  it("dismisses on a tap on the card's padding around the chart (FR4-AC7)", () => {
+    const { container } = renderChart();
+    const drawing = drawingBox(container);
+    tap(drawing, columnOf(JUN));
+    // The widget's own root: the padding between the card's edge and the plot.
+    tap(container.firstElementChild!);
+    expect(shownIn(drawing)).toEqual([]);
+  });
+
+  it('dismisses on a tap anywhere else on the page, such as the table card (FR4)', () => {
+    const drawing = drawingBox(renderChart().container);
+    tap(drawing, columnOf(JUN));
+    tap(document.body);
+    expect(shownIn(drawing)).toEqual([]);
+  });
+
+  it('dismisses on a tap on the axes, inside the plot box but in no month (FR4)', () => {
+    const drawing = drawingBox(renderChart().container);
+    tap(drawing, columnOf(JUN));
+    tap(drawing, { clientX: columnOf(JUN).clientX, clientY: SIZE.height - 10 });
+    expect(shownIn(drawing)).toEqual([]);
+  });
+
+  it('listens to the document only while a month is open', () => {
+    const add = vi.spyOn(document, 'addEventListener');
+    const remove = vi.spyOn(document, 'removeEventListener');
+    const drawing = drawingBox(renderChart().container);
+    const pointerdowns = (spy: typeof add) =>
+      spy.mock.calls.filter(([type]) => type === 'pointerdown').length;
+    expect(pointerdowns(add)).toBe(0);
+    tap(drawing, columnOf(JUN));
+    expect(pointerdowns(add)).toBe(1);
+    tap(document.body);
+    expect(pointerdowns(remove)).toBe(1);
   });
 
   it('has no accessibility violations while a month is being read', async () => {

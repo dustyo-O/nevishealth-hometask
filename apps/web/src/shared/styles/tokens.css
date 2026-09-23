@@ -74,6 +74,8 @@
   /* The plot's own height, independent of the legend beneath it, so a wrapping legend can never
      take height from the bars (003 §2.6, tech review F3). Measured 338 at 1440 and at 375. */
   --chart-plot-h: 338px;
+  /* The month panel lifts off the plot; the design shows no panel, so this is ours (003 FR4). */
+  --shadow-chart-panel: 0 2px 8px rgba(20, 20, 19, 0.12); /* proposal */
 
   /* ours to define: the design shows only mouse states, and photographs instead of initials */
   --shadow-sticky-edge: 6px 0 8px -6px rgba(20, 20, 19, 0.24); /* proposal */
