@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 import { formatMonth, type MonthlyPoint, type MonthlySeries } from '@/entities/clients';
 import { PLOT_MARGIN, X_AXIS_HEIGHT, Y_AXIS_WIDTH } from '../lib/plot-geometry';
@@ -24,8 +25,11 @@ const TOP_RADIUS: [number, number, number, number] = [2, 2, 0, 0];
  * future swap touches this file alone. It draws and nothing else — `accessibilityLayer` is off,
  * because the library's keyboard layer fails six of the spec's criteria and cannot be reset
  * (consult Q2); whatever a keyboard or a screen reader touches is the widget's own.
+ *
+ * Memoised: reading a month changes the widget's state, not the figures, and redrawing here
+ * replaced the bar under the pointer with a new node on every hover (measured in Chromium).
  */
-export const BarPlot = ({ series, initialDimension }: BarPlotProps) => {
+export const BarPlot = memo(function BarPlot({ series, initialDimension }: BarPlotProps) {
   const { ticks, top } = yScale(series);
   const topChannel = series.channels.at(-1);
   return (
@@ -70,4 +74,4 @@ export const BarPlot = ({ series, initialDimension }: BarPlotProps) => {
       </BarChart>
     </ResponsiveContainer>
   );
-};
+});

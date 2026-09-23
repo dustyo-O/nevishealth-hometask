@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -331,6 +331,18 @@ describe('ClientsChart', () => {
     expect(panelIn(drawing)).toHaveAttribute('data-month', '2024-08');
     fireEvent.pointerLeave(drawing, { pointerType: 'mouse' });
     expect(panelIn(drawing)).toBeNull();
+  });
+
+  it('hides the panel on a leave the browser reports with no pointerout before it (FR4-AC3)', () => {
+    const drawing = drawingBox(renderChart().container);
+    hover(drawing, JUN);
+    // Measured in Chromium: when the node under the pointer has been replaced, the exit arrives
+    // as a bare `pointerleave` on the wrapper — no `pointerout`, which is what React's
+    // `onPointerLeave` is built from. Twenty fast exits left the panel behind that way.
+    act(() => {
+      drawing.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }));
+    });
+    expect(shownIn(drawing)).toEqual([]);
   });
 
   it('hides the panel when the pointer moves onto the axes, off every column (FR4-AC3)', () => {

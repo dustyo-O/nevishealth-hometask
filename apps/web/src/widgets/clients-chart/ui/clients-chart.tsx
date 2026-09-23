@@ -111,6 +111,21 @@ export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
     return () => document.removeEventListener('pointerdown', closeOutside);
   }, [reader.open]);
 
+  // The pointer moving off the chart closes the month (FR4-AC3). A native listener, not React's
+  // `onPointerLeave`: React builds that from `pointerout`, and Chromium sends none when the node
+  // under the pointer has been replaced — measured, twenty fast exits left the panel behind. A
+  // touch is ignored: its pointer leaves the moment the finger lifts, and a tap must stay open.
+  const drawn = series !== undefined;
+  useEffect(() => {
+    const drawing = drawingRef.current;
+    if (!drawn || drawing === null) return undefined;
+    const leave = (event: globalThis.PointerEvent) => {
+      if (event.pointerType !== 'touch') dispatch({ type: 'leave' });
+    };
+    drawing.addEventListener('pointerleave', leave);
+    return () => drawing.removeEventListener('pointerleave', leave);
+  }, [drawn]);
+
   // The page only mounts the chart once the figures are here; this is the belt to that braces.
   if (series === undefined) return null;
 
@@ -141,11 +156,6 @@ export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
   const handlePointerDown = (event: PointerEvent<HTMLElement>) => {
     const index = monthUnder(event, months);
     dispatch(index === undefined ? { type: 'outside' } : { type: 'tap', index });
-  };
-
-  const handlePointerLeave = (event: PointerEvent<HTMLElement>) => {
-    if (event.pointerType === 'touch') return;
-    dispatch({ type: 'leave' });
   };
 
   return (
@@ -179,7 +189,6 @@ export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
           onMouseDown={keepFocusOutOfTheDrawing}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
-          onPointerLeave={handlePointerLeave}
         >
           {/* The tint is ours, placed from the widget's index: the library's cursor follows its
               own hover index, measured disagreeing with ours after hover-then-Tab (tech review
