@@ -67,7 +67,6 @@ const boot = async ({ dataPath, config }: BootOptions = {}): Promise<App> => {
 
 const productionConfig = (): ApiConfig => ({
   ...loadConfig(process.env),
-  isProduction: true,
   devSwitches: { enabled: false, maxDelayMs: 30_000 },
 });
 

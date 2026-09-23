@@ -1,6 +1,4 @@
-import autoAnimate from '@formkit/auto-animate';
 import {
-  useEffect,
   useMemo,
   useRef,
   type CSSProperties,
@@ -12,7 +10,7 @@ import {
 import { cx } from '../../../lib/cx';
 import { TreeGridProvider } from '../model/context';
 import { treeGridIds } from '../model/ids';
-import { rowMotion } from '../model/row-motion';
+import { useRowMotion } from '../model/use-row-motion';
 import { TreeGridCell } from './tree-grid-cell';
 import { TreeGridColumnHeader, TreeGridHead } from './tree-grid-head';
 import { TreeGridRow } from './tree-grid-row';
@@ -21,7 +19,10 @@ import { TreeGridToggle } from './tree-grid-toggle';
 import styles from './tree-grid.module.css';
 
 export type TreeGridProps = {
-  /** Namespaces every header id, so two grids on one page never collide. */
+  /**
+   * Namespaces every header id, so two grids on one page never collide. With `columnCount`,
+   * `onKeyDown` and `onFocus`, it comes from `useTreeGrid`'s `gridProps`, spread here.
+   */
   id: string;
   label: string;
   /** How many figure columns follow the name column. */
@@ -31,7 +32,7 @@ export type TreeGridProps = {
   className?: string;
   /**
    * The whole keyboard model, from `useTreeGrid`. It hangs on the table rather than on each of
-   * its ~570 cells: a keystroke reaches it by bubbling from whichever one has focus.
+   * its cells: a keystroke reaches it by bubbling from whichever one has focus.
    */
   onKeyDown?: KeyboardEventHandler<HTMLTableElement>;
   /** From `useTreeGrid` too: keeps its cursor on whatever gained focus, however it got there. */
@@ -39,10 +40,11 @@ export type TreeGridProps = {
 };
 
 /**
- * The months scroll sideways inside a `<div>` of the grid's own, never in the `Card`: giving a
- * card `overflow-x: auto` forces its `overflow-y` away from `visible`, which would turn every
- * card on the page into a scroll container (D-1). Sticky still resolves against this scroller,
- * because the card is an ancestor *of* it rather than something in between.
+ * The figures scroll sideways inside a `<div>` of the grid's own, never in its container: giving
+ * a container `overflow-x: auto` forces its `overflow-y` away from `visible`, which would turn it
+ * into a scroll container (D-1). Sticky still resolves against this scroller, because the
+ * container is an ancestor *of* it rather than something in between. `className` lands on the
+ * scroller, which is where the caller sets the grid's geometry (`tree-grid.module.css`).
  */
 export const TreeGrid = ({
   id,
@@ -56,28 +58,14 @@ export const TreeGrid = ({
 }: TreeGridProps) => {
   const context = useMemo(() => treeGridIds(id), [id]);
 
-  // FR2-AC8, D-16: the rows that appear and disappear slide, and the ones that stay travel with
-  // them. It is the `<tbody>` because that is the element whose children come and go — the
-  // header row must not move — and the plugin is chosen once, here at mount: under
-  // `prefers-reduced-motion` it is not a plugin at all and the library disables itself.
-  //
-  // Registered in an effect with a cleanup rather than through the library's own
-  // `useAutoAnimate`, which attaches from a ref callback and cannot undo it: under React's
-  // StrictMode the grid mounts twice, and its cleanup reads a controller its first pass had not
-  // been told about yet, so the first registration survives the remount. Measured in Chrome 153
-  // — two mutation observers on one `<tbody>`, the second re-animating every row about a
-  // millisecond after the first, which cancelled every arriving row's slide before it had moved.
+  // FR2-AC8, D-16: the `<tbody>`, because its children are what come and go; the header row
+  // must not move.
   const rowsRef = useRef<HTMLTableSectionElement>(null);
-  useEffect(() => {
-    const rows = rowsRef.current;
-    if (rows === null) return;
-    const motion = autoAnimate(rows, rowMotion());
-    return () => motion.destroy?.();
-  }, []);
+  useRowMotion(rowsRef);
 
   // The edge shadow is the sign that there is more to see, so it must not show when there is
   // nothing (FR6-AC3/AC4). Written straight to the DOM rather than held in state: scrolling
-  // must not re-render 44 rows, and the stylesheet is what decides what the flag looks like.
+  // must not re-render every row, and the stylesheet is what decides what the flag looks like.
   const markScrolled = (event: UIEvent<HTMLDivElement>) => {
     const scroller = event.currentTarget;
     scroller.dataset.scrolled = String(scroller.scrollLeft > 0);

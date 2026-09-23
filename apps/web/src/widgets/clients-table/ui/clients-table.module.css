@@ -1,3 +1,26 @@
+/* The grid's geometry, from the Figma table tokens (002 §2.5). Set on the grid's scroller, so
+   every cell — and the reveal overlay below — reads the same values. */
+.grid {
+  --tree-grid-name-col-w: var(--table-name-col-w);
+  --tree-grid-col-min-w: var(--table-month-col-min-w);
+  --tree-grid-row-h: var(--table-row-h);
+  --tree-grid-header-h: var(--table-header-h);
+  --tree-grid-cell-pad-start: var(--table-cell-pad-inline-start);
+  --tree-grid-cell-pad-end: var(--table-cell-pad-inline-end);
+  --tree-grid-indent-step: var(--table-indent-step);
+  --tree-grid-toggle-size: var(--table-chevron-size);
+  --tree-grid-scroll-margin-block: var(--table-scroll-margin-block);
+}
+
+/* D-17a: on a phone the name column gives up room to the figures, so whole months fit beside
+   it. One override, so the scroll padding, the table's minimum width, the sticky cell and
+   everything painted inside it read the same narrower value. */
+@media (width < 600px) {
+  .grid {
+    --tree-grid-name-col-w: var(--table-name-col-w-narrow);
+  }
+}
+
 /* The chevron slot, the adviser's circle and the name on one line, 8 px apart — the indent is
    the row header's own padding, so this row starts wherever its level puts it. */
 .name {
@@ -60,7 +83,7 @@ tr:focus-visible .label {
   z-index: 1;
   overflow: visible;
   width: max-content;
-  max-inline-size: calc(100cqi - var(--table-name-col-w) + 100%);
+  max-inline-size: calc(100cqi - var(--tree-grid-name-col-w) + 100%);
   min-block-size: 100%;
   padding-inline-end: var(--table-cell-pad-inline-end);
   translate: 0 -50%;

@@ -1,5 +1,19 @@
-/* The months' scrollport. `overflow-y: hidden` keeps the card growing downwards as rows open
-   (FR6-AC5); the scroll padding is what stops a cell moved into view from landing under the
+/*
+ * The grid's geometry is its own parameters, each with a default, set by whoever renders it —
+ * on the scroller (`className`), so every rule below and anything drawn inside the cells reads
+ * the same value, a narrower one included:
+ *   --tree-grid-name-col-w           the sticky name column
+ *   --tree-grid-col-min-w            each figure column, at its narrowest
+ *   --tree-grid-row-h / -header-h    body and header rows
+ *   --tree-grid-cell-pad-start / -end
+ *   --tree-grid-indent-step          one level of the tree
+ *   --tree-grid-toggle-size          the chevron slot
+ *   --tree-grid-scroll-margin-block  how far clear of the window a scrolled-to row comes to rest
+ * Published for the renderer to read: --tree-grid-name-bg, --tree-grid-level, --tree-grid-columns.
+ */
+
+/* The figures' scrollport. `overflow-y: hidden` keeps the container growing downwards as rows
+   open (FR6-AC5); the scroll padding is what stops a cell moved into view from landing under the
    sticky name column — measured, one line, D-7. It is also a size container, so anything drawn
    inside the sticky column can measure itself against the width the user can actually see
    (`cqi`) rather than the table's, which on a phone is four times wider. */
@@ -7,30 +21,20 @@
   container-type: inline-size;
   overflow-x: auto;
   overflow-y: hidden;
-  scroll-padding-inline-start: var(--table-name-col-w);
-}
-
-/* D-17a: on a phone the name column gives up room to the figures, so whole months fit beside it.
-   Overridden on the scroller rather than per rule, so its scroll padding, the table's minimum
-   width and the sticky cell all read the same narrower value — and the focus ring, the edge
-   shadow and the reveal overlay, all painted inside that cell, follow it for free. */
-@media (width < 600px) {
-  .scroller {
-    --table-name-col-w: var(--table-name-col-w-narrow);
-  }
+  scroll-padding-inline-start: var(--tree-grid-name-col-w, 16rem);
 }
 
 /* D-2: `border-collapse: collapse` drops the borders of sticky cells in Blink, so the dividers
    live on the cells; `table-layout: fixed` also holds a departing row's geometry while it
-   animates out (D-8). The minimum is what makes the months scroll on a phone (D-17). */
+   animates out (D-8). The minimum is what makes the figures scroll on a phone (D-17). */
 .table {
   /* Default for the edge shadow below, so every cell has something to resolve `var()` against. */
   --tree-grid-sticky-shadow: 0 0 transparent;
 
   width: 100%;
   min-width: calc(
-    var(--table-name-col-w) + var(--tree-grid-columns) * var(--table-month-col-min-w) +
-      var(--table-cell-pad-inline-end)
+    var(--tree-grid-name-col-w, 16rem) + var(--tree-grid-columns) *
+      var(--tree-grid-col-min-w, 5rem) + var(--tree-grid-cell-pad-end, 1rem)
   );
   border-collapse: separate;
   border-spacing: 0;
@@ -39,9 +43,9 @@
 
 /* Element rules are wrapped in :where() so every class below can override them by order alone. */
 .table :where(th, td) {
-  height: var(--table-row-h);
+  height: var(--tree-grid-row-h, 3rem);
   padding-block: 0;
-  padding-inline: var(--table-cell-pad-inline-start) 0;
+  padding-inline: var(--tree-grid-cell-pad-start, 1rem) 0;
   border-block-end: 1px solid var(--color-line);
   font-weight: var(--font-weight-regular);
   text-align: end;
@@ -49,27 +53,23 @@
 }
 
 .table :where(thead th) {
-  height: var(--table-header-h);
+  height: var(--tree-grid-header-h, var(--tree-grid-row-h, 3rem));
   color: var(--color-text-muted);
 }
 
 /* The row's end padding lands on the last cell, so the divider still runs the full width of the
-   card. The column is widened by exactly that much in return, which leaves every month the same
-   content box — without it the last heading is the only one narrow enough to wrap. */
+   container. The column is widened by exactly that much in return, which leaves every figure
+   column the same content box — without it the last heading is the only one narrow enough to wrap. */
 .table :where(tr > :last-child) {
-  width: calc(var(--table-month-col-min-w) + var(--table-cell-pad-inline-end));
-  padding-inline-end: var(--table-cell-pad-inline-end);
+  width: calc(var(--tree-grid-col-min-w, 5rem) + var(--tree-grid-cell-pad-end, 1rem));
+  padding-inline-end: var(--tree-grid-cell-pad-end, 1rem);
 }
 
 /*
- * The animation library places a leaving row absolutely, measured against its nearest positioned
- * ancestor, and it only knows the coordinates of the element it animates — this `<tbody>`. It
- * makes the `<tbody>` `relative` itself, but WebKit computes `position: relative` on a table
- * section as `static` (measured, WebKit 2359: Chromium says `relative`). The library then walks
- * on up to `<body>`, whose coordinates it never took, and throws on the first collapse that
- * interrupts a slide — leaving the row it had just re-inserted on screen and not inert (4 specs
- * red in WebKit only). `sticky` with no offsets is positioned like `relative` and moves nothing,
- * and WebKit keeps it, so both engines measure the leaving row against this element.
+ * Not `relative`, and do not change it back: WebKit computes `position: relative` on a table
+ * section as `static`, so the animation library would measure a leaving row against `<body>`
+ * and throw on a collapse that interrupts a slide (WebKit only). `sticky` with no offsets is
+ * positioned like `relative`, moves nothing, and both engines keep it.
  */
 .table tbody {
   position: sticky;
@@ -80,27 +80,23 @@
   border-block-end: none;
 }
 
-/* A row on its way out is lifted out of the table's flow by the animation library
-   (`position: absolute`, so that the rows below can close the gap while it slides away), and an
-   absolutely positioned `<tr>` is blockified: its cells drop out of the fixed column layout and
-   the figures jam against each other for the length of the animation — measured in Chrome 153, a
-   month cell 34 px wide against the 88 px of the row above it. The row is handed the table's own
-   layout back for as long as it is still on screen; the library sets its measured width inline,
-   so `fixed` puts every column back exactly where it was. `[inert]` is the mark the motion
-   plugin puts on a leaving row (D-15a). */
+/* A leaving row is `position: absolute` while it slides, and an absolutely positioned `<tr>` is
+   blockified: its cells drop out of the fixed column layout. Hand it the table's layout back —
+   the library sets its measured width inline, so `fixed` puts every column where it was.
+   `[inert]` is the mark the motion plugin puts on a leaving row (D-15a). */
 .table tbody tr[inert] {
   display: table;
   table-layout: fixed;
 }
 
-/* D-3: pinned in both `thead` and `tbody`, each with an opaque background — the months are
+/* D-3: pinned in both `thead` and `tbody`, each with an opaque background — the figures are
    unpositioned, so `z-index: 2` is enough to keep them from showing through. */
 .nameCell {
   position: sticky;
   left: 0;
   z-index: 2;
-  width: var(--table-name-col-w);
-  /* Published rather than set outright so anything drawn over the months inside this cell can
+  width: var(--tree-grid-name-col-w, 16rem);
+  /* Published rather than set outright so anything drawn over the figures inside this cell can
      match it — the reveal overlay of D-13 has to be as opaque as the cell it sits in. */
   background-color: var(--tree-grid-name-bg, var(--color-surface));
   box-shadow: var(--tree-grid-sticky-shadow);
@@ -108,7 +104,7 @@
 }
 
 /* D-5: the hover is painted on the cells, never on the `<tr>`. A translucent wash over an
-   opaque sticky column would let the scrolled months show through it, so the name cell gets a
+   opaque sticky column would let the scrolled figures show through it, so the name cell gets a
    pre-composited twin of the same colour instead. Both values are measured from Figma `0:1533`;
    an opened row has no background of its own at all. */
 .table tbody tr:hover > td {
@@ -131,7 +127,8 @@
    lines up with its own depth. */
 .rowHeader {
   padding-inline-start: calc(
-    var(--table-cell-pad-inline-start) + (var(--tree-grid-level) - 1) * var(--table-indent-step)
+    var(--tree-grid-cell-pad-start, 1rem) + (var(--tree-grid-level) - 1) *
+      var(--tree-grid-indent-step, 1.5rem)
   );
 }
 
@@ -144,8 +141,8 @@
 .toggle {
   display: flex;
   flex: none;
-  inline-size: var(--table-chevron-size);
-  block-size: var(--table-chevron-size);
+  inline-size: var(--tree-grid-toggle-size, 1rem);
+  block-size: var(--tree-grid-toggle-size, 1rem);
 }
 
 /* The asset points down, which is the open position; a closed row turns it to point along the
@@ -163,10 +160,10 @@ tr[aria-expanded='false'] .chevron {
 /* Whatever the page scrolls to — a row or a figure the outline moves onto, or the rows an
    opening reveals — comes to rest clear of the window's edge rather than flush against it
    (FR3, amended). Block only: sideways the scroller's own padding already keeps a figure out
-   from under the name column (D-7), and the scroller's edge is the card's, not the window's. */
+   from under the name column (D-7), and the scroller's edge is its container's, not the window's. */
 .row,
 .cell {
-  scroll-margin-block: var(--table-scroll-margin-block);
+  scroll-margin-block: var(--tree-grid-scroll-margin-block, 0px);
 }
 
 /*

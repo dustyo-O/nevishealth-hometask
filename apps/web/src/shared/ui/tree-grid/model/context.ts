@@ -5,7 +5,7 @@ import type { TreeGridRow } from './types';
 /**
  * The ids that tie a figure to the two headers describing it, and that the keyboard resolves
  * the focused element by (D-11). Everything here is stable for the life of the grid: the cursor
- * never travels by context, or all 44 rows would re-render on every keystroke (D-9).
+ * never travels by context, or every row would re-render on every keystroke (D-9).
  */
 export type TreeGridContextValue = TreeGridIds;
 

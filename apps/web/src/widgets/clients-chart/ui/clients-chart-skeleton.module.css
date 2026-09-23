@@ -1,17 +1,14 @@
 /* Chart card at 1440 (tokens.md): y-axis ticks to the left, twelve bars, month labels beneath,
-   legend centred at the foot. The same frame as the loaded chart — padding, a plot area of
-   `--chart-plot-h`, the legend beneath it — so the card measures the same in both (003 §2.6). */
+   legend centred at the foot. The frame is not copied but composed from the loaded chart's own
+   rule, so "the card measures the same while loading and loaded" (001 FR3-AC2) holds by
+   construction rather than by two files being kept in step (005 chart F7). */
 .chart {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  min-height: var(--card-chart-min-h);
-  padding: var(--space-6) var(--space-6) var(--space-4) var(--space-4);
+  composes: chart from './clients-chart.module.css';
 }
 
 .plotArea {
   flex: none;
-  height: var(--chart-plot-h);
+  height: var(--plot-height);
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) auto;

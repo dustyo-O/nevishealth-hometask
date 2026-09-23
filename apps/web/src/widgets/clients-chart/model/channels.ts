@@ -1,5 +1,5 @@
 /** The three acquisition channels the chart knows how to colour (003 FR1, FR3; 004 FR3). */
-export type ChannelKey = 'existing' | 'organic' | 'paid';
+type ChannelKey = 'existing' | 'organic' | 'paid';
 
 const KEYS: Readonly<Record<string, ChannelKey>> = {
   'Existing clients': 'existing',

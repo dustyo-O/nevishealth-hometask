@@ -24,10 +24,11 @@ The other three decisions worth stating once: the y-axis is computed by a pure f
 |---|---|
 | `entities/clients/model/monthly-series.ts` | `toMonthlySeries(data)` → twelve `MonthlyPoint`s. Pure, no Recharts, no DOM. |
 | `widgets/clients-chart/lib/y-scale.ts` | `yScale(series)` → `{ ticks, top }`; step 100, top = first step **strictly above** the maximum (FR2). |
-| `widgets/clients-chart/lib/month-ticks.ts` | `sparseMonthIndices(n)` → `[0, 3, 6, 9, n-1]`, and the short label for the middle three (FR8). |
+| ~~`widgets/clients-chart/lib/month-ticks.ts`~~ | **Never built.** It was to pick the months the narrow axis labels. FR8 was amended twice on 2026-09-23 — first to describe the stepping Recharts' own label thinning actually produces, then, on the owner's judgement of the rendered chart ("currently labels in chart on 375 are good enough"), to accept the four full labels it draws at 375 px. With nothing left to select, the file and `sparseMonthIndices` were never written. _(Recorded 2026-09-23, spec 005 chart F8: the row had outlived the amendments and sent a reader looking for a file that does not exist.)_ |
 | `widgets/clients-chart/lib/describe-month.ts` | `describeMonth(point)` → "Feb 2024: existing clients 221, new organic 15, new paid 14, total 250" (FR6-AC1). |
 | `widgets/clients-chart/model/month-reader.ts` | The reducer: `{ index, open }` × `focus / blur / key / hover / leave / tap / outside / escape`. Every FR4 and FR5 rule lives here, testable with no DOM. |
-| `widgets/clients-chart/ui/clients-chart.tsx` | The frame: focus target, key handling, live region, outside-pointer listener; composes the rest. |
+| `widgets/clients-chart/model/use-month-reader.ts` | `useMonthReader(series)` → `{ index, point, announcement, plotProps, drawingProps }`: runs the reducer, the key handling, the pointer handlers, the outside-pointer listener and the native `pointerleave` listener, and works out the announcement. Called only by `clients-chart.tsx` (005 chart F2). |
+| `widgets/clients-chart/ui/clients-chart.tsx` | The frame: derives the two series, renders the focus target, the live region and the hidden table, and spreads `useMonthReader`'s props on the plot and the drawing; composes the rest. |
 | `widgets/clients-chart/ui/bar-plot.tsx` | **The only file that imports `recharts`.** Inside the `aria-hidden` wrapper. |
 | `widgets/clients-chart/ui/month-panel.tsx` | The panel's content, rendered from the widget's own state — not from Recharts' payload (see §3 R-4). |
 | `widgets/clients-chart/ui/chart-legend.tsx` | Static HTML `<ul>` with token swatches (FR3). |
@@ -45,7 +46,6 @@ The other three decisions worth stating once: the y-axis is computed by a pure f
 --color-channel-existing: #b29df8;   /* decoded from the mockup: legend swatch and bar body agree */
 --color-channel-organic:  #f4beb4;
 --color-channel-paid:     #a75e6e;
---chart-plot-h:           338px;   /* the plot's own height, independent of the legend (F3) */
 ```
 
 Everything else already exists: `--color-line-dotted` is the design's grid colour, `--color-row-hover` is the tint FR4 asks for, `--card-chart-min-h: 430px` is the card height, and `--font-size-footnote` is the axis type.
@@ -100,7 +100,7 @@ Other measurements at 375: bar width **17–18 px** (the grill's "~24 px" is not
 
 ### 2.6 The container (R5)
 
-The widget root is a flex column with `min-height: var(--card-chart-min-h)`. **The plot box has a fixed height of its own, `--chart-plot-h`**, and the HTML legend sits beneath it at whatever height it needs; the card is allowed to grow. `<ResponsiveContainer width="100%" height="100%">` goes inside the plot box. The skeleton keeps the same two heights, so loading and loaded measure the same.
+The widget root is a flex column with `min-height: var(--card-chart-min-h)`. **The plot box has a fixed height of its own, `--chart-plot-h`**, and the HTML legend sits beneath it at whatever height it needs; the card is allowed to grow. _(Amended by 005 chart F6: the height is one number, `PLOT_HEIGHT` in `lib/plot-geometry.ts`, which the lift's arithmetic reads and which the chart and its skeleton hand to their stylesheets as `--plot-height`; the `--chart-plot-h` token below no longer sizes anything.)_ `<ResponsiveContainer width="100%" height="100%">` goes inside the plot box. The skeleton keeps the same two heights, so loading and loaded measure the same.
 
 The earlier plan made the plot `flex: 1 1 auto` and the legend `flex: none`, which reads as equal-height only because our three legend entries happen to fit on one line at 375 px. A longer channel name, larger text or a 320 px screen would wrap the legend and **steal height from the plot**, breaking FR8-AC3 — the reviewer was right (F3), and a layout that holds by luck is not a layout. A fixed plot height makes the requirement true by construction, whatever the legend does. **Verify with the real legend**, not a stand-in: the plot box must measure the same height at 375 and at 1440.
 
@@ -131,7 +131,7 @@ The live region speaks **only while the chart has focus**, so a pointer sweeping
 
 ### 2.8 Page changes
 
-`dashboard-page.tsx` renders `<ClientsChart />` in place of `<p>{formatPeriod(data.months)}</p>`, and `<ClientsChartSkeleton />` in place of `<ChartCardSkeleton />`. `formatPeriod` and its tests are deleted with it (FR9-AC3); `formatBranchCount` stays. The card keeps `label="Clients chart"`.
+`dashboard-page.tsx` renders `<ClientsChart data={data} />` _(the `data` prop since 005 app F3: the page owns the one query and hands both widgets its figures)_ in place of `<p>{formatPeriod(data.months)}</p>`, and `<ClientsChartSkeleton />` in place of `<ChartCardSkeleton />`. `formatPeriod` and its tests are deleted with it (FR9-AC3); `formatBranchCount` stays _(until 005 app F1: the table had replaced its line in 002, so nothing called it and it was deleted with its tests)_. The card keeps `label="Clients chart"`.
 
 ---
 
@@ -153,7 +153,7 @@ The live region speaks **only while the chart has focus**, so a pointer sweeping
 
 ## 4. Testing Strategy
 
-- **Unit (Vitest), no Recharts and no DOM:** `toMonthlySeries` (grouping by channel name, order, totals equal to the Company row in all twelve months); `yScale` (350 → top 400; 400 → top 500, i.e. *strictly* above; adaptivity); `sparseMonthIndices`; `describeMonth`'s exact sentence; and the `month-reader` reducer against every FR4/FR5 rule — clamping at both ends, Escape, reset on blur, tap replaces, outside dismisses.
+- **Unit (Vitest), no Recharts and no DOM:** `toMonthlySeries` (grouping by channel name, order, totals equal to the Company row in all twelve months); `yScale` (350 → top 400; 400 → top 500, i.e. *strictly* above; adaptivity); `describeMonth`'s exact sentence; and the `month-reader` reducer against every FR4/FR5 rule — clamping at both ends, Escape, reset on blur, tap replaces, outside dismisses.
 - **Component (RTL + jest-axe):** the hidden table's twelve rows and headers; the legend's three entries; the accessible name and `aria-hidden` placement; the keyboard walk end to end. Needs the `ResizeObserver` decision from R-5.
 - **End-to-end (Playwright, mocked data, its own server on 5273):** the twelve bars and their labels at 1440 and the five sparse labels at 375 with no overlap; the axis ticks 0–400; tooltip content and tint on hover, on focus, and on tap under touch emulation; the outside-tap dismissal; Escape; Tab from chart to treegrid; `prefers-reduced-motion`; plot height identical at both widths; no horizontal page scroll; `@axe-core/playwright` on the card.
 - **The three regressions this review bought:** hover June then focus the chart → February's tint, panel and announcement (F1); tap the legend, and tap the card's padding → the panel dismisses (F2); the plot box measures the same height at 375 and 1440 with the real legend rendered (F3).

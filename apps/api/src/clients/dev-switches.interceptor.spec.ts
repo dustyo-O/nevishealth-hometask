@@ -8,7 +8,6 @@ const MAX_DELAY_MS = 30_000;
 
 const configWith = (enabled: boolean): ApiConfig => ({
   port: 3000,
-  isProduction: !enabled,
   devSwitches: { enabled, maxDelayMs: MAX_DELAY_MS },
   corsOrigin: false,
 });

@@ -1,4 +1,6 @@
 import { childrenOf, type TreeNode } from '@nevis/contracts';
+// A type-only import from a lower layer, so legal under FSD: the rows exist to be tree-grid rows,
+// and naming that type keeps the two in step. No component or DOM crosses into the entity.
 import type { TreeGridRow } from '@/shared/ui/tree-grid';
 
 /**

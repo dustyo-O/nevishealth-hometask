@@ -54,9 +54,9 @@ export const drawnPx = (clients: number, pxPerClient: number): number =>
  * Only the drawing reads this. The figures a person reads stay in the `MonthlySeries` it came
  * from, which is left untouched. Pure: no charting library, no DOM.
  */
-export const toDrawing = (series: MonthlySeries, pxPerClientOf = pxPerClientFor): DrawnSeries => {
+export const toDrawing = (series: MonthlySeries): DrawnSeries => {
   const scale = yScale(series);
-  const px = pxPerClientOf(scale.top);
+  const px = pxPerClientFor(scale.top);
   /** A part's drawn height, converted back to clients: what the stack is built from. */
   const lifted = (clients: number) => drawnPx(clients, px) / px;
   const bars = series.points.map(({ month, byChannel }): DrawnBar => {

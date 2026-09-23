@@ -20,11 +20,11 @@ export type TreeGridColumnHeaderProps = {
 } & (
   | {
       /** The heading above the row names: pinned like the names, and never a figure's header. */
-      name: true;
+      nameColumn: true;
       colIndex?: never;
     }
   | {
-      name?: false;
+      nameColumn?: false;
       /** 0-based; the id every figure in this column points its `headers` at. */
       colIndex: number;
     }
@@ -37,7 +37,7 @@ export const TreeGridColumnHeader = ({
 }: TreeGridColumnHeaderProps) => {
   const { columnHeaderId } = useTreeGridContext();
 
-  if (column.name === true) {
+  if (column.nameColumn === true) {
     return (
       <th scope="col" className={cx(styles.nameCell, className)}>
         {children}
