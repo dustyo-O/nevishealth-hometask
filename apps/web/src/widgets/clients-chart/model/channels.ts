@@ -1,16 +1,10 @@
-import { NOT_RECORDED } from '../lib/not-recorded';
-
-/**
- * The three acquisition channels the chart knows how to colour (003 FR1, FR3), and the part of a
- * bar no channel accounts for (004 FR3) — coloured as absence, never as a fourth channel.
- */
-export type ChannelKey = 'existing' | 'organic' | 'paid' | 'not-recorded';
+/** The three acquisition channels the chart knows how to colour (003 FR1, FR3; 004 FR3). */
+export type ChannelKey = 'existing' | 'organic' | 'paid';
 
 const KEYS: Readonly<Record<string, ChannelKey>> = {
   'Existing clients': 'existing',
   'New organic': 'organic',
   'New paid': 'paid',
-  [NOT_RECORDED]: 'not-recorded',
 };
 
 /**

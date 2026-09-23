@@ -77,8 +77,7 @@ test(
     expect((await narrow.group.boundingBox())!.height).toBe(wideHeight);
     expect((await narrow.svg.boundingBox())!.height).toBe(wideSvg);
     // With the real legend rendered beneath it (tech review F3).
-    // 004 slice 3 replaces the entries; FR5 of 004 wants the plot's height untouched however many.
-    await expect(narrow.legend.getByRole('listitem')).toHaveCount(4);
+    await expect(narrow.legend.getByRole('listitem')).toHaveCount(3);
     expect(await scrollWidthOf(page)).toBe(VIEWPORT.phone.width);
   },
 );

@@ -13,9 +13,10 @@ import {
   expectTintOver,
   FEBRUARY_PANEL,
   FEBRUARY_SAID,
+  expectBarsShow,
+  figuresOf,
   hoverMonth,
   openChart,
-  readBars,
   readDrawing,
   readPanel,
   type Chart,
@@ -106,7 +107,7 @@ test(
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
-    const { months } = await readBars(chart);
+    const months = figuresOf(shippedClients());
     await tabToChart(page, chart);
     await page.keyboard.press('ArrowRight');
     await expectReading(chart, '2024-03');
@@ -121,7 +122,8 @@ test(
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
-    const { months } = await readBars(chart);
+    const months = figuresOf(shippedClients());
+    await expectBarsShow(chart, months);
     await tabToChart(page, chart);
     for (const [index, heading] of MONTH_HEADINGS.entries()) {
       if (index > 0) await page.keyboard.press('ArrowRight');
@@ -129,7 +131,7 @@ test(
       await expectTintOver(chart, index);
       const figures = months[index]!;
       await expect(chart.live).toHaveText(
-        `${heading}: not recorded ${figures['Not recorded']}, existing clients ${figures['Existing clients']}, new organic ${figures['New organic']}, new paid ${figures['New paid']}, total ${figures.total}`,
+        `${heading}: existing clients ${figures['Existing clients']}, new organic ${figures['New organic']}, new paid ${figures['New paid']}, total ${figures.total}`,
       );
     }
   },
@@ -238,11 +240,11 @@ test(
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
-    const { months } = await readBars(chart);
-    // 004 slice 3 replaces the columns (the rows the table shows); Total stays the Company row.
+    // The figures the served data implies; the drawing shows them, within the floor (FR4).
+    const months = figuresOf(shippedClients());
+    await expectBarsShow(chart, months);
     await expect(chart.table.getByRole('columnheader')).toHaveText([
       'Month',
-      'Not recorded',
       'Existing clients',
       'New organic',
       'New paid',
@@ -255,7 +257,6 @@ test(
       await expect(row.getByRole('rowheader')).toHaveText(heading);
       const m = months[i]!;
       await expect(row.getByRole('cell')).toHaveText([
-        String(m['Not recorded']),
         String(m['Existing clients']),
         String(m['New organic']),
         String(m['New paid']),

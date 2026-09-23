@@ -10,7 +10,15 @@
 // card that drifts is caught by both comparisons. The second test serves figures that are not the
 // shipped ones, so neither card can pass by holding a copy of the shipped year.
 import { expect, test, type Page } from '@playwright/test';
-import { openChart, readBars, reshaped, SEGMENTS, type Chart } from './support/chart';
+import {
+  CHANNELS,
+  expectBarsShow,
+  figuresOf,
+  openChart,
+  readTable,
+  reshaped,
+  type Chart,
+} from './support/chart';
 import { figureOf, MONTH_HEADINGS, shippedClients, type ClientsBody } from './support/table';
 
 const tableCompanyRow = async (chart: Chart): Promise<number[]> => {
@@ -25,25 +33,27 @@ const tableCompanyRow = async (chart: Chart): Promise<number[]> => {
 const expectAgreement = async (page: Page, body: ClientsBody): Promise<void> => {
   const chart = await openChart(page, { body });
 
-  const { months, exactness } = await readBars(chart);
   const table = await tableCompanyRow(chart);
-
-  // The drawing is read exactly, not approximately: a whole client is under a pixel high.
-  expect(exactness).toBeLessThan(0.05);
+  // The chart's exact figures, as its hidden table says them; the drawing is checked against
+  // them below, heights within the FR4 floor and nothing looser (FLOOR_PX, support/chart.ts).
+  const months = await readTable(chart);
   expect(months).toHaveLength(12);
   expect(table).toHaveLength(12);
 
   MONTH_HEADINGS.forEach((month, i) => {
     const bar = months[i]!;
-    // The remainder counts (004 R-3): without "Not recorded" the parts are a tenth of the bar.
-    const parts = SEGMENTS.reduce((sum, part) => sum + bar[part], 0);
+    // Existing clients is the Company row less the newly acquired (004 §2.3), so the three do.
+    const parts = CHANNELS.reduce((sum, part) => sum + bar[part], 0);
     // The parts add up to the whole bar, and the whole bar to the table's Company row.
     expect(parts, `${month}: the parts add up to the bar`).toBe(bar.total);
     expect(bar.total, `${month}: chart against table`).toBe(table[i]);
   });
-  // And both are the company the page was served — the Company row's own stored figures.
-  expect(months.map(({ total }) => total)).toEqual(body.company.values);
+  // Both are the company the page was served — the Company row's own stored figures — and the
+  // parts are the ones the served tree implies, worked out here rather than by the widget.
+  expect(months).toEqual(figuresOf(body));
   expect(table).toEqual(body.company.values);
+  // And the bars drawn show exactly those figures.
+  await expectBarsShow(chart, months);
 };
 
 test(
