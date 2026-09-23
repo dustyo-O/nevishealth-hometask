@@ -12,7 +12,7 @@
   color: var(--color-avatar-fg);
   font-size: calc(var(--avatar-size, 24px) / 2);
   line-height: 1;
-  /* Two capitals in a 20 px circle: the lining figures token would widen them needlessly. */
+  /* Two capitals in a small circle: the lining figures token would widen them needlessly. */
   letter-spacing: -0.02em;
   user-select: none;
 }

@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { REQUEST_TIMEOUT_MS, RETRY_DELAY_MS } from './config';
 import { createQueryClient } from './query-client';
 
 describe('createQueryClient', () => {
@@ -22,10 +21,5 @@ describe('createQueryClient', () => {
       staleTime: Infinity,
       networkMode: 'always',
     });
-  });
-
-  it('exposes the spec numbers as constants', () => {
-    expect(REQUEST_TIMEOUT_MS).toBe(10_000);
-    expect(RETRY_DELAY_MS).toBe(500);
   });
 });

@@ -19,18 +19,15 @@ export type TreeGridKeyResult = { cursor: TreeGridCursor } | { toggle: string } 
  * the flattened list of what is *showing*, so "skipping anything hidden inside a closed row" is
  * not a rule here — it is the shape of the input.
  *
- * `columnCount` is the one thing the four arguments of the tech doc's signature cannot supply:
- * §2.2's "stop at 11" and "End → 11" are counted from it, and a `TreeGridRow` carries no
- * figures to count (it must not — this layer knows nothing about what the columns hold).
+ * No rule asks whether a row is open: the arrows only ever move the outline (FR3, amended), so
+ * the open rows are not an argument. `columnCount` is: §2.2's "stop at 11" and "End → 11" are
+ * counted from it, and a `TreeGridRow` carries no figures to count (it must not — this layer
+ * knows nothing about what the columns hold).
  */
 export const reduceKey = (
   cursor: TreeGridCursor,
   key: string,
   rows: readonly TreeGridRow[],
-  // Unread since the arrows stopped toggling (owner's decision 2026-09-22): no rule left in the
-  // model asks whether a row is open. Kept in the signature because it is the hook's documented
-  // call (tech doc §2.1) and this lane does not get to narrow that contract on its own.
-  _expandedIds: ReadonlySet<string>,
   columnCount: number,
 ): TreeGridKeyResult => {
   const index = rows.findIndex((candidate) => candidate.id === cursor.rowId);

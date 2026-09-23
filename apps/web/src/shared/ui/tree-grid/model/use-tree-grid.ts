@@ -107,13 +107,7 @@ export const useTreeGrid = ({
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLElement>) => {
       const current = latest.current;
-      const result = reduceKey(
-        current.cursor,
-        event.key,
-        current.rows,
-        current.expandedIds,
-        current.columnCount,
-      );
+      const result = reduceKey(current.cursor, event.key, current.rows, current.columnCount);
       if (result === null) return;
 
       // The grid owns this key from here, even where the outline does not move: an arrow left to
