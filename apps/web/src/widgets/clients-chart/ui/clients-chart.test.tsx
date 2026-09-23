@@ -1,5 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { clientsQueryOptions } from '@/entities/clients';
@@ -129,7 +130,9 @@ describe('ClientsChart', () => {
     expect(drawingOf(container).closest('[aria-hidden="true"]')).not.toBeNull();
     // Text queries read through `aria-hidden`, so they are told to skip it explicitly.
     const readable = { ignore: '[aria-hidden="true"], [aria-hidden="true"] *' };
-    expect(screen.queryByText('Feb 2024', readable)).toBeNull();
+    // The hidden table names every month on purpose (FR6-AC2); nothing else may.
+    const months = screen.queryAllByText('Feb 2024', readable);
+    expect(months.map((node) => node.closest('table') !== null)).toEqual([true]);
     expect(screen.queryByText('400', readable)).toBeNull();
   });
 
@@ -148,6 +151,118 @@ describe('ClientsChart', () => {
 
   it('has no accessibility violations', async () => {
     const { container } = renderChart();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('is one focus stop, named for what it shows and its period, with a hint for the keys (FR5-AC1, FR6-AC5)', () => {
+    renderChart();
+    const chart = screen.getByRole('group', {
+      name: 'Clients per month by acquisition channel, Feb 2024 to Jan 2025',
+    });
+    expect(chart).toHaveAttribute('tabindex', '0');
+    expect(chart).toHaveAttribute('aria-roledescription', 'chart');
+    expect(chart).toHaveAccessibleDescription('Use Left and Right to read each month.');
+    // The whole drawing sits inside the focus target and is hidden from assistive technology.
+    const drawing = chart.querySelector('svg')?.closest('[aria-hidden="true"]');
+    expect(drawing).not.toBeNull();
+    expect(chart.contains(drawing ?? null)).toBe(true);
+  });
+
+  it('keeps a click from moving focus into the hidden drawing (003 §2.4, consult Q5)', () => {
+    const { container } = renderChart();
+    const drawing = drawingOf(container).closest('[aria-hidden="true"]');
+    if (drawing === null) throw new Error('The drawing is not hidden');
+    // `fireEvent` returns false when a handler called `preventDefault`.
+    expect(fireEvent.mouseDown(drawing.querySelector('path') ?? drawing)).toBe(false);
+  });
+
+  it('reads February on arrival, walks with Left and Right, and stops at both ends (FR5-AC2–AC5, FR6-AC1)', async () => {
+    const user = userEvent.setup();
+    renderChart();
+    const status = screen.getByRole('status');
+    expect(status).toHaveTextContent(/^$/);
+
+    await user.tab();
+    expect(screen.getByRole('group')).toHaveFocus();
+    expect(status).toHaveTextContent(
+      'Feb 2024: existing clients 221, new organic 15, new paid 14, total 250',
+    );
+    await user.keyboard('{ArrowRight}');
+    expect(status).toHaveTextContent(/^Mar 2024: .*, total 267$/);
+    await user.keyboard('{ArrowLeft}{ArrowLeft}');
+    expect(status).toHaveTextContent(/^Feb 2024: /);
+    await user.keyboard('{ArrowRight>15/}');
+    expect(status).toHaveTextContent(/^Jan 2025: .*, total 350$/);
+  });
+
+  it('closes on Escape and keeps the outline; the next move opens it again (FR5-AC6)', async () => {
+    const user = userEvent.setup();
+    renderChart();
+    await user.tab();
+    await user.keyboard('{ArrowRight}{Escape}');
+    expect(screen.getByRole('group')).toHaveFocus();
+    expect(screen.getByRole('status')).toHaveTextContent(/^$/);
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('status')).toHaveTextContent(/^Apr 2024: /);
+  });
+
+  it('clears on leaving and starts at February again on return (FR4-AC8, FR5-AC7)', async () => {
+    const user = userEvent.setup();
+    renderChart();
+    await user.tab();
+    await user.keyboard('{ArrowRight>4/}');
+    expect(screen.getByRole('status')).toHaveTextContent(/^Jun 2024: /);
+    await user.tab();
+    expect(screen.getByRole('group')).not.toHaveFocus();
+    expect(screen.getByRole('status')).toHaveTextContent(/^$/);
+    await user.tab({ shift: true });
+    expect(screen.getByRole('status')).toHaveTextContent(/^Feb 2024: /);
+  });
+
+  it('gives the same figures as a table of twelve months, outside the drawing and the focus stop (FR6-AC2)', () => {
+    renderChart();
+    const table = screen.getByRole('table', {
+      name: 'Clients per month by acquisition channel, Feb 2024 to Jan 2025',
+    });
+    expect(table.closest('[aria-hidden="true"]')).toBeNull();
+    expect(screen.getByRole('group').contains(table)).toBe(false);
+
+    const [header, ...rows] = within(table).getAllByRole('row');
+    const columns = within(header!).getAllByRole('columnheader');
+    expect(columns.map((th) => th.textContent)).toEqual([
+      'Month',
+      'Existing clients',
+      'New organic',
+      'New paid',
+      'Total',
+    ]);
+    for (const th of columns) expect(th).toHaveAttribute('scope', 'col');
+
+    expect(rows).toHaveLength(12);
+    const company = shippedClients().company.values;
+    rows.forEach((row, month) => {
+      const heading = within(row).getByRole('rowheader');
+      expect(heading).toHaveTextContent(MONTH_LABELS[month]!);
+      expect(heading).toHaveAttribute('scope', 'row');
+      const cells = within(row)
+        .getAllByRole('cell')
+        .map((td) => Number(td.textContent));
+      expect(cells).toHaveLength(4);
+      expect(cells[0]! + cells[1]! + cells[2]!).toBe(cells[3]);
+      expect(cells[3]).toBe(company[month]);
+    });
+    expect(
+      within(rows[0]!)
+        .getAllByRole('cell')
+        .map((td) => td.textContent),
+    ).toEqual(['221', '15', '14', '250']);
+  });
+
+  it('has no accessibility violations while a month is being read', async () => {
+    const user = userEvent.setup();
+    const { container } = renderChart();
+    await user.tab();
+    await user.keyboard('{ArrowRight}');
     expect(await axe(container)).toHaveNoViolations();
   });
 });
