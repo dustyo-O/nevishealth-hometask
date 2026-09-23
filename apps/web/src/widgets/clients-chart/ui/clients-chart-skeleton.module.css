@@ -1,6 +1,6 @@
 /* Chart card at 1440 (tokens.md): y-axis ticks to the left, twelve bars, month labels beneath,
    legend centred at the foot. The same frame as the loaded chart — padding, a plot area of
-   `--chart-plot-h`, the legend beneath it — so the card measures the same in both (003 §2.6). */
+   `--plot-height`, the legend beneath it — so the card measures the same in both (003 §2.6). */
 .chart {
   display: flex;
   flex-direction: column;
@@ -11,7 +11,7 @@
 
 .plotArea {
   flex: none;
-  height: var(--chart-plot-h);
+  height: var(--plot-height);
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) auto;

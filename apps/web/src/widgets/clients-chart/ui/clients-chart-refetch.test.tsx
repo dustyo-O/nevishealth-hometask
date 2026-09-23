@@ -1,28 +1,34 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import type { ComponentProps } from 'react';
 import { expect, it, vi } from 'vitest';
-import { clientsQueryOptions, type MonthlySeries } from '@/entities/clients';
+import { clientsQueryOptions } from '@/entities/clients';
 import { createQueryClient } from '@/shared/api';
+import type { BarPlot } from './bar-plot';
 import { ClientsChart } from './clients-chart';
 import { shippedClients } from '@/test/fixtures/shipped-clients';
 
-/** Every series the drawing is handed, in order. The drawing itself is not this test's subject. */
+/**
+ * Every drawing the plot is handed, in order. The drawing itself is not this test's subject. The
+ * stand-in takes the real component's props, so renaming them fails to compile here instead of
+ * leaving this test reading a prop nobody passes (it did, from 004 s4 until 005).
+ */
 const drawn = vi.hoisted(() => [] as unknown[]);
 vi.mock('./bar-plot', () => ({
-  BarPlot: ({ series }: { series: MonthlySeries }) => {
-    drawn.push(series);
+  BarPlot: ({ drawing }: ComponentProps<typeof BarPlot>) => {
+    drawn.push(drawing);
     return null;
   },
 }));
 
 /**
- * FR7-AC1: the bars grow once. A refetch that brings back the same figures must hand the drawing
- * the very same series, so nothing downstream can mistake it for new data and grow the bars
- * again. It rests on two things together: the query's structural sharing keeps `data` the same
- * object, and the widget memoises `toMonthlySeries` on it. Reading a month afterwards re-renders
- * the widget, so the memo is exercised and not merely left unreached.
+ * FR7-AC1: the bars grow once. A refetch that brings back the same figures must hand the plot
+ * the very same drawing, so nothing downstream can mistake it for new data and grow the bars
+ * again. It rests on three things together: the query's structural sharing keeps `data` the same
+ * object, the widget memoises the series on `data`, and the drawing on the series. Reading a
+ * month afterwards re-renders the widget, so the memos are exercised and not merely left unreached.
  */
-it('hands the drawing the same series after a refetch with unchanged figures (FR7-AC1)', async () => {
+it('hands the plot the same drawing after a refetch with unchanged figures (FR7-AC1)', async () => {
   vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
     Promise.resolve(Response.json(shippedClients())),
   );

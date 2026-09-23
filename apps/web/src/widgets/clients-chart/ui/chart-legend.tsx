@@ -1,5 +1,5 @@
 import { cx } from '@/shared/lib/cx';
-import { channelKey } from '../model/channels';
+import { ChannelSwatch } from './channel-swatch';
 import styles from './chart-legend.module.css';
 
 type ChartLegendProps = {
@@ -17,7 +17,7 @@ export const ChartLegend = ({ channels, className }: ChartLegendProps) => (
   <ul className={cx(styles.legend, className)}>
     {channels.map((name) => (
       <li key={name} className={styles.entry}>
-        <span aria-hidden="true" className={cx(styles.swatch, styles[channelKey(name)])} />
+        <ChannelSwatch name={name} />
         {name}
       </li>
     ))}

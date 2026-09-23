@@ -7,15 +7,19 @@ export const PLOT_MARGIN = { top: 5, right: 16, bottom: 0, left: 0 } as const;
 export const Y_AXIS_WIDTH = 32;
 /** Fixed, so the plot keeps its height whichever way the month labels are drawn (FR8-AC3). */
 export const X_AXIS_HEIGHT = 30;
-/** The plot box's height: `--chart-plot-h`, the same at every width (003 §2.6). */
+/**
+ * The plot box's height, the same at every width (003 §2.6). The one copy: the lift is worked out
+ * in pixels from it (`BARS_HEIGHT`), and the chart and its skeleton hand it to their stylesheets as
+ * `--plot-height`, so the box drawn and the box calculated cannot drift apart (005 chart F6).
+ */
 export const PLOT_HEIGHT = 338;
 
 /** The months' columns start after the y-axis and end before the right margin. */
 export const COLUMNS_LEFT = PLOT_MARGIN.left + Y_AXIS_WIDTH;
 export const COLUMNS_RIGHT = PLOT_MARGIN.right;
 
-export type Size = { width: number; height: number };
-export type Point = { x: number; y: number };
+type Size = { width: number; height: number };
+type Point = { x: number; y: number };
 
 /**
  * The month whose column holds `point` — anywhere in the column, above its bar too (FR4) — or

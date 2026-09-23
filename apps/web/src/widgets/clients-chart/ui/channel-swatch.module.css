@@ -1,0 +1,19 @@
+/* The channel's colour as an 8 px square, the same beside the legend's labels and the panel's. */
+.swatch {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.existing {
+  background: var(--color-channel-existing);
+}
+
+.organic {
+  background: var(--color-channel-organic);
+}
+
+.paid {
+  background: var(--color-channel-paid);
+}
