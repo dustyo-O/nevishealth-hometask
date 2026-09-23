@@ -20,6 +20,7 @@ import {
   openTable,
   rowOf,
   shippedClients,
+  tabIntoTable,
   toggleByName,
 } from './support/table';
 
@@ -205,8 +206,7 @@ test.describe('FR4 — what a screen reader is given', () => {
       const ui = await openTable(page);
       const liveBefore = await page.locator('[aria-live], [role=status], [role=alert]').count();
 
-      await ui.heading.click();
-      await page.keyboard.press('Tab');
+      await tabIntoTable(page, ui);
       await page.keyboard.press('ArrowDown');
       await page.keyboard.press('Enter');
 

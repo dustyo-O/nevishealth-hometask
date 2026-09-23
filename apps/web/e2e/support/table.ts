@@ -110,11 +110,17 @@ export const expandAll = async (ui: ClientsPage): Promise<void> => {
   }
 };
 
-/** Tab from the page heading into the grid: the outline lands on the Company row (FR3-AC1). */
+/**
+ * Tab from the page heading into the grid. The chart above it is one stop of its own (spec 003
+ * FR5-AC1), so the first Tab lands there; the next leaves it for the Company row (002 FR3-AC1,
+ * 003 FR5-AC8 and tech doc R-3 — the grid's roving `tabindex` is the chart's next stop).
+ */
 export const tabIntoTable = async (page: Page, ui: ClientsPage): Promise<void> => {
   // A click on the heading moves the sequential-focus starting point there without making it a
   // tab stop, so the next Tab is the one a keyboard user reading down the page would press.
   await ui.heading.click();
+  await page.keyboard.press('Tab');
+  await expect(ui.chartCard.getByRole('group')).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(rowOf(ui, 'Company')).toBeFocused();
 };
