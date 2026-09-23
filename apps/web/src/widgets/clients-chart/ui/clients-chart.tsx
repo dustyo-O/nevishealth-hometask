@@ -23,10 +23,12 @@ import { ChartLegend } from './chart-legend';
 import styles from './clients-chart.module.css';
 import { MonthPanel } from './month-panel';
 
-export type ClientsChartProps = {
+type ClientsChartProps = {
   /**
-   * The size to draw at before the plot box has been measured. Only tests pass it: jsdom has no
-   * `ResizeObserver`, so without it the drawing renders no SVG at all (003 R-5).
+   * The size to draw at before the plot box has been measured. **A test seam: the page never
+   * passes it.** jsdom has no `ResizeObserver`, so without it the drawing renders no SVG at all
+   * (003 R-5). It stays a prop rather than a `ResizeObserver` stub because the widget's whole
+   * component suite renders through it (005 chart F3); the type is not exported from the slice.
    */
   initialDimension?: PlotDimension;
 };
