@@ -39,6 +39,8 @@ Clicking a row's **name** — the first cell, including the arrow in front of it
 
 Only the name opens and closes the row. Clicking a figure does nothing; those cells are reserved for a later feature.
 
+Opening a row that sits low on the screen would otherwise reveal its rows below the fold, where the user cannot see what their click did. So when a row opens, the page scrolls by the smallest amount that brings the opened row and as many of its new rows as will fit into view. If more rows appear than the screen can hold, the opened row and the first of them stay in view — the user is never carried past the row they clicked. Closing a row scrolls nothing.
+
 Rows can be open independently: opening one branch never closes another, and any number can be open at once.
 
 If closing a row hides whatever the user's outline is on — a row or a figure somewhere inside it — the outline moves to the row that was just closed, so the keyboard user is never left with nothing selected.
@@ -47,6 +49,9 @@ Rows slide in when they appear and slide out when they disappear. A viewer whose
 
 - **Acceptance Criteria:**
   - [x] When the user clicks the name of Branch 1, then its five adviser rows appear directly beneath it, indented one step further, and the arrow on Branch 1 turns to its open position.
+  - [ ] Given a row sits low enough on the screen that its new rows would appear below the fold, when the user opens it, then the page scrolls just enough to bring the opened row and as many of its new rows as fit into view.
+  - [ ] Given a row reveals more rows than the screen can hold, when the user opens it, then the opened row is still on screen with the first of its new rows beneath it.
+  - [ ] When the user closes a row, then the page does not scroll.
   - [x] Given Branch 1 is open, when the user clicks its name again, then its adviser rows disappear and the arrow returns to its closed position.
   - [x] Given Branch 1 is open and Anna Blackwood inside it is open, when the user closes Branch 1, then both the advisers and Anna's channels disappear; when the user opens Branch 1 again, then Anna's row is shown closed.
   - [x] Given Branch 1 is open, when the user opens Anna Blackwood inside it, then Branch 1 stays open.
@@ -91,6 +96,7 @@ Movement stops at the edges rather than wrapping: Up on the Company row, Down on
   - [x] Given the outline is on a row deep in the table, when the user presses Home, then the outline moves to the Company row, and pressing End moves it to the last visible row.
   - [x] Given the row is fully visible and the window is narrow enough that later months are out of sight, when the user moves the outline onto one of them, then it scrolls into view sideways and the page does not scroll up or down.
   - [x] Given a row is only partly visible because the page is scrolled, when the user moves the outline onto one of that row's months, then the month scrolls into view sideways and the page scrolls only as far as needed to bring that row fully into view.
+  - [ ] When the outline moves to a row or a month that the page must scroll to reach, then it comes to rest clear of the window's edge rather than flush against it.
 
 ### FR4 — What a screen reader reports
 
@@ -172,12 +178,14 @@ If the company has no branches at all, the table shows the Company row alone wit
 ### Assumptions to challenge
 
 - _(assumption)_ Figures appear exactly as recorded, with no thousands separators and no totals calculated from the rows beneath.
-- _(assumption)_ After a row opens or closes, the user stays where they were; nothing jumps into the newly revealed rows — except when closing a row would hide the outline, which moves it to the row just closed (FR2).
+- _(settled 2026-09-23, was an assumption)_ Opening a row brings what it reveals into view: the page scrolls the least it can so the opened row and as many of its new rows as fit are on screen. Closing a row still moves nothing, except when it would hide the outline, which moves to the row just closed (FR2).
 - _(assumption)_ The card grows as rows open, and the page scrolls; the table never scrolls up and down inside its own box.
 
 ---
 
 ## Change Log
+
+- [2026-09-23] — the owner using the finished table — **FR2: opening a row brings what it reveals into view, and FR3: the outline never rests flush against the window's edge.** The spec had recorded "nothing jumps into the newly revealed rows" as an assumption to challenge, and the owner challenged it: measured at 1440×700, opening Branch 1 while it sat low on the screen left three of its five advisers below the fold and scrolled nothing, so the click appeared to do very little. Opening now scrolls the least it can to show the opened row and as many new rows as fit; closing still scrolls nothing. Separately, the outline already scrolled itself into view but came to rest exactly on the window's edge, which reads as cut off — it now stops clear of it.
 
 - [2026-09-23] — spec 004, which restores the payload the brief supplies — **FR2: independence is shown with a row that still has children.** The criterion read "when the user opens Branch 2, then Branch 1 stays open", and in the supplied data Branch 2 has no advisers and cannot be opened at all. It now opens Anna Blackwood inside Branch 1, which tests the same independence. A second criterion is added for what a childless branch does — nothing — which the table already did correctly; it had simply never been stated, because the data we had invented gave every branch children.
 

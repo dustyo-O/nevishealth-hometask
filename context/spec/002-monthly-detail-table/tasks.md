@@ -84,6 +84,14 @@ Everything lives in `apps/web`, so the slices are sequential and each is one lan
   - [x] Merge both lanes, run `pnpm check`, push, confirm CI green on PR #4, record ledger notes, `swarm.sh clean 002`. **[Lead]** _(Done 2026-09-22: merged --no-ff in order (react-frontend then testing-expert); `pnpm check` exit 0 on the merged tree: prettier ✓, contracts 18, api 69 + production smoke, web lint ✓ typecheck ✓ unit 157, e2e 101 passed — the strengthened test was red on its own branch and green once the CSS fix merged with it, which is the pairing working)_
 
 
+- [ ] **Slice 7: Keeping what you are looking at in view**
+
+  > The 2026-09-23 amendment (see the spec's Change Log). Two changes, both measured on the finished table at 1440×700: opening Branch 1 while it sat low on the screen left three of its five advisers below the fold and scrolled nothing, and the outline already scrolls itself into view but comes to rest exactly on the window's edge. This slice is implemented on the spec 004 branch at the owner's request, so it ships in that PR.
+  - [ ] **Opening a row brings what it reveals into view** (FR2, amended). After a row opens, scroll the page by the **least** amount that puts the opened row and as many of its new rows as fit on screen; if more appear than the screen can hold, the opened row and the first new row must both remain visible — the user is never carried past the row they clicked. **Closing scrolls nothing**, which is the existing behaviour and must not regress. Mind the interaction with the row animation: the new rows have their final geometry only once it settles, so measure after, not during. Tests RED first, including the more-rows-than-fit case and a close that must not move. **[Agent: react-frontend]**
+  - [ ] **The outline never rests flush against the window's edge** (FR3, amended). Measured: arrowing down lands each row at exactly the viewport bottom — `bottom` equals the window height, which reads as cut off. Give the rows and figure cells enough scroll margin that the outline comes to rest clear of the edge. This is not a missing `scrollIntoView`; the browser is already scrolling, it just has no room to leave. **[Agent: react-frontend]**
+  - [ ] Verify — browser at 1440×700 and 375×812: open Branch 1 from a position low on the screen and confirm every revealed row that fits is visible and the opened row is still on screen; open a row that reveals more rows than fit and confirm the opened row and the first new one are both visible; close a row and confirm the page does not move; arrow down through rows and through figure cells and confirm the outline always stops clear of both edges. Report the measured gaps. Delete the check's artifacts. **[Agent: react-frontend]**
+  - [ ] Merge the lane, run `pnpm check`, push, record ledger notes, `swarm.sh clean 002`. **[Lead]**
+
 ---
 
 ## Verification — 2026-09-22 (`/awos:verify 002`)
