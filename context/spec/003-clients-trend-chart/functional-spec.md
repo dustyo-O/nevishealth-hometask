@@ -124,13 +124,13 @@ When the figures arrive, the bars grow up from the bottom of the plot once, so t
 
 Thirteen months' worth of labels cannot fit across a phone, but the shape of the year can. On a narrow screen all twelve bars stay visible and simply become thinner; the plot keeps its height, so the difference between a good month and a bad one is as easy to see on a phone as on a laptop.
 
-Only the month labels give way, and in two steps. Below the width at which all twelve would collide, every third month is named — February, May, August, November — and January, so the ends of the year are always labelled. To fit those five, the months in between give up their year: the labels read "Feb 2024", "May", "Aug", "Nov", "Jan 2025". Both ends still carry the year, and the four repeated "2024"s that would otherwise crowd the axis are gone.
+Only the month labels give way: below the width at which all twelve fit, the axis thins them to every third month, each keeping its full "Feb 2024" form. At 375 px that leaves four — April, July, October and January 2025 — evenly spaced and clear of one another. February is not named there, and that is accepted: the labels are a scale to read the bars against, and the exact month behind any bar is one tap away.
 
 The chart itself never scrolls sideways, and neither does the page.
 
 - **Acceptance Criteria:**
   - [ ] When the page is viewed at 375 px wide, then all twelve bars are visible inside the card and none is cut off.
-  - [ ] When the page is viewed at 375 px wide, then the month labels read "Feb 2024", "May", "Aug", "Nov" and "Jan 2025", and no labels overlap.
+  - [x] When the page is viewed at 375 px wide, then the month labels read "Apr 2024", "Jul 2024", "Oct 2024" and "Jan 2025", evenly spaced, and no labels overlap.
   - [ ] When the page is viewed at 375 px wide, then the plot is the same height as at the design's width and the page has no horizontal scrollbar.
   - [ ] When the user tries to scroll the chart sideways at any width, then nothing moves, because the whole year is already shown.
   - [ ] When the page is viewed at the design's width, then all twelve months are named beneath their bars.
@@ -178,6 +178,8 @@ The chart appears inside the card that spec 001 already fills: the placeholder b
 ---
 
 ## Change Log
+
+- [2026-09-23] — the owner's judgement on the rendered chart — **FR8: the narrow-screen labels are every third month in full, not five abbreviated ones.** Measured on the built chart at 375 px, the axis already thins itself to "Apr 2024", "Jul 2024", "Oct 2024", "Jan 2025" — four labels, evenly spaced, clear by 11 px, with all twelve bars inside the card, no horizontal scroll and the plot the same 338 px as at 1440. The owner looked at it and judged it good enough ("currently labels in chart on 375 are good enough… we can skip improvements here"), so the criterion now describes what is drawn instead of a five-label set that would have needed a custom tick renderer. The cost, stated plainly: February is not labelled on a phone. The two superseded amendments below record how the wording got there.
 
 - [2026-09-23] — the cross-vendor review of the technical plan (`reviews/spec-codex-20260923-0053.md`, F2) — **FR4: where a tap dismisses is now stated as the plot, not "the bars".** "Tapping anywhere outside the bars" could not be built or tested as written: a tap inside a month's column but above its bar selects that month, which is the useful behaviour and the one the drawing gives for free. The criterion now names the two places a tester can actually tap to dismiss — the legend and the space around the chart — and the prose says a whole column counts as tapping its month.
 
