@@ -34,7 +34,7 @@ The parts are the company's totals for each channel — every adviser's figures 
 - **Acceptance Criteria:**
   - [x] When the page has loaded, then the chart shows twelve bars labelled "Feb 2024" through "Jan 2025" in order, each divided into three parts.
   - [x] When the user compares any bar with the table, then that bar's three parts add up to the figure the table shows on the Company row for the same month.
-  - [x] When the user reads February 2024, then its parts are 221 existing clients, 15 new organic and 14 new paid, totalling 250.
+  - [x] When the user reads February 2024, then its parts are 250 existing clients, 0 new organic and 0 new paid, totalling 250.
   - [x] When the user looks for the tallest bars, then August 2024 and January 2025 are the tallest, each totalling 350.
   - [x] When the user reads the parts of any bar from the bottom up, then they are always Existing clients, New organic, New paid, in that order.
 
@@ -71,7 +71,7 @@ On a touch screen there is no pointing, so a tap does the same thing: tapping a 
 However the panel was opened, it is never left behind: it disappears when the pointer leaves the chart, when the user taps outside it, and when the outline moves away from the chart.
 
 - **Acceptance Criteria:**
-  - [x] When the user points at February 2024, then a panel appears reading "Feb 2024", existing clients 221, new organic 15, new paid 14, and a total of 250.
+  - [x] When the user points at February 2024, then a panel appears reading "Feb 2024", existing clients 250, new organic 0, new paid 0, and a total of 250.
   - [x] When the user points at a month, then that month's column is tinted and the other eleven months are unchanged.
   - [x] When the user moves the pointer off the chart, then the panel and the tint both disappear.
   - [x] Given the page is viewed on a touch screen, when the user taps a month, then that month's panel appears.
@@ -106,7 +106,7 @@ A screen-reader user reaches the chart's figures two ways, and neither is a pict
 These are two deliberate ways to reach the same figures, and using both is intended: a user may hear June while moving and read June again in the table. What must never happen is a single move announcing the same month twice over, or the drawing itself shedding loose text — the scale's numbers and the month labels are never read as a stray list, because the drawing carries no readable text of its own.
 
 - **Acceptance Criteria:**
-  - [x] When a screen-reader user moves the outline to February 2024, then it announces "Feb 2024", existing clients 221, new organic 15, new paid 14 and a total of 250.
+  - [x] When a screen-reader user moves the outline to February 2024, then it announces "Feb 2024", existing clients 250, new organic 0, new paid 0 and a total of 250.
   - [x] When a screen reader reads the chart's figures as a table, then it finds twelve rows, one per month, each giving existing clients, new organic, new paid and the total.
   - [x] When the user moves the outline to a month, then that month's figures are announced once for that move, not repeated.
   - [x] When a screen reader reads the chart's drawing, then it finds no loose numbers from the scale or the month labels.
@@ -181,6 +181,9 @@ The chart appears inside the card that spec 001 already fills: the placeholder b
 ---
 
 ## Change Log
+
+- [2026-09-23] — spec 004, which restores the payload the brief supplies — **the chart is unchanged in shape; its figures and its smallest parts are not.** It is still company-wide, still three stacked channels, still a three-entry legend, and every requirement about its behaviour stands. Two things changed beneath it. **Existing clients is now derived** — the company's own figure less the newly acquired — because the supplied data records channels for one adviser only; the three parts still sum to the Company row in all twelve months. And the newly acquired are 0–2 clients a month, under two pixels drawn to scale, so **a part with clients in it is drawn on a stretched scale** (one client four pixels, two about six), with the height it gains taken from the existing-clients part so the bar's total stays exact. The example figures move with the data: February is 250 / 0 / 0 where it was 221 / 15 / 14. See spec 004 FR3 and FR4.
+
 
 - [2026-09-23] — the cross-vendor code review of the implementation (`reviews/code-codex-20260923-1359.md`, F1) — **FR8: the labels thin in steps, not straight to every third month.** The requirement claimed the axis goes to every third month as soon as twelve will not fit. Measured across ten widths on the built chart, that is untrue in the middle of the range: 375–420 px show every third month, **500–780 px show every second**, and twelve appear from about 900 px. No two labels touch at any width. The owner had already declined building explicit label selection ("we can skip improvements here"), so the requirement now describes the stepping that actually happens, and a new criterion pins what matters at every width — no overlap, the set always ending at January, and the count only growing with width.
 

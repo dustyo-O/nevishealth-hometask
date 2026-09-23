@@ -49,7 +49,8 @@ Rows slide in when they appear and slide out when they disappear. A viewer whose
   - [x] When the user clicks the name of Branch 1, then its five adviser rows appear directly beneath it, indented one step further, and the arrow on Branch 1 turns to its open position.
   - [x] Given Branch 1 is open, when the user clicks its name again, then its adviser rows disappear and the arrow returns to its closed position.
   - [x] Given Branch 1 is open and Anna Blackwood inside it is open, when the user closes Branch 1, then both the advisers and Anna's channels disappear; when the user opens Branch 1 again, then Anna's row is shown closed.
-  - [x] Given Branch 1 is open, when the user opens Branch 2, then Branch 1 stays open.
+  - [x] Given Branch 1 is open, when the user opens Anna Blackwood inside it, then Branch 1 stays open.
+  - [x] Given a branch has no advisers recorded, when the user looks at it, then it shows no control to open it and clicking it changes nothing.
   - [x] When the user clicks a monthly figure in any row, then nothing opens, closes or changes.
   - [x] Given the outline is on one of Anna Blackwood's channel figures inside an open Branch 1, when the user closes Branch 1 by clicking its name, then the outline moves to the Branch 1 row.
   - [x] Given the outline is on an adviser row inside an open Branch 1, when the user closes Branch 1, then the outline moves to the Branch 1 row and pressing Down moves it to Branch 2.
@@ -177,6 +178,9 @@ If the company has no branches at all, the table shows the Company row alone wit
 ---
 
 ## Change Log
+
+- [2026-09-23] — spec 004, which restores the payload the brief supplies — **FR2: independence is shown with a row that still has children.** The criterion read "when the user opens Branch 2, then Branch 1 stays open", and in the supplied data Branch 2 has no advisers and cannot be opened at all. It now opens Anna Blackwood inside Branch 1, which tests the same independence. A second criterion is added for what a childless branch does — nothing — which the table already did correctly; it had simply never been stated, because the data we had invented gave every branch children.
+
 
 - [2026-09-22] — the acceptance suite's 375-px run — **FR5: a revealed name is shown whole, on its own background.** The prose still claimed no name is ever shortened "at either width", which the narrower phone column had made untrue; it now says which width is which. The same run found the reveal painting no background at all, so the figure behind it showed through ("Anna Blackwood25") — FR5's text now states that a revealed name covers what is behind it, and the criteria test for it.
 - [2026-09-22] — the acceptance suite's 375-px run, and the owner's decision — **FR6: the name column narrows on a small screen.** It had kept the design's 1440-px width of 264 px, leaving 79 px beside it — less than one month column — so a figure was always clipped whatever the scroll position. The design only ever specified 1440. The name column now gives up room on a phone so whole months fit; the consequence is that the deepest names can be shortened there, which FR5's ellipsis and reveal already cover, and the criterion claiming nothing is ever shortened now applies to the design width alone.
