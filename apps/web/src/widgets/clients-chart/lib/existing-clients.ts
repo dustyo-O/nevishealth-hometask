@@ -1,7 +1,18 @@
 import type { MonthlySeries } from '@/entities/clients';
+import { channelKey } from '../model/channels';
 
 /** The channel that holds every client the data does not record as newly acquired (004 FR3). */
 export const EXISTING = 'Existing clients';
+
+/** The parts the data records as newly acquired, in the order they stack above Existing clients. */
+const NEWLY_ACQUIRED = ['New organic', 'New paid'] as const;
+
+/**
+ * The three parts of every bar, bottom-up (004 FR3-AC1). Fixed, not read from the data: a payload
+ * that records no "New organic" anywhere still has three parts (FR5-AC1), and one that lists its
+ * channels in another order still stacks in this one (code review F1).
+ */
+export const PARTS: readonly string[] = [EXISTING, ...NEWLY_ACQUIRED];
 
 /**
  * Per month: the clients who are not newly acquired — the company's own figure less every other
@@ -23,20 +34,23 @@ export const existingClients = ({ channels, points }: MonthlySeries): number[] =
   });
 
 /**
- * The series as the chart draws it: Existing clients first — the base of the stack — derived per
- * month, the newly acquired as the tree records them, and each month's total the sum of its three
- * parts. So every bar is as tall as its Company row (FR3-AC2), or, where the new clients alone
+ * The series as the chart draws it: always the three `PARTS`, in that order — Existing clients
+ * first, the base of the stack, derived per month; the newly acquired as the tree records them,
+ * a channel the tree does not record reading 0, which is what a channel recorded as 0 reads
+ * (FR4-AC5: not drawn); and each month's total the sum of its three parts. So every bar is as tall as its Company row (FR3-AC2), or, where the new clients alone
  * exceed it, as tall as they come to. The drawing, the legend, the panel, the hidden table and
  * the announcement all read this one series.
  */
 export const withExistingClients = (series: MonthlySeries): MonthlySeries => {
+  // A name outside the three throws rather than being dropped from every bar unseen (003 §2.1).
+  series.channels.forEach(channelKey);
   const values = existingClients(series);
-  const channels = [EXISTING, ...series.channels.filter((name) => name !== EXISTING)];
   return {
-    channels,
+    channels: PARTS,
     points: series.points.map((point, i) => {
-      const byChannel: Record<string, number> = { ...point.byChannel, [EXISTING]: values[i] ?? 0 };
-      const total = channels.reduce((sum, name) => sum + (byChannel[name] ?? 0), 0);
+      const byChannel: Record<string, number> = { [EXISTING]: values[i] ?? 0 };
+      for (const name of NEWLY_ACQUIRED) byChannel[name] = point.byChannel[name] ?? 0;
+      const total = PARTS.reduce((sum, name) => sum + (byChannel[name] ?? 0), 0);
       return { ...point, byChannel, total };
     }),
   };

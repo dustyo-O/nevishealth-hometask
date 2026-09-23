@@ -746,3 +746,103 @@ describe('ClientsChart, when the data records the channel of only part of the co
     expect(await axe(container)).toHaveNoViolations();
   });
 });
+
+/**
+ * The shipped company with Anna Blackwood's channels rewritten by `edit`: the only adviser whose
+ * clients are broken down, so the only place the tree records any channel at all.
+ */
+const withAnnasChannels = (edit: (channels: TreeNode[]) => TreeNode[]): ClientsResponse => {
+  const data = shippedClients();
+  const anna = data.company.branches?.[0]?.employees?.find(({ name }) => name === 'Anna Blackwood');
+  if (anna?.channels === undefined) throw new Error('The shipped data has no Anna Blackwood');
+  anna.channels = edit(anna.channels);
+  return data;
+};
+
+/** A company that records no "New organic" anywhere: the part is still one of the three. */
+const noOrganicClients = () =>
+  withAnnasChannels((channels) => channels.filter(({ name }) => name !== 'New organic'));
+
+/** A company that lists its channels New paid, New organic, Existing clients. */
+const reversedClients = () => withAnnasChannels((channels) => [...channels].reverse());
+
+describe('ClientsChart, whatever channels the payload records (004 code review F1)', () => {
+  it('names the three parts in the legend even when no organic channel is recorded (FR5-AC1, FR3-AC6)', () => {
+    renderChart(noOrganicClients());
+    expect(legendOf()).toEqual(THREE);
+  });
+
+  it('lists the three parts in the panel, New organic reading 0, when none is recorded (FR5-AC2/AC4)', () => {
+    const drawing = drawingBox(renderChart(noOrganicClients()).container);
+    hover(drawing, JUL_2024);
+    // July's two organic clients are no longer recorded as new, so they are existing clients.
+    expect(panelRows(drawing)).toEqual([
+      ['Existing clients', '333'],
+      ['New organic', '0'],
+      ['New paid', '1'],
+      ['Total', '334'],
+    ]);
+  });
+
+  it('gives the hidden table the three parts and the total when no organic is recorded (FR5-AC3)', () => {
+    const data = noOrganicClients();
+    renderChart(data);
+    const [header, ...rows] = within(screen.getByRole('table')).getAllByRole('row');
+    expect(
+      within(header!)
+        .getAllByRole('columnheader')
+        .map((th) => th.textContent),
+    ).toEqual(['Month', ...THREE, 'Total']);
+    expect(rows).toHaveLength(12);
+    rows.forEach((row, month) => {
+      const cells = within(row)
+        .getAllByRole('cell')
+        .map((td) => Number(td.textContent));
+      expect(cells).toEqual([
+        ...Object.values(expected(data, month)),
+        data.company.values[month],
+      ]);
+    });
+  });
+
+  it('keeps the three in the legend in stacking order when the payload lists them in reverse (FR3-AC1)', () => {
+    renderChart(reversedClients());
+    expect(legendOf()).toEqual(THREE);
+  });
+
+  it('stacks Existing, New organic, New paid bottom-up when the payload lists them in reverse (FR3-AC1)', () => {
+    const { months } = barsIn(drawingOf(renderChart(reversedClients()).container));
+    expect(months).toHaveLength(12);
+    months.forEach((rects) => {
+      const ordered = [...rects].sort((a, b) => b.top + b.height - (a.top + a.height));
+      expect(ordered.map((rect) => rect.key)).toEqual(
+        KEYS.filter((key) => rects.some((rect) => rect.key === key)),
+      );
+    });
+    // July draws all three, so the order is seen in full at least once.
+    expect(months[JUL_2024]!.map((rect) => rect.key).sort()).toEqual([...KEYS].sort());
+  });
+
+  it('lists the three in the panel and the hidden table in stacking order when reversed (FR5-AC2/AC3)', () => {
+    const { container } = renderChart(reversedClients());
+    const [header, ...rows] = within(screen.getByRole('table')).getAllByRole('row');
+    expect(
+      within(header!)
+        .getAllByRole('columnheader')
+        .map((th) => th.textContent),
+    ).toEqual(['Month', ...THREE, 'Total']);
+    expect(
+      within(rows[JUL_2024]!)
+        .getAllByRole('cell')
+        .map((td) => td.textContent),
+    ).toEqual(['331', '2', '1', '334']);
+    const drawing = drawingBox(container);
+    hover(drawing, JUL_2024);
+    expect(panelRows(drawing)).toEqual([
+      ['Existing clients', '331'],
+      ['New organic', '2'],
+      ['New paid', '1'],
+      ['Total', '334'],
+    ]);
+  });
+});
