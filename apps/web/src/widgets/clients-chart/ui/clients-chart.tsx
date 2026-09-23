@@ -9,7 +9,13 @@ import {
 import { VisuallyHidden } from '@/shared/ui/visually-hidden';
 import { toDrawing } from '../lib/drawn-series';
 import { withExistingClients } from '../lib/existing-clients';
-import { COLUMNS_LEFT, COLUMNS_RIGHT, PLOT_MARGIN, X_AXIS_HEIGHT } from '../lib/plot-geometry';
+import {
+  COLUMNS_LEFT,
+  COLUMNS_RIGHT,
+  PLOT_HEIGHT,
+  PLOT_MARGIN,
+  X_AXIS_HEIGHT,
+} from '../lib/plot-geometry';
 import { useMonthReader } from '../model/use-month-reader';
 import { BarPlot, type PlotDimension } from './bar-plot';
 import { ChartDataTable } from './chart-data-table';
@@ -34,6 +40,9 @@ const nameOf = ({ points }: MonthlySeries): string => {
   const period = first && last ? `, ${formatMonth(first.month)} to ${formatMonth(last.month)}` : '';
   return `Clients per month by acquisition channel${period}`;
 };
+
+/** The plot box's height, from the number the drawing's arithmetic uses (005 chart F6). */
+const PLOT_BOX = { '--plot-height': `${PLOT_HEIGHT}px` } as CSSProperties;
 
 /**
  * Where the drawing puts its columns, handed to the stylesheet so the panel stands beside the
@@ -78,7 +87,7 @@ export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
   const months = series.points.length;
 
   return (
-    <div className={styles.chart}>
+    <div className={styles.chart} style={PLOT_BOX}>
       {/* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex --
           A chart has no interactive ARIA role; a focusable named group that owns Left, Right and
           Escape is the specified structure (003 §2.4), measured with axe at zero violations. */}

@@ -12,7 +12,7 @@
 /* Definite height, or the responsive container renders no SVG at all — silently (consult Q4). */
 .plot {
   flex: none;
-  height: var(--chart-plot-h);
+  height: var(--plot-height);
   min-width: 0;
 }
 

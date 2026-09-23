@@ -101,7 +101,7 @@ Other measurements at 375: bar width **17–18 px** (the grill's "~24 px" is not
 
 ### 2.6 The container (R5)
 
-The widget root is a flex column with `min-height: var(--card-chart-min-h)`. **The plot box has a fixed height of its own, `--chart-plot-h`**, and the HTML legend sits beneath it at whatever height it needs; the card is allowed to grow. `<ResponsiveContainer width="100%" height="100%">` goes inside the plot box. The skeleton keeps the same two heights, so loading and loaded measure the same.
+The widget root is a flex column with `min-height: var(--card-chart-min-h)`. **The plot box has a fixed height of its own, `--chart-plot-h`**, and the HTML legend sits beneath it at whatever height it needs; the card is allowed to grow. _(Amended by 005 chart F6: the height is one number, `PLOT_HEIGHT` in `lib/plot-geometry.ts`, which the lift's arithmetic reads and which the chart and its skeleton hand to their stylesheets as `--plot-height`; the `--chart-plot-h` token below no longer sizes anything.)_ `<ResponsiveContainer width="100%" height="100%">` goes inside the plot box. The skeleton keeps the same two heights, so loading and loaded measure the same.
 
 The earlier plan made the plot `flex: 1 1 auto` and the legend `flex: none`, which reads as equal-height only because our three legend entries happen to fit on one line at 375 px. A longer channel name, larger text or a 320 px screen would wrap the legend and **steal height from the plot**, breaking FR8-AC3 — the reviewer was right (F3), and a layout that holds by luck is not a layout. A fixed plot height makes the requirement true by construction, whatever the legend does. **Verify with the real legend**, not a stand-in: the plot box must measure the same height at 375 and at 1440.
 
