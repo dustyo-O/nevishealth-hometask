@@ -75,3 +75,20 @@ _The owner challenged the premise: "what is 'not recorded'? maybe we were wrong 
 - **R7 — the announcement gets long.** At nine segments the live region reads nine figures plus a total for every month. Consistent, but possibly tiring; worth the owner's ear once it exists.
 - **R8 — nine shades must stay distinguishable**, including for a colour-blind reader, and the shades within one branch are by definition close together. Needs checking in a browser, not asserting in a unit test.
 - **R9 — the chart now re-renders on every expand/collapse.** Spec 003 measured that the drawing does not re-render on hover; that guarantee must survive a changing series.
+
+---
+
+## Round 4 — the design settles it, 2026-09-23 (supersedes Round 3)
+
+_The owner found the proof in Figma: the design's chart is company-level, stacked by the three acquisition channels, and its bars reach exactly the Company row's figures — 250, 267, 284, 301 … 350. Round 3's drill-down model is withdrawn. Round 3 is kept in this file rather than deleted, because the path matters: we were wrong twice, in opposite directions, and the README will say so._
+
+- **D28:** **(evidence: the Figma frame, 1408×834)** The chart is **company-level and stacked by the three acquisition channels**, exactly as spec 003 built it. It does not follow the table's drill-down; "Chart Follows the Drill-Down" returns to Phase 2 where it was.
+- **D29:** The Zustand store, `visibleBreakdown` and the derived shade palette are **not built**. `architecture.md` §1 and §6 revert to their previous text — expansion state stays private to the tree grid, and there is no global store.
+- **D30:** **No "Not recorded" segment.** The three categories are exhaustive by their own names: "New organic" and "New paid" are the clients newly acquired, which the data records explicitly, and every other client is by definition an **existing** one. So **`Existing clients = company total − new organic − new paid`**.
+- **D31:** **(measured)** That gives `250, 266, 282, 299, 315, 331, 348, 247, 248, 248, 248, 346` for Existing against organic `0,1,1,1,0,2,2,1,1,1,1,2` and paid `0,0,1,1,2,1,0,2,1,1,1,2` — and the bars equal the Company row in **all twelve months**. Mathematically this is slice 1's remainder folded into Existing instead of drawn separately, so that arithmetic survives; only the fourth segment and its token go.
+- **D32:** **The assumption this rests on, to be declared in the README:** a client the data does not record as newly acquired is an existing client. It is the natural reading of the three names and the only split that both uses real figures and sums to the company's own — but it does attribute 225 of February's 250 on semantics rather than on recorded data.
+- **D33:** **(measured)** The new-client segments are 0–2 clients, which is 0–1.7 px at the design's plot height — invisible. Every **non-zero** segment therefore gets a minimum drawn height so the stacking can be seen; zero stays zero. The cost, stated: the drawn bar can exceed its true total by about 2 px on a 250-client bar, under 1 %. Tests assert the **figures** exactly and the **drawn heights** within a tolerance.
+
+### What round 4 costs
+
+Slice 1 is merged and part of it is now wrong: the fourth segment, its token and the conditional legend/panel/table it drives all go. The `notRecorded` arithmetic stays, renamed for what it now does — top up Existing. That is the price of having changed direction twice, and it is small because slice 1 put the arithmetic in a pure function and fed everything from one series.
