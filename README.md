@@ -164,6 +164,7 @@ The chart is a single tab stop too. Left and Right move month by month, announci
 
 - **Let the chart follow the drill-down.** Opening a branch and seeing the chart divide into its advisers is the obvious next step, and we prototyped it — the arithmetic works, because every node holds the level beneath it. It is not in the design, which is why it is not here.
 - **Make the data service refuse inconsistent figures** rather than warn, once something upstream owns the invariant.
+- **Finish the component review's last step — a second opinion on the public surface.** Four reviewers read the components in parallel before this was sent, and their 29 findings were worked through: a test that had guarded nothing since a rename, hooks lifted out of two long components, the shared layer's boundary closed, dead exports removed. The last planned step was a **cross-vendor reviewer reading the resulting public surface** — the props, the exports, the boundaries — rather than the diff. **It was not run**, because it reviews a surface those fixes had only just reshaped, and we chose to send the work instead. It is the first thing we would do next.
 - **Make the accessibility audit a gate.** `axe` already runs over the page in the end-to-end tests; it should fail the build, not just report.
 - **Revisit the charting library.** Recharts costs **+92 kB gzip** — measured against this app, more than the rest of it plus React together — and brings Redux Toolkit, immer and d3 with it. For one stacked bar chart that is a lot.
 
