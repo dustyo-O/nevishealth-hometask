@@ -19,9 +19,9 @@ _The highest priority features that form the core foundation of the product — 
   - [x] **Keyboard and Assistive-Technology Access:** Every expand and collapse works from the keyboard, focus is visible, and the tree structure — each row's level and expanded state — is announced to screen readers.
   - [x] **Expand/Collapse Behaviour Tests:** Automated UI tests prove rows expand and collapse by mouse and keyboard and that the hierarchy is exposed correctly.
 
-- [ ] **Clients Trend Chart**
-  - [ ] **Stacked Monthly Bar Chart by Channel:** One bar per month, stacked by acquisition channel (Existing clients / New organic / New paid) with a legend, on a clients y-axis, matching the design; totals agree with the table.
-  - [ ] **Data-to-Chart Mapping Tests:** Automated tests prove the served tree maps into the right bars and segments, including the company-level channel split summed from the tree.
+- [x] **Clients Trend Chart**
+  - [x] **Stacked Monthly Bar Chart by Channel:** One bar per month, stacked by acquisition channel (Existing clients / New organic / New paid) with a legend, on a clients y-axis, matching the design; totals agree with the table.
+  - [x] **Data-to-Chart Mapping Tests:** Automated tests prove the served tree maps into the right bars and segments, including the company-level channel split summed from the tree.
 
 - [ ] **Ship-Ready**
   - [ ] **Nothing Breaks at 375 px:** The page stays usable and nothing overflows down to a 375 px wide viewport (full responsiveness is not a goal).

@@ -1,7 +1,7 @@
 # Functional Specification: Clients Trend Chart
 
 - **Roadmap Item:** Phase 1 — Clients Trend Chart: one stacked bar per month, split by acquisition channel, on a clients scale, matching the design; totals agree with the table.
-- **Status:** Draft
+- **Status:** Completed
 - **Author:** Alexander Shleyko
 - **Sources:** `context/inbox/clients-trend-chart.md` (grill decisions D1–D18), `context/product/product-definition.md`, the design ("Web engineer home task": the dashboard mockup and its chart frame, screenshots in `context/inbox/design/`), spec 001 (Completed) for the card and its loading and failure states, spec 002 (Completed) for the table the chart must agree with
 
@@ -32,11 +32,11 @@ Every bar is divided into three parts, always in the same order from the bottom 
 The parts are the company's totals for each channel — every adviser's figures for that channel, added together. This is the only place in the dashboard where the company's split by channel appears: the table shows channels adviser by adviser, never added up.
 
 - **Acceptance Criteria:**
-  - [ ] When the page has loaded, then the chart shows twelve bars labelled "Feb 2024" through "Jan 2025" in order, each divided into three parts.
-  - [ ] When the user compares any bar with the table, then that bar's three parts add up to the figure the table shows on the Company row for the same month.
-  - [ ] When the user reads February 2024, then its parts are 221 existing clients, 15 new organic and 14 new paid, totalling 250.
-  - [ ] When the user looks for the tallest bars, then August 2024 and January 2025 are the tallest, each totalling 350.
-  - [ ] When the user reads the parts of any bar from the bottom up, then they are always Existing clients, New organic, New paid, in that order.
+  - [x] When the page has loaded, then the chart shows twelve bars labelled "Feb 2024" through "Jan 2025" in order, each divided into three parts.
+  - [x] When the user compares any bar with the table, then that bar's three parts add up to the figure the table shows on the Company row for the same month.
+  - [x] When the user reads February 2024, then its parts are 221 existing clients, 15 new organic and 14 new paid, totalling 250.
+  - [x] When the user looks for the tallest bars, then August 2024 and January 2025 are the tallest, each totalling 350.
+  - [x] When the user reads the parts of any bar from the bottom up, then they are always Existing clients, New organic, New paid, in that order.
 
 ### FR2 — The scale and the grid
 
@@ -45,11 +45,11 @@ A scale runs up the left side of the chart in numbers of clients. It starts at z
 A faint dotted line runs across the plot at each labelled step of the scale, so a bar's height can be read against it. Nothing is drawn between the months.
 
 - **Acceptance Criteria:**
-  - [ ] When the page has loaded, then the scale starts at 0 and is labelled in equal steps of one hundred.
-  - [ ] When the page has loaded with the supplied figures, then the scale's top label is 400 and no bar reaches the top of the plot.
-  - [ ] When the user looks at the plot, then a faint dotted line runs across it at each labelled step of the scale.
-  - [ ] When the user looks between two months, then no vertical line is drawn there.
-  - [ ] Given a month's total is higher than the scale's top, when the chart is shown, then the top moves up to the first step above that month's total.
+  - [x] When the page has loaded, then the scale starts at 0 and is labelled in equal steps of one hundred.
+  - [x] When the page has loaded with the supplied figures, then the scale's top label is 400 and no bar reaches the top of the plot.
+  - [x] When the user looks at the plot, then a faint dotted line runs across it at each labelled step of the scale.
+  - [x] When the user looks between two months, then no vertical line is drawn there.
+  - [x] Given a month's total is higher than the scale's top, when the chart is shown, then the top moves up to the first step above that month's total.
 
 ### FR3 — The legend
 
@@ -58,9 +58,9 @@ Beneath the plot, centred, a legend names the three parts — Existing clients, 
 The legend explains the chart; it does not operate it. Clicking a legend entry changes nothing, because hiding a part would silently change the height of every bar and break the promise that the chart and the table agree.
 
 - **Acceptance Criteria:**
-  - [ ] When the page has loaded, then a legend appears centred beneath the chart naming Existing clients, New organic and New paid, each with a small swatch.
-  - [ ] When the user compares a legend swatch with the bars, then the swatch is the same colour as the part it names.
-  - [ ] When the user clicks a legend entry, then nothing about the chart changes.
+  - [x] When the page has loaded, then a legend appears centred beneath the chart naming Existing clients, New organic and New paid, each with a small swatch.
+  - [x] When the user compares a legend swatch with the bars, then the swatch is the same colour as the part it names.
+  - [x] When the user clicks a legend entry, then nothing about the chart changes.
 
 ### FR4 — Pointing at a month
 
@@ -71,15 +71,15 @@ On a touch screen there is no pointing, so a tap does the same thing: tapping a 
 However the panel was opened, it is never left behind: it disappears when the pointer leaves the chart, when the user taps outside it, and when the outline moves away from the chart.
 
 - **Acceptance Criteria:**
-  - [ ] When the user points at February 2024, then a panel appears reading "Feb 2024", existing clients 221, new organic 15, new paid 14, and a total of 250.
-  - [ ] When the user points at a month, then that month's column is tinted and the other eleven months are unchanged.
-  - [ ] When the user moves the pointer off the chart, then the panel and the tint both disappear.
-  - [ ] Given the page is viewed on a touch screen, when the user taps a month, then that month's panel appears.
-  - [ ] Given a month's panel is open on a touch screen, when the user taps a different month, then that month's panel replaces it.
-  - [ ] Given a month's panel is open on a touch screen, when the user taps the legend, then the panel and the tint disappear.
-  - [ ] Given a month's panel is open on a touch screen, when the user taps the space around the chart inside its card, then the panel and the tint disappear.
-  - [ ] Given a month's panel is open, when the outline leaves the chart, then the panel and the tint disappear.
-  - [ ] When the user reads the panel for any month, then its three figures add up to the total it shows.
+  - [x] When the user points at February 2024, then a panel appears reading "Feb 2024", existing clients 221, new organic 15, new paid 14, and a total of 250.
+  - [x] When the user points at a month, then that month's column is tinted and the other eleven months are unchanged.
+  - [x] When the user moves the pointer off the chart, then the panel and the tint both disappear.
+  - [x] Given the page is viewed on a touch screen, when the user taps a month, then that month's panel appears.
+  - [x] Given a month's panel is open on a touch screen, when the user taps a different month, then that month's panel replaces it.
+  - [x] Given a month's panel is open on a touch screen, when the user taps the legend, then the panel and the tint disappear.
+  - [x] Given a month's panel is open on a touch screen, when the user taps the space around the chart inside its card, then the panel and the tint disappear.
+  - [x] Given a month's panel is open, when the outline leaves the chart, then the panel and the tint disappear.
+  - [x] When the user reads the panel for any month, then its three figures add up to the total it shows.
 
 ### FR5 — Reaching the chart from the keyboard
 
@@ -90,14 +90,14 @@ Arriving at the chart makes **February 2024**, the first month, the month being 
 Pressing Escape closes the panel and the tint while leaving the outline on the chart; moving to another month opens it again. Leaving the chart clears the panel, and coming back starts at February again — the dashboard remembers nothing between visits.
 
 - **Acceptance Criteria:**
-  - [ ] When the user presses Tab from the page heading, then the outline appears on the chart as a whole, which is a single stop, and never on an individual bar.
-  - [ ] When the outline first reaches the chart, then February 2024 is the month being read, its column is tinted and its panel is shown.
-  - [ ] Given February 2024 is being read, when the user presses Right, then March 2024 is being read and its panel replaces February's.
-  - [ ] Given January 2025 is being read, when the user presses Right, then January 2025 is still the month being read.
-  - [ ] Given February 2024 is being read, when the user presses Left, then February 2024 is still the month being read.
-  - [ ] Given a month's panel is shown, when the user presses Escape, then the panel and the tint disappear and the outline stays on the chart.
-  - [ ] Given the user has moved to June 2024 and then left the chart, when they return to the chart, then February 2024 is the month being read again.
-  - [ ] Given the outline is on the chart, when the user presses Tab, then the outline leaves the chart and the table beneath is the next stop.
+  - [x] When the user presses Tab from the page heading, then the outline appears on the chart as a whole, which is a single stop, and never on an individual bar.
+  - [x] When the outline first reaches the chart, then February 2024 is the month being read, its column is tinted and its panel is shown.
+  - [x] Given February 2024 is being read, when the user presses Right, then March 2024 is being read and its panel replaces February's.
+  - [x] Given January 2025 is being read, when the user presses Right, then January 2025 is still the month being read.
+  - [x] Given February 2024 is being read, when the user presses Left, then February 2024 is still the month being read.
+  - [x] Given a month's panel is shown, when the user presses Escape, then the panel and the tint disappear and the outline stays on the chart.
+  - [x] Given the user has moved to June 2024 and then left the chart, when they return to the chart, then February 2024 is the month being read again.
+  - [x] Given the outline is on the chart, when the user presses Tab, then the outline leaves the chart and the table beneath is the next stop.
 
 ### FR6 — What a screen reader reports
 
@@ -106,19 +106,19 @@ A screen-reader user reaches the chart's figures two ways, and neither is a pict
 These are two deliberate ways to reach the same figures, and using both is intended: a user may hear June while moving and read June again in the table. What must never happen is a single move announcing the same month twice over, or the drawing itself shedding loose text — the scale's numbers and the month labels are never read as a stray list, because the drawing carries no readable text of its own.
 
 - **Acceptance Criteria:**
-  - [ ] When a screen-reader user moves the outline to February 2024, then it announces "Feb 2024", existing clients 221, new organic 15, new paid 14 and a total of 250.
-  - [ ] When a screen reader reads the chart's figures as a table, then it finds twelve rows, one per month, each giving existing clients, new organic, new paid and the total.
-  - [ ] When the user moves the outline to a month, then that month's figures are announced once for that move, not repeated.
-  - [ ] When a screen reader reads the chart's drawing, then it finds no loose numbers from the scale or the month labels.
-  - [ ] When a screen reader reaches the chart, then it is named so the user knows what it shows before hearing any figure.
+  - [x] When a screen-reader user moves the outline to February 2024, then it announces "Feb 2024", existing clients 221, new organic 15, new paid 14 and a total of 250.
+  - [x] When a screen reader reads the chart's figures as a table, then it finds twelve rows, one per month, each giving existing clients, new organic, new paid and the total.
+  - [x] When the user moves the outline to a month, then that month's figures are announced once for that move, not repeated.
+  - [x] When a screen reader reads the chart's drawing, then it finds no loose numbers from the scale or the month labels.
+  - [x] When a screen reader reaches the chart, then it is named so the user knows what it shows before hearing any figure.
 
 ### FR7 — Movement
 
 When the figures arrive, the bars grow up from the bottom of the plot once, so the eye is drawn to the chart taking shape. If the viewer's system is set to reduce motion, the bars are simply there, fully drawn, with no growth — the same rule the table's rows already follow.
 
 - **Acceptance Criteria:**
-  - [ ] When the figures arrive, then the bars grow up from the bottom of the plot once and then stay still.
-  - [ ] Given the viewer's system is set to reduce motion, when the figures arrive, then the bars appear fully drawn without growing.
+  - [x] When the figures arrive, then the bars grow up from the bottom of the plot once and then stay still.
+  - [x] Given the viewer's system is set to reduce motion, when the figures arrive, then the bars appear fully drawn without growing.
 
 ### FR8 — Narrow screens
 
@@ -131,21 +131,21 @@ That is deliberately a promise about **properties, not a pattern**: the exact se
 The chart itself never scrolls sideways, and neither does the page.
 
 - **Acceptance Criteria:**
-  - [ ] When the page is viewed at 375 px wide, then all twelve bars are visible inside the card and none is cut off.
-  - [ ] When the page is viewed at 375 px wide, then the month labels read "Apr 2024", "Jul 2024", "Oct 2024" and "Jan 2025", evenly spaced, and no labels overlap.
-  - [ ] When the page is viewed at any width from 375 px to 1440 px, then the month labels never overlap, the set always ends at "Jan 2025", and the number shown only grows as the chart gets wider.
-  - [ ] When the page is viewed at 375 px wide, then the plot is the same height as at the design's width and the page has no horizontal scrollbar.
-  - [ ] When the user tries to scroll the chart sideways at any width, then nothing moves, because the whole year is already shown.
-  - [ ] When the page is viewed at the design's width, then all twelve months are named beneath their bars.
+  - [x] When the page is viewed at 375 px wide, then all twelve bars are visible inside the card and none is cut off.
+  - [x] When the page is viewed at 375 px wide, then the month labels read "Apr 2024", "Jul 2024", "Oct 2024" and "Jan 2025", evenly spaced, and no labels overlap.
+  - [x] When the page is viewed at any width from 375 px to 1440 px, then the month labels never overlap, the set always ends at "Jan 2025", and the number shown only grows as the chart gets wider.
+  - [x] When the page is viewed at 375 px wide, then the plot is the same height as at the design's width and the page has no horizontal scrollbar.
+  - [x] When the user tries to scroll the chart sideways at any width, then nothing moves, because the whole year is already shown.
+  - [x] When the page is viewed at the design's width, then all twelve months are named beneath their bars.
 
 ### FR9 — While loading, and when something is wrong
 
 The chart appears inside the card that spec 001 already fills: the placeholder blocks shaped like a chart while the figures are loading, and the error message with its Retry button if they cannot be loaded. Nothing about those states changes here. The line that stood in for the chart until now — "12 months · Feb 2024 – Jan 2025" — is replaced by the chart itself.
 
 - **Acceptance Criteria:**
-  - [ ] Given the figures are slow to arrive, when the user opens the page, then the chart's card shows the placeholder blocks exactly as before, and the chart replaces them once the figures arrive.
-  - [ ] Given the figures cannot be loaded, when the user opens the page, then the error message with its Retry button appears in place of the chart, and clicking Retry shows the chart once the figures arrive.
-  - [ ] When the chart is shown, then the line "12 months · Feb 2024 – Jan 2025" no longer appears anywhere on the page.
+  - [x] Given the figures are slow to arrive, when the user opens the page, then the chart's card shows the placeholder blocks exactly as before, and the chart replaces them once the figures arrive.
+  - [x] Given the figures cannot be loaded, when the user opens the page, then the error message with its Retry button appears in place of the chart, and clicking Retry shows the chart once the figures arrive.
+  - [x] When the chart is shown, then the line "12 months · Feb 2024 – Jan 2025" no longer appears anywhere on the page.
 
 ---
 

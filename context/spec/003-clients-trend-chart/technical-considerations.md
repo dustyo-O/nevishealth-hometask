@@ -1,7 +1,7 @@
 # Technical Specification: Clients Trend Chart
 
 - **Functional Specification:** `context/spec/003-clients-trend-chart/functional-spec.md`
-- **Status:** Draft
+- **Status:** Completed
 - **Author(s):** Alexander Shleyko (lead); the frontend plan comes from the specialist consultation quoted throughout, `consults/react-frontend-chart-sections-20260922-234604.md`, which built a throwaway Recharts 3.10.1 prototype **outside the repo** (esbuild, served locally, driven with Playwright 1.63) and measured every claim below. Numbers here are measurements, not estimates; where something was not measured, it says so.
 
 ---
