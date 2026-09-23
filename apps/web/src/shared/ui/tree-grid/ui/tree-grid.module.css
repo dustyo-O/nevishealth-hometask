@@ -62,14 +62,10 @@
 }
 
 /*
- * The animation library places a leaving row absolutely, measured against its nearest positioned
- * ancestor, and it only knows the coordinates of the element it animates — this `<tbody>`. It
- * makes the `<tbody>` `relative` itself, but WebKit computes `position: relative` on a table
- * section as `static` (measured, WebKit 2359: Chromium says `relative`). The library then walks
- * on up to `<body>`, whose coordinates it never took, and throws on the first collapse that
- * interrupts a slide — leaving the row it had just re-inserted on screen and not inert (4 specs
- * red in WebKit only). `sticky` with no offsets is positioned like `relative` and moves nothing,
- * and WebKit keeps it, so both engines measure the leaving row against this element.
+ * Not `relative`, and do not change it back: WebKit computes `position: relative` on a table
+ * section as `static`, so the animation library would measure a leaving row against `<body>`
+ * and throw on a collapse that interrupts a slide (WebKit only). `sticky` with no offsets is
+ * positioned like `relative`, moves nothing, and both engines keep it.
  */
 .table tbody {
   position: sticky;
@@ -80,14 +76,10 @@
   border-block-end: none;
 }
 
-/* A row on its way out is lifted out of the table's flow by the animation library
-   (`position: absolute`, so that the rows below can close the gap while it slides away), and an
-   absolutely positioned `<tr>` is blockified: its cells drop out of the fixed column layout and
-   the figures jam against each other for the length of the animation — measured in Chrome 153, a
-   month cell 34 px wide against the 88 px of the row above it. The row is handed the table's own
-   layout back for as long as it is still on screen; the library sets its measured width inline,
-   so `fixed` puts every column back exactly where it was. `[inert]` is the mark the motion
-   plugin puts on a leaving row (D-15a). */
+/* A leaving row is `position: absolute` while it slides, and an absolutely positioned `<tr>` is
+   blockified: its cells drop out of the fixed column layout. Hand it the table's layout back —
+   the library sets its measured width inline, so `fixed` puts every column where it was.
+   `[inert]` is the mark the motion plugin puts on a leaving row (D-15a). */
 .table tbody tr[inert] {
   display: table;
   table-layout: fixed;
