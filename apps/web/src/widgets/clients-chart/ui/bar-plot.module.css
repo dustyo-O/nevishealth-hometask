@@ -1,0 +1,10 @@
+/* The library paints its own greys as SVG attributes; a stylesheet rule outranks an attribute,
+   so the drawing takes the design's tokens here rather than through props. */
+.plot :global(.recharts-cartesian-axis-tick-value) {
+  font-size: var(--font-size-footnote);
+  fill: var(--color-text-muted);
+}
+
+.plot :global(.recharts-cartesian-grid line) {
+  stroke: var(--color-line-dotted);
+}

@@ -48,12 +48,13 @@ export default defineConfig({
     // runs on. Every table spec, not only the sticky and scroll ones D-15 named: the first run
     // found a WebKit-only defect in opening and closing (slice 5 ledger). Opt-in
     // (`E2E_WEBKIT=1`, after `pnpm exec playwright install webkit`): CI installs Chromium only.
+    // Spec 003 R-6 adds the chart specs: every chart measurement in the tech doc was Chromium's.
     ...(process.env.E2E_WEBKIT
       ? [
           {
             name: 'webkit',
             dependencies: ['setup'],
-            testMatch: /table-.*\.spec\.ts$/,
+            testMatch: /(table|chart)-.*\.spec\.ts$/,
             use: { ...devices['Desktop Safari'], baseURL: DEV_URL },
           },
         ]

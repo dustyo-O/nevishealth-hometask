@@ -4,6 +4,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 export const TEXT = {
   heading: 'Clients',
   loading: 'Loading clients…',
+  /** The line that stood in for the chart until spec 003 — gone since the chart replaced it (FR9-AC3). */
   period: '12 months · Feb 2024 – Jan 2025',
   /**
    * The monthly detail table's accessible name. It stands where spec 001's summary line
@@ -30,11 +31,16 @@ export const COMPANY_AND_BRANCHES = ['Company', 'Branch 1', 'Branch 2', 'Branch 
 
 export type ClientsPage = {
   heading: Locator;
-  /** The live region for assistive technology — reads "Loading clients…" only while loading. */
+  /**
+   * The page's own live region — reads "Loading clients…" only while loading. Not the chart's,
+   * which announces the month being read inside its card (spec 003 FR6-AC1).
+   */
   status: Locator;
   /** The container of the two cards / the error panel; `aria-busy` while loading. */
   grid: Locator;
   chartCard: Locator;
+  /** The chart's drawing inside the upper card (spec 003 FR1). */
+  chart: Locator;
   tableCard: Locator;
   /** The monthly detail table inside the lower card (spec 002 FR1). */
   table: Locator;
@@ -50,9 +56,10 @@ export const clientsPage = (page: Page): ClientsPage => {
 
   return {
     heading: page.getByRole('heading', { level: 1, name: TEXT.heading }),
-    status: page.getByRole('status'),
+    status: page.getByRole('main').locator(':scope > [role="status"]'),
     grid: page.locator('[aria-busy]'),
     chartCard: page.getByRole('region', { name: 'Clients chart' }),
+    chart: page.getByRole('region', { name: 'Clients chart' }).locator('svg'),
     tableCard: page.getByRole('region', { name: 'Monthly detail' }),
     table,
     rowNames: table.getByRole('rowheader'),
@@ -72,6 +79,19 @@ export const expectTableLoaded = async (
 ): Promise<void> => {
   await expect(ui.table).toBeVisible();
   await expect(ui.rowNames).toHaveText([...names]);
+};
+
+/**
+ * "The chart has arrived" (spec 003 FR1, FR9): its drawing is in the upper card with a real size —
+ * the responsive container renders no SVG at all, and says nothing, when its box has no height
+ * (consult Q4) — and the line that stood in for it is gone from the page (FR9-AC3).
+ */
+export const expectChartLoaded = async (ui: ClientsPage, timeout?: number): Promise<void> => {
+  await expect(ui.chart).toBeVisible(timeout === undefined ? {} : { timeout });
+  const box = await ui.chart.boundingBox();
+  expect(box?.width).toBeGreaterThan(0);
+  expect(box?.height).toBeGreaterThan(0);
+  await expect(ui.chartCard.page().getByText(TEXT.period)).toHaveCount(0);
 };
 
 type MarkedWindow = Window & { __sameDocument?: true };

@@ -11,7 +11,13 @@ import {
   twoLists,
   type ClientsDouble,
 } from './support/clients-double';
-import { clientsPage, expectTableLoaded, TEXT, type ClientsPage } from './support/clients-page';
+import {
+  clientsPage,
+  expectTableLoaded,
+  TEXT,
+  type ClientsPage,
+  expectChartLoaded,
+} from './support/clients-page';
 
 /** FR4-AC1: "within 3 seconds they see, in place of the two cards, …". */
 const PANEL_BUDGET_MS = 3000;
@@ -90,7 +96,7 @@ test(
     await page.goto('/');
 
     await expectTableLoaded(ui);
-    await expect(ui.chartCard).toHaveText(TEXT.period);
+    await expectChartLoaded(ui);
     await expect(ui.alert).toHaveCount(0);
   },
 );

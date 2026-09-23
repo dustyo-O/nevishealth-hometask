@@ -64,13 +64,19 @@ export const item = (id: string, name: string, lists: Lists = {}): Item => ({
   ...lists,
 });
 
-/** `n` branches; each with one adviser with one channel, so every level of the shape is present. */
+/**
+ * `n` branches; each with one adviser with one channel, so every level of the shape is present.
+ * The channel carries a name the service serves: the chart colours exactly the three channels it
+ * knows, and refuses one it does not (spec 003 §2.1).
+ */
 export const companyWith = (n: number): Item =>
   item('company', 'Company', {
     branches: Array.from({ length: n }, (_, i) =>
       item(`b${i + 1}`, `Branch ${i + 1}`, {
         employees: [
-          item(`e${i + 1}`, `Adviser ${i + 1}`, { channels: [item(`c${i + 1}`, 'Referral')] }),
+          item(`e${i + 1}`, `Adviser ${i + 1}`, {
+            channels: [item(`c${i + 1}`, 'Existing clients')],
+          }),
         ],
       }),
     ),

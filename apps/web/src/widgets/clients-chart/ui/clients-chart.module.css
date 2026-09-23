@@ -1,0 +1,60 @@
+/* A flex column at least the card's design height (003 §2.6). The plot box has a fixed height of
+   its own and the legend sits beneath at whatever height it needs, so a legend that wraps grows
+   the card instead of shrinking the bars (tech review F3). */
+.chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: var(--card-chart-min-h);
+  padding: var(--space-6) var(--space-6) var(--space-4) var(--space-4);
+}
+
+/* Definite height, or the responsive container renders no SVG at all — silently (consult Q4). */
+.plot {
+  flex: none;
+  height: var(--chart-plot-h);
+  min-width: 0;
+}
+
+/* Any height the card has beyond its content opens above the legend, which stays at the foot. */
+.chart > :last-child {
+  margin-block-start: auto;
+}
+
+/* The mockup centres the legend on the card, but the padding is 16 left and 24 right; reaching
+   into the right padding by the difference centres it there (measured: 4 px off without). */
+.legend {
+  margin-inline-end: calc(var(--space-4) - var(--space-6));
+}
+
+/* `Card` clips its overflow, so a ring outside the focus stop is only seen while the card's
+   padding (16 px at its narrowest, on the left) has room for it — which it has: measured in
+   Chromium at 1440, the ring is whole. It is not painted inset, as the consult suggested for a
+   stop filling the card: the axis's top label reaches 2.7 px above this box and 1.1 px from its
+   left edge, so an inset ring runs through "400". Four pixels out clears that label's box; the
+   ring then needs 6 px of padding around the plot box, or `Card` clips it. */
+.plot:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: calc(2 * var(--focus-ring-width));
+}
+
+/* The responsive container measures this box, so it takes the plot's full definite height. It
+   is also what the panel is placed in: `--pitch` is one month's column, from the geometry the
+   widget publishes on it (`plot-geometry.ts`). */
+.drawing {
+  --pitch: calc((100% - var(--columns-left) - var(--columns-right)) / var(--months));
+  position: relative;
+  height: 100%;
+}
+
+/* One month's whole column, from the top of the plot to the month labels: left = the y-axis +
+   index × pitch, width = pitch (003 §2.7). The table's own hover tint (FR4-AC2). */
+.tint {
+  position: absolute;
+  top: var(--plot-top);
+  bottom: var(--plot-bottom);
+  left: calc(var(--columns-left) + var(--month-index) * var(--pitch));
+  width: var(--pitch);
+  background: var(--color-row-hover);
+  pointer-events: none;
+}
