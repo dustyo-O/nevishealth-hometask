@@ -6,7 +6,8 @@
 // 'nearest', inline: 'nearest' })` with `scroll-padding-inline-start` equal to the name column,
 // so a month moved into view lands exactly beside the sticky column, never beneath it; and the
 // page moves vertically only when the row is not already fully in view, and then only as far as
-// it takes to show that row.
+// it takes to show that row — clear of the window's edge by the row's scroll margin (FR3,
+// amended 2026-09-23), never flush against it.
 //
 // Run in Chromium by the gate, and in WebKit on demand (D-15): `E2E_WEBKIT=1`.
 import { expect, test, type Locator, type Page } from '@playwright/test';
@@ -63,9 +64,10 @@ let ui: ClientsPage;
 
 test.beforeEach(async ({ page }) => {
   ui = await openTable(page);
-  // Tall enough for the page to scroll at 812 px.
+  // Tall enough for the page to scroll at 812 px. Branch 2 has no advisers (004 FR1), so the
+  // height comes from Anna Blackwood's channels instead.
   await toggleByName(ui, 'Branch 1');
-  await toggleByName(ui, 'Branch 2');
+  await toggleByName(ui, 'Anna Blackwood');
 });
 
 test(
@@ -121,52 +123,67 @@ test(
   },
 );
 
-for (const edge of ['bottom', 'top'] as const) {
-  test(
-    `FR3-AC18: a row cut off at the ${edge} of the screen — entering a month scrolls the page just far enough to show that row`,
-    { tag: '@regression' },
-    async ({ page }) => {
-      // Everything open, so the page is several screens tall and a middle row can be cut off
-      // at either edge.
-      await expandAll(ui);
-      const rows = ui.table.locator('tbody tr');
-      const index = Math.floor((await rows.count()) / 2);
-      const row = rows.nth(index);
-      await tabIntoTable(page, ui);
-      await press(page, ...Array<string>(index).fill('ArrowDown'));
-      await expect(row).toBeFocused();
+// The supplied tree fully open is twelve rows (004 FR1) — too short, at 812 px, for a middle row
+// to be cut off at the top: measured, the page scrolls at most 474 px and the table starts at
+// 590. The same phone width on a shorter screen gives the page room to cut a row off at either
+// edge; the data is not padded out to make the page taller.
+test.describe('on a phone held with less height to spare', () => {
+  test.use({ viewport: { ...VIEWPORT.phone, height: 480 } });
 
-      // The months scrolled to their end, so Feb 2024 is out of sight sideways as well.
-      await scrollerOf(ui).evaluate((el) => {
-        el.scrollLeft = el.scrollWidth;
-      });
-      const innerHeight = await page.evaluate(() => window.innerHeight);
-      const { top, bottom } = await rectOf(row);
-      const CUT = 20;
-      await scrollRowTo(row, edge === 'bottom' ? innerHeight - (bottom - top) + CUT : -CUT);
-      const before = await scrollY(page);
-      // The row really is cut off before the key is pressed — by what the engine allowed: WebKit
-      // snaps the page's scroll position to whole pixels, so the cut can be 20.75 rather than 20.
-      const cutOff = await rectOf(row);
-      const cut = edge === 'bottom' ? cutOff.bottom - innerHeight : -cutOff.top;
-      expect(Math.abs(cut - CUT)).toBeLessThan(1);
+  for (const edge of ['bottom', 'top'] as const) {
+    test(
+      `FR3-AC18: a row cut off at the ${edge} of the screen — entering a month scrolls the page just far enough to show that row`,
+      { tag: '@regression' },
+      async ({ page }) => {
+        // Everything open, so the page is a few screens tall and a middle row can be cut off at
+        // either edge.
+        await expandAll(ui);
+        const rows = ui.table.locator('tbody tr');
+        // The third row down, Anna Blackwood: measured at 480 px high, the page scrolls 806 px and
+        // her row starts at 702, so it can sit 20 px past either edge.
+        const index = 2;
+        const row = rows.nth(index);
+        await tabIntoTable(page, ui);
+        await press(page, ...Array<string>(index).fill('ArrowDown'));
+        await expect(row).toBeFocused();
 
-      await page.keyboard.press('ArrowRight');
-      const cell = row.getByRole('gridcell').first();
-      await expect(cell).toBeFocused();
+        // The months scrolled to their end, so Feb 2024 is out of sight sideways as well.
+        await scrollerOf(ui).evaluate((el) => {
+          el.scrollLeft = el.scrollWidth;
+        });
+        const innerHeight = await page.evaluate(() => window.innerHeight);
+        const { top, bottom } = await rectOf(row);
+        const CUT = 20;
+        await scrollRowTo(row, edge === 'bottom' ? innerHeight - (bottom - top) + CUT : -CUT);
+        const before = await scrollY(page);
+        // The row really is cut off before the key is pressed — by what the engine allowed: WebKit
+        // snaps the page's scroll position to whole pixels, so the cut can be 20.75 rather than 20.
+        const cutOff = await rectOf(row);
+        const cut = edge === 'bottom' ? cutOff.bottom - innerHeight : -cutOff.top;
+        expect(Math.abs(cut - CUT)).toBeLessThan(1);
 
-      // Vertically: just far enough to show the row — the cut, and not a pixel more.
-      const after = await rectOf(row);
-      const moved = (await scrollY(page)) - before;
-      if (edge === 'bottom') {
-        expect(Math.abs(after.bottom - innerHeight)).toBeLessThanOrEqual(TOLERANCE);
-        expect(Math.abs(moved - cut)).toBeLessThanOrEqual(TOLERANCE);
-      } else {
-        expect(Math.abs(after.top)).toBeLessThanOrEqual(TOLERANCE);
-        expect(Math.abs(moved + cut)).toBeLessThanOrEqual(TOLERANCE);
-      }
-      // Sideways: back to Feb 2024, beside the name column.
-      await expectBesideStickyColumn(ui, row, cell);
-    },
-  );
-}
+        await page.keyboard.press('ArrowRight');
+        const cell = row.getByRole('gridcell').first();
+        await expect(cell).toBeFocused();
+
+        // Vertically: just far enough to show the row clear of the edge (FR3, amended
+        // 2026-09-23) — the cut plus the row's scroll margin, and not a pixel more.
+        const margin = await cell.evaluate((td) =>
+          parseFloat(getComputedStyle(td).scrollMarginTop),
+        );
+        expect(margin, 'the outline has room to rest clear of the edge').toBeGreaterThan(0);
+        const after = await rectOf(row);
+        const moved = (await scrollY(page)) - before;
+        if (edge === 'bottom') {
+          expect(Math.abs(innerHeight - after.bottom - margin)).toBeLessThanOrEqual(TOLERANCE);
+          expect(Math.abs(moved - (cut + margin))).toBeLessThanOrEqual(TOLERANCE);
+        } else {
+          expect(Math.abs(after.top - margin)).toBeLessThanOrEqual(TOLERANCE);
+          expect(Math.abs(moved + (cut + margin))).toBeLessThanOrEqual(TOLERANCE);
+        }
+        // Sideways: back to Feb 2024, beside the name column.
+        await expectBesideStickyColumn(ui, row, cell);
+      },
+    );
+  }
+});

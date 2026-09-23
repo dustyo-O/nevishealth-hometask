@@ -6,24 +6,26 @@
 // its own file (chart-touch.spec.ts).
 import { expect, test } from '@playwright/test';
 import {
-  CHANNELS,
   columnPoint,
   expectNothingRead,
   expectReading,
   expectTintOver,
   FEBRUARY_PANEL,
   FEBRUARY_SAID,
+  expectBarShows,
+  figuresOf,
   hoverMonth,
   openChart,
   readBars,
   readDrawing,
   readPanel,
+  CHANNELS,
 } from './support/chart';
 import { MONTHS } from './support/clients-double';
-import { MONTH_HEADINGS } from './support/table';
+import { MONTH_HEADINGS, shippedClients } from './support/table';
 
 test(
-  'FR4-AC1: pointing at February 2024 opens a panel reading "Feb 2024", 221, 15, 14 and a total of 250, in stacking order',
+  'FR4-AC1: pointing at February 2024 opens a panel reading "Feb 2024", 250, 0, 0 and a total of 250, in stacking order',
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
@@ -93,20 +95,35 @@ test(
 );
 
 test(
-  'FR4-AC9: for every month, the panel’s three figures add up to the total it shows — and to the bar drawn',
+  'FR4-AC9: for every month, the panel’s figures add up to the total it shows — and to the bar drawn',
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
-    const { months } = await readBars(chart);
+    const { bars, perClient } = await readBars(chart);
+    const months = figuresOf(shippedClients());
     for (const [index, heading] of MONTH_HEADINGS.entries()) {
       await hoverMonth(chart, index);
       await expectReading(chart, MONTHS[index]!);
       const panel = await readPanel(chart);
       expect(panel.month).toBe(heading);
       expect(panel.rows.map(([name]) => name)).toEqual([...CHANNELS, 'Total']);
-      const [existing, organic, paid, total] = panel.rows.map(([, value]) => value);
-      expect(existing! + organic! + paid!).toBe(total);
+      const values = panel.rows.map(([, value]) => value);
+      const total = values.pop();
+      expect(values.reduce((sum, value) => sum + value, 0)).toBe(total);
       expect(total).toBe(months[index]!.total);
+      // And the bar drawn shows the panel's figures — the total exactly, the parts on the curve only (FR4).
+      const [existing, organic, paid] = values;
+      expectBarShows(
+        bars[index]!,
+        {
+          'Existing clients': existing!,
+          'New organic': organic!,
+          'New paid': paid!,
+          total: total!,
+        },
+        perClient,
+        heading,
+      );
       // The panel stays inside the card for every month.
       const card = (await chart.ui.chartCard.boundingBox())!;
       const box = (await chart.panel.boundingBox())!;

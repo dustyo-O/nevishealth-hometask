@@ -257,7 +257,6 @@ test(
   'FR3-AC16: Home from deep in the table → the Company row; End → the last visible row',
   { tag: '@regression' },
   async ({ page }) => {
-    await toggleByName(ui, 'Branch 3');
     await enter(page);
     await press(page, 'ArrowDown', 'Enter', 'ArrowDown', 'Enter', 'ArrowDown', 'ArrowDown');
     await settled(ui);
@@ -267,10 +266,12 @@ test(
     await expectOutlineOn(ui, rowOf(ui, 'Company'));
 
     await page.keyboard.press('End');
-    const lastRow = ui.table.locator('tbody tr').last();
+    const lastRow = ui.table.locator('tbody tr:not([inert])').last();
     await expectOutlineOn(ui, lastRow);
-    // Branch 3 is open, so the last visible row is its last adviser, not Branch 3 itself.
-    await expect(lastRow).toHaveAttribute('aria-level', '3');
+    // Branch 3 has no advisers (004 FR1), so with Branch 1 and Anna open above it the last
+    // visible row is Branch 3 itself — End passes over everything opened on the way.
+    await expect(lastRow).toHaveAttribute('aria-level', '2');
+    await expectOutlineOn(ui, rowOf(ui, 'Branch 3'));
   },
 );
 

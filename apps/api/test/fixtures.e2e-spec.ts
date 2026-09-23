@@ -78,10 +78,13 @@ describe('GET /api/clients with test datasets (e2e)', () => {
     expect(company.branches![0]!.employees![0]!.channels![0]!.values[2]).toBe(31);
   });
 
-  it('warns about nothing when it starts with the shipped data', async () => {
+  it('warns seven times when it starts with the shipped data, and serves it anyway', async () => {
     app = await bootWith();
-    await getClients(app);
 
-    expect(warn).not.toHaveBeenCalled();
+    // The supplied figures disagree with themselves in seven places (spec 004 FR2); the guard
+    // reports them and the data is served as found.
+    expect(warn).toHaveBeenCalledTimes(7);
+    const { company } = await getClients(app);
+    expect(company.values[3]).toBe(301);
   });
 });

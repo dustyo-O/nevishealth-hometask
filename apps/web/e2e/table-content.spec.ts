@@ -102,24 +102,27 @@ test.describe('FR1 — the table, its columns and its levels', () => {
   );
 
   test(
-    'FR1-AC4: an acquisition channel and a branch with no advisers offer no control to open',
+    'FR1-AC4: an acquisition channel, a branch with no advisers and an adviser with no channels offer no control to open',
     { tag: '@regression' },
     async ({ page }) => {
-      const body = shippedClients();
-      delete body.company.branches![2]!.employees;
-      const ui = await openTable(page, body);
+      // The shipped data as supplied (004 FR1): Branch 2 and Branch 3 have no advisers, and of
+      // Branch 1's five only Anna Blackwood has channels. No edit needed to find a leaf.
+      const ui = await openTable(page);
 
       await toggleByName(ui, 'Branch 1');
       await toggleByName(ui, 'Anna Blackwood');
 
-      for (const leaf of ['Existing clients', 'Branch 3']) {
+      const leaves = ['Existing clients', 'Branch 2', 'Branch 3', ...BRANCH_1_ADVISERS.slice(1)];
+      for (const leaf of leaves) {
         await expect(rowOf(ui, leaf)).not.toHaveAttribute('aria-expanded');
         await expect(nameOf(ui, leaf).locator('svg')).toHaveCount(0);
         await nameOf(ui, leaf).click();
         await expect(rowOf(ui, leaf)).not.toHaveAttribute('aria-expanded');
       }
       // The negative counterpart: a row that has children does show its arrow.
-      await expect(nameOf(ui, 'Branch 2').locator('svg')).toBeVisible();
+      for (const parent of ['Branch 1', 'Anna Blackwood']) {
+        await expect(nameOf(ui, parent).locator('svg')).toBeVisible();
+      }
     },
   );
 });

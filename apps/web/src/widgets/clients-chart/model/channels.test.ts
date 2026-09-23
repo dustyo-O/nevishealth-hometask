@@ -12,6 +12,11 @@ describe('channelKey', () => {
 
   it('throws on a name it has no colour for, rather than silently dropping a channel', () => {
     expect(() => channelKey('Referral')).toThrow(/Referral/);
+    expect(() => channelKey('Unattributed')).toThrow(/Unattributed/);
+  });
+
+  it('has no fourth part: "Not recorded" is not a channel it knows (004 slice 3)', () => {
+    expect(() => channelKey('Not recorded')).toThrow(/Not recorded/);
   });
 });
 

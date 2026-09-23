@@ -7,6 +7,8 @@ export const PLOT_MARGIN = { top: 5, right: 16, bottom: 0, left: 0 } as const;
 export const Y_AXIS_WIDTH = 32;
 /** Fixed, so the plot keeps its height whichever way the month labels are drawn (FR8-AC3). */
 export const X_AXIS_HEIGHT = 30;
+/** The plot box's height: `--chart-plot-h`, the same at every width (003 §2.6). */
+export const PLOT_HEIGHT = 338;
 
 /** The months' columns start after the y-axis and end before the right margin. */
 export const COLUMNS_LEFT = PLOT_MARGIN.left + Y_AXIS_WIDTH;

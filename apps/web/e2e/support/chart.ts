@@ -1,7 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import type { Item } from './clients-double';
 import { clientsPage, type ClientsPage } from './clients-page';
-import { openTable, shippedClients, type ClientsBody } from './table';
+import { MONTH_HEADINGS, openTable, shippedClients, type ClientsBody } from './table';
 
 /**
  * Spec 003's browser suite reads the chart the way a person does — from what is drawn — and never
@@ -9,16 +9,23 @@ import { openTable, shippedClients, type ClientsBody } from './table';
  * figure "on the chart" means a height a sighted user could measure, not a number in the DOM.
  */
 
-/** Bottom-up stacking order and the names the legend and the panel use (FR1-AC5, FR3-AC1). */
+/**
+ * The three parts of every bar, bottom-up (FR1-AC5): Existing clients is the Company row less the
+ * newly acquired, which the data records as New organic and New paid (004 §2.3).
+ */
 export const CHANNELS = ['Existing clients', 'New organic', 'New paid'] as const;
-export type Channel = (typeof CHANNELS)[number];
+export type Part = (typeof CHANNELS)[number];
 
-/** February 2024 as FR1-AC3 and FR4-AC1 name it. */
-export const FEBRUARY = { 'Existing clients': 221, 'New organic': 15, 'New paid': 14, total: 250 };
+/** February 2024 on the supplied data: nobody newly acquired, all 250 existing (004 FR3-AC3). */
+export const FEBRUARY = {
+  'Existing clients': 250,
+  'New organic': 0,
+  'New paid': 0,
+  total: 250,
+};
 
 /** The live region's sentence for February (FR6-AC1), exactly as `describeMonth` words it. */
-export const FEBRUARY_SAID =
-  'Feb 2024: existing clients 221, new organic 15, new paid 14, total 250';
+export const FEBRUARY_SAID = 'Feb 2024: existing clients 250, new organic 0, new paid 0, total 250';
 
 export const CHART_NAME = 'Clients per month by acquisition channel, Feb 2024 to Jan 2025';
 
@@ -73,13 +80,11 @@ export const openChart = async (
   await openTable(page, body);
   const chart = chartOf(page);
   await expect(chart.svg).toBeVisible();
-  // Three layers of twelve: the figures have been drawn.
-  await expect(barPaths(chart)).toHaveCount(36);
+  // Twelve bars standing: the figures have been drawn. Counted by column, never by segment — a
+  // part that is zero that month draws no rectangle at all (004 §2.7).
+  await expect.poll(async () => (await readDrawing(chart)).bars.length).toBe(12);
   return chart;
 };
-
-export const barPaths = (chart: Chart): Locator =>
-  chart.svg.locator('.recharts-bar path.recharts-rectangle');
 
 export type Rect = { x: number; y: number; width: number; height: number };
 
@@ -114,14 +119,15 @@ export const readDrawing = (chart: Chart): Promise<Drawn> =>
       })),
     );
     // Group the segments into bars by where they stand, not by the order they were written.
-    const columns = new Map<number, (typeof byLayer)[number]>();
-    for (const segments of byLayer) {
-      for (const segment of segments) {
-        const key = Math.round(segment.x + segment.width / 2);
-        columns.set(key, [...(columns.get(key) ?? []), segment]);
-      }
+    // Centres within a pixel are one column: rounding each to a whole pixel split a column in
+    // two when its layers landed either side of a half (measured on the 0–500 scale, 004 s2).
+    const centre = (segment: { x: number; width: number }) => segment.x + segment.width / 2;
+    const bars: (typeof byLayer)[number][] = [];
+    for (const segment of byLayer.flat().sort((a, b) => centre(a) - centre(b))) {
+      const column = bars.at(-1);
+      if (column !== undefined && centre(segment) - centre(column[0]!) < 1) column.push(segment);
+      else bars.push([segment]);
     }
-    const bars = [...columns.entries()].sort(([a], [b]) => a - b).map(([, segments]) => segments);
 
     const lineY = (line: Element) => {
       const { y, height } = line.getBoundingClientRect();
@@ -148,39 +154,151 @@ export const readDrawing = (chart: Chart): Promise<Drawn> =>
     return { bars, gridlines, verticals, yTicks, xTicks };
   });
 
-export type MonthFigures = Record<Channel, number> & { total: number };
+export type MonthFigures = Record<Part, number> & { total: number };
+
+/**
+ * How far a small part is lifted, in pixels (004 FR4, §2.4). A part with clients in it is drawn on
+ * a stretched curve, `LIFT_PX × log2(clients + 1)` — 4 px for one client, 6.34 for two, 8 for
+ * three — or at its true height wherever that is taller: the curve only ever lifts, and above about
+ * 24 clients it stops applying. What a part gains is taken **from Existing clients in the same
+ * bar**. The newly acquired are 0–2 clients a month, about a pixel and a half to scale.
+ *
+ * WHY THE RATIO IS NOT LINEAR: on the curve two clients look about 1.5× one, not 2×. That is the
+ * deliberate distortion FR4 names — it buys the one comparison these parts can offer, a month with
+ * one new client against a month with two, which a flat floor drew identically. Do not "fix" it to
+ * scale: to scale both are under two pixels and neither can be seen.
+ *
+ * WHAT IS EXACT AND WHAT GIVES WAY: a bar's total is drawn exactly to its figure — `reach` is
+ * checked to within PRECISION, as spec 003's suite checked it before slice 3 widened it; do not
+ * widen it again. Only the parts give way: each new part sits on the curve, and Existing clients is
+ * short by exactly what the others borrowed. The figures a person reads — the panel, the hidden
+ * table, the announcement — are still asserted exactly, and a month with nobody new is drawn to its
+ * figures to PRECISION.
+ */
+export const LIFT_PX = 4;
+
+/** A part of `clients` as drawn, in pixels: the curve, or its true height where that is taller. */
+export const liftedPx = (clients: number, perClient: number): number =>
+  Math.max(clients * perClient, LIFT_PX * Math.log2(clients + 1));
+
+/** How close a drawn edge must be to where the figures put it, in clients: a hundredth-ish. */
+const PRECISION = 0.05;
+
+/** A bar as drawn, in clients and unrounded: each part's height, and how high the bar reaches. */
+export type BarReading = Record<Part, number> & { reach: number };
 
 /**
  * Every bar's parts as numbers of clients, read as a person reads a chart: each segment's height
- * against the distance between the "0" and the top gridline and what the top label says.
- * `exactness` is how far the raw reading was from a whole client — a drawing that is right
- * lands within a hundredth.
+ * against the distance between the "0" and the top gridline and what the top label says. Not
+ * rounded: with the curve (LIFT_PX) a reading is not a whole number of clients, so a rounded one
+ * would be a figure the chart never showed. Compare it to figures with `expectBarShows`.
  */
 export const readBars = async (
   chart: Chart,
-): Promise<{ months: MonthFigures[]; exactness: number }> => {
+): Promise<{ bars: BarReading[]; perClient: number }> => {
   const drawn = await readDrawing(chart);
   const top = Math.max(...drawn.yTicks.map(({ text }) => Number(text)));
   const ceiling = Math.min(...drawn.gridlines);
   const floor = Math.max(...drawn.gridlines);
   const perClient = (floor - ceiling) / top;
-  let exactness = 0;
-  const months = drawn.bars.map((segments) => {
-    const figures = { total: 0 } as MonthFigures;
-    for (const channel of CHANNELS) {
-      const segment = segments.find(({ name }) => name === channel);
-      const raw = segment === undefined ? 0 : segment.height / perClient;
-      exactness = Math.max(exactness, Math.abs(raw - Math.round(raw)));
-      figures[channel] = Math.round(raw);
+  const bars = drawn.bars.map((segments) => {
+    const bar = {
+      reach: (floor - Math.min(...segments.map(({ y }) => y))) / perClient,
+    } as BarReading;
+    for (const part of CHANNELS) {
+      // A part missing from the drawing is a part that is zero that month.
+      const segment = segments.find(({ name }) => name === part);
+      bar[part] = segment === undefined ? 0 : segment.height / perClient;
     }
-    const tallest = Math.min(...segments.map(({ y }) => y));
-    const raw = (floor - tallest) / perClient;
-    exactness = Math.max(exactness, Math.abs(raw - Math.round(raw)));
-    figures.total = Math.round(raw);
-    return figures;
+    return bar;
   });
-  return { months, exactness };
+  return { bars, perClient };
 };
+
+/**
+ * The bar shows these figures: its total exactly (FR4-AC2); a zero part not drawn at all; a new
+ * part with clients in it on the curve (`liftedPx`); Existing clients short by exactly what the two
+ * new parts borrowed (FR4-AC1). A month with no newly acquired clients borrows nothing, so its every
+ * part is exact — and so is one whose Existing clients could not pay without falling below its own
+ * curve, where the lift gives way.
+ */
+export const expectBarShows = (
+  bar: BarReading,
+  figures: MonthFigures,
+  perClient: number,
+  month: string,
+): void => {
+  const lifted = (clients: number) => liftedPx(clients, perClient) / perClient;
+  expect(Math.abs(bar.reach - figures.total), `${month}: the bar reaches its total`).toBeLessThan(
+    PRECISION,
+  );
+  const existing = figures['Existing clients'];
+  const borrowed = (['New organic', 'New paid'] as const)
+    .map((part) => lifted(figures[part]) - figures[part])
+    .reduce((sum, lift) => sum + lift, 0);
+  const paid = existing - borrowed >= (LIFT_PX * Math.log2(existing + 1)) / perClient;
+  for (const part of CHANNELS) {
+    const figure = figures[part];
+    const expected = !paid
+      ? figure
+      : part === 'Existing clients'
+        ? figure - borrowed
+        : lifted(figure);
+    const drawn = `${month}: ${part} (${figure}) drawn as ${expected.toFixed(2)}`;
+    if (figure === 0) expect(bar[part], drawn).toBeLessThan(PRECISION);
+    else expect(Math.abs(bar[part] - expected), drawn).toBeLessThan(PRECISION);
+  }
+};
+
+/** Every bar shows its month's figures (`expectBarShows`), twelve of each. */
+export const expectBarsShow = async (chart: Chart, figures: MonthFigures[]): Promise<void> => {
+  const { bars, perClient } = await readBars(chart);
+  expect(bars).toHaveLength(figures.length);
+  bars.forEach((bar, i) => expectBarShows(bar, figures[i]!, perClient, MONTH_HEADINGS[i]!));
+};
+
+/** Every channel named `name` in the tree, month by month: what the data records. */
+const recorded = (node: Item, name: string): number[] =>
+  node.name === name
+    ? node.values
+    : [...(node.branches ?? []), ...(node.employees ?? []), ...(node.channels ?? [])]
+        .map((child) => recorded(child, name))
+        .reduce(
+          (sum, values) => sum.map((value, i) => value + (values[i] ?? 0)),
+          node.values.map(() => 0),
+        );
+
+/**
+ * What the chart must say about `body`, worked out here from the served figures and not by the
+ * widget: New organic and New paid as the tree records them; Existing clients the Company row
+ * less those two, never below zero (004 §2.3); the total, the three added up.
+ */
+export const figuresOf = (body: ClientsBody): MonthFigures[] => {
+  const organic = recorded(body.company, 'New organic');
+  const paid = recorded(body.company, 'New paid');
+  return body.company.values.map((company, i) => {
+    const figures = {
+      'Existing clients': Math.max(0, company - organic[i]! - paid[i]!),
+      'New organic': organic[i]!,
+      'New paid': paid[i]!,
+    };
+    return { ...figures, total: CHANNELS.reduce((sum, part) => sum + figures[part], 0) };
+  });
+};
+
+/** What the visually-hidden table says, month by month (FR6-AC2): exact figures, as text. */
+export const readTable = (chart: Chart): Promise<MonthFigures[]> =>
+  chart.table.evaluate(
+    (table, parts) =>
+      [...table.querySelectorAll('tbody tr')].map((row) => {
+        const cells = [...row.querySelectorAll('td')].map((td) => Number(td.textContent));
+        return Object.fromEntries([
+          ...parts.map((part, i) => [part, cells[i]]),
+          ['total', cells[parts.length]],
+        ]) as MonthFigures;
+      }),
+    [...CHANNELS],
+  );
 
 /** The centre of month `index`'s column, halfway up the plot — a point a pointer can rest on. */
 export const columnPoint = async (
@@ -214,13 +332,13 @@ export const readPanel = (chart: Chart) =>
     ]),
   }));
 
-/** The panel's reading of February, exactly as FR4-AC1 lists it. */
+/** The panel's reading of February on the supplied data, in stacking order. */
 export const FEBRUARY_PANEL = {
   month: 'Feb 2024',
   rows: [
-    ['Existing clients', 221],
-    ['New organic', 15],
-    ['New paid', 14],
+    ['Existing clients', 250],
+    ['New organic', 0],
+    ['New paid', 0],
     ['Total', 250],
   ],
 };
@@ -251,34 +369,30 @@ export const expectTintOver = async (chart: Chart, index: number): Promise<void>
   expect(covered).toEqual([index]);
 };
 
-/** Every channel node, wherever it hangs in the tree. */
-const channelsOf = (node: Item): Item[] =>
-  node.channels ??
-  [...(node.branches ?? []), ...(node.employees ?? [])].flatMap((child) => channelsOf(child));
-
-/** Recomputes every stored figure above the channels as the sum of its children's. */
-const resum = (node: Item): number[] => {
-  const children = node.channels ?? [...(node.branches ?? []), ...(node.employees ?? [])];
-  if (children.length === 0) return node.values;
-  const sums = node.values.map(() => 0);
-  for (const child of children) resum(child).forEach((value, i) => (sums[i]! += value));
-  node.values = sums;
-  return sums;
-};
+/** Every channel node with the items above it, wherever it hangs in the tree. */
+const channelsOf = (node: Item, above: Item[] = []): { channel: Item; above: Item[] }[] =>
+  node.channels?.map((channel) => ({ channel, above: [...above, node] })) ??
+  [...(node.branches ?? []), ...(node.employees ?? [])].flatMap((child) =>
+    channelsOf(child, [...above, node]),
+  );
 
 /**
  * The shipped data with every channel figure changed by `change(value, channel, month)`, and every
- * stored total above it recomputed — the table's Company row stays the true sum, as it is in the
- * shipped data, so the two cards still describe the same company.
+ * stored figure above it moved by the same amount. Moved, not recomputed: the supplied figures
+ * that do not add up (004 FR2) still do not, by exactly as much — the copy stays the company we
+ * were given, only with different numbers, and the two cards still describe the same company.
  */
 export const reshaped = (
   change: (value: number, channel: string, month: number) => number,
 ): ClientsBody => {
   const body = shippedClients();
-  for (const channel of channelsOf(body.company)) {
-    channel.values = channel.values.map((value, month) => change(value, channel.name, month));
+  for (const { channel, above } of channelsOf(body.company)) {
+    channel.values = channel.values.map((value, month) => {
+      const next = change(value, channel.name, month);
+      for (const item of above) item.values[month]! += next - value;
+      return next;
+    });
   }
-  resum(body.company);
   return body;
 };
 

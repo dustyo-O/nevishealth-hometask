@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { treeGridIds } from './ids';
 import { reduceKey } from './keyboard';
+import { revealRows } from './reveal';
 import { ROW_COL_INDEX, type TreeGridCursor, type TreeGridRow } from './types';
 
 export type UseTreeGridOptions = {
@@ -122,39 +123,68 @@ export const useTreeGrid = ({
     }
   }, [cursor, rows, ids]);
 
+  // FR2, amended: opening a row low on the screen would leave what it revealed below the fold,
+  // where the user cannot see what their click did. Which row was just *opened* — closing scrolls
+  // nothing — is kept until the render that shows its new rows has committed.
+  const openingRef = useRef<string | null>(null);
+
+  useLayoutEffect(() => {
+    const openedId = openingRef.current;
+    if (openedId === null) return;
+    openingRef.current = null;
+    if (!expandedIds.has(openedId)) return;
+    const index = rows.findIndex((row) => row.id === openedId);
+    const opened = rows[index];
+    if (opened === undefined) return;
+    // What it revealed: every row after it that sits deeper, up to the first that does not.
+    const end = rows.findIndex((row, at) => at > index && row.level <= opened.level);
+    const revealed = rows.slice(index + 1, end === -1 ? undefined : end);
+
+    const element = document.getElementById(ids.cellId(opened.id, ROW_COL_INDEX));
+    if (element === null) return;
+    revealRows(
+      element,
+      revealed.flatMap((row) => document.getElementById(ids.cellId(row.id, ROW_COL_INDEX)) ?? []),
+    );
+  }, [rows, expandedIds, ids]);
+
   const toggle = useCallback((rowId: string) => {
+    // Whether this opens the row (to be revealed) or closes it (to be left alone).
+    openingRef.current = latest.current.expandedIds.has(rowId) ? null : rowId;
     setLastToggled(rowId);
     latest.current.onToggle(rowId);
   }, []);
 
-  const handleKeyDown = useCallback((event: KeyboardEvent<HTMLElement>) => {
-    const current = latest.current;
-    const result = reduceKey(
-      current.cursor,
-      event.key,
-      current.rows,
-      current.expandedIds,
-      current.columnCount,
-    );
-    if (result === null) return;
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLElement>) => {
+      const current = latest.current;
+      const result = reduceKey(
+        current.cursor,
+        event.key,
+        current.rows,
+        current.expandedIds,
+        current.columnCount,
+      );
+      if (result === null) return;
 
-    // The grid owns this key from here, even where the outline does not move: an arrow left to
-    // the browser would scroll the months under a stationary outline, and Space would scroll
-    // the page (FR3-AC9/AC10).
-    event.preventDefault();
-    hasMovedRef.current = true;
+      // The grid owns this key from here, even where the outline does not move: an arrow left to
+      // the browser would scroll the months under a stationary outline, and Space would scroll
+      // the page (FR3-AC9/AC10).
+      event.preventDefault();
+      hasMovedRef.current = true;
 
-    if ('toggle' in result) {
-      setLastToggled(result.toggle);
-      current.onToggle(result.toggle);
-      return;
-    }
+      if ('toggle' in result) {
+        toggle(result.toggle);
+        return;
+      }
 
-    const { cursor: next } = result;
-    setCursor((previous) =>
-      previous.rowId === next.rowId && previous.colIndex === next.colIndex ? previous : next,
-    );
-  }, []);
+      const { cursor: next } = result;
+      setCursor((previous) =>
+        previous.rowId === next.rowId && previous.colIndex === next.colIndex ? previous : next,
+      );
+    },
+    [toggle],
+  );
 
   // The defence behind the rows' `mousedown` guard (code review F1): focus can still reach an
   // element of the grid by means other than its own keys — a script, an assistive technology

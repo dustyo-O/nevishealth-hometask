@@ -6,35 +6,49 @@
 // height against the labelled axis — never from the widget's state (support/chart.ts).
 import { expect, test } from '@playwright/test';
 import {
-  CHANNELS,
   FEBRUARY,
+  CHANNELS,
+  expectBarShows,
+  figuresOf,
   januaryRaisedBy,
+  LIFT_PX,
+  liftedPx,
   openChart,
   readBars,
   readDrawing,
   type Chart,
+  type Segment,
 } from './support/chart';
-import { MONTH_HEADINGS } from './support/table';
+import { MONTH_HEADINGS, shippedClients } from './support/table';
 
-/** The three channel tokens as the browser computes them (003 §2.2). */
+/** The part tokens as the browser computes them (003 §2.2). */
 const COLOURS = {
   'Existing clients': 'rgb(178, 157, 248)',
   'New organic': 'rgb(244, 190, 180)',
   'New paid': 'rgb(167, 94, 110)',
 } as const;
 
+/** Each bar's parts from the bottom up, as painted. */
+const bottomUp = (bar: Segment[]) => [...bar].sort((a, b) => b.y + b.height - (a.y + a.height));
+
 const yLabels = async (chart: Chart) => (await readDrawing(chart)).yTicks.map(({ text }) => text);
 
+// Each part wherever it is not zero — never a count of rectangles (004 §2.7).
 test(
-  'FR1-AC1: twelve bars labelled "Feb 2024" through "Jan 2025" in order, each divided into three parts',
+  'FR1-AC1: twelve bars labelled "Feb 2024" through "Jan 2025" in order, each divided into its parts',
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
     const drawn = await readDrawing(chart);
+    const months = figuresOf(shippedClients());
 
     expect(drawn.xTicks.map(({ text }) => text)).toEqual([...MONTH_HEADINGS]);
     expect(drawn.bars).toHaveLength(12);
-    for (const bar of drawn.bars) expect(bar.map(({ name }) => name)).toEqual([...CHANNELS]);
+    drawn.bars.forEach((bar, i) => {
+      const drawnParts = bar.map(({ name }) => name).sort();
+      const nonZero = CHANNELS.filter((part) => months[i]![part] > 0);
+      expect(drawnParts).toEqual([...nonZero].sort());
+    });
     // Each label sits beneath its own bar.
     drawn.bars.forEach((bar, i) => {
       const centre = bar[0]!.x + bar[0]!.width / 2;
@@ -45,13 +59,15 @@ test(
 );
 
 test(
-  'FR1-AC3: February 2024 reads 221 existing clients, 15 new organic and 14 new paid, totalling 250',
+  'FR1-AC3: February 2024 reads 250 existing clients, 0 new organic and 0 new paid, totalling 250',
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
-    const { months, exactness } = await readBars(chart);
-    expect(months[0]).toEqual(FEBRUARY);
-    expect(exactness).toBeLessThan(0.05);
+    expect(figuresOf(shippedClients())[0]).toEqual(FEBRUARY);
+    // Nothing new to lift in February: its one part is drawn exactly to scale (FR4-AC2).
+    const { bars, perClient } = await readBars(chart);
+    expectBarShows(bars[0]!, FEBRUARY, perClient, 'Feb 2024');
+    expect(bars[0]!.reach).toBeCloseTo(250, 1);
   },
 );
 
@@ -60,28 +76,43 @@ test(
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
-    const totals = (await readBars(chart)).months.map(({ total }) => total);
-    const tallest = Math.max(...totals);
-    expect(tallest).toBe(350);
-    const at = totals.flatMap((total, i) => (total === tallest ? [MONTH_HEADINGS[i]] : []));
-    expect(at).toEqual(['Aug 2024', 'Jan 2025']);
+    const { bars, perClient } = await readBars(chart);
+    const figures = figuresOf(shippedClients());
+    // Read as drawn: every bar reaches exactly its total, the lift borrowed rather than added
+    // (FR4-AC2) — so no other month (July, 334) comes near them.
+    const byReach = bars.map(({ reach }, i) => ({ reach, i })).sort((a, b) => b.reach - a.reach);
+    expect(
+      byReach
+        .slice(0, 2)
+        .map(({ i }) => MONTH_HEADINGS[i])
+        .sort(),
+    ).toEqual(['Aug 2024', 'Jan 2025']);
+    for (const { i } of byReach.slice(0, 2)) {
+      expect(figures[i]!.total).toBe(350);
+      expectBarShows(bars[i]!, figures[i]!, perClient, MONTH_HEADINGS[i]!);
+    }
+    expect(byReach[2]!.reach).toBeLessThan(350);
   },
 );
 
 test(
-  'FR1-AC5: from the bottom up, every bar is Existing clients, then New organic, then New paid — each resting on the last',
+  'FR1-AC5: from the bottom up, every bar is Existing clients, then New organic, New paid — each resting on the last',
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
     const drawn = await readDrawing(chart);
     const floor = Math.max(...drawn.gridlines);
     for (const bar of drawn.bars) {
-      const bottomUp = [...bar].sort((a, b) => b.y + b.height - (a.y + a.height));
-      expect(bottomUp.map(({ name }) => name)).toEqual([...CHANNELS]);
-      // Stacked, not overlapping: each part starts where the one beneath it ends.
-      expect(Math.abs(bottomUp[0]!.y + bottomUp[0]!.height - floor)).toBeLessThan(0.5);
-      expect(Math.abs(bottomUp[1]!.y + bottomUp[1]!.height - bottomUp[0]!.y)).toBeLessThan(0.5);
-      expect(Math.abs(bottomUp[2]!.y + bottomUp[2]!.height - bottomUp[1]!.y)).toBeLessThan(0.5);
+      const parts = bottomUp(bar);
+      const names = parts.map(({ name }) => name);
+      // In stacking order, whichever parts this month draws.
+      expect(names).toEqual(CHANNELS.filter((part) => names.includes(part)));
+      // Stacked, not overlapping: each part starts where the one beneath it ends. A part lifted
+      // onto the curve (LIFT_PX, FR4) moves the parts above it up; nothing covers it (FR4-AC1).
+      expect(Math.abs(parts[0]!.y + parts[0]!.height - floor)).toBeLessThan(0.5);
+      parts.slice(1).forEach((part, i) => {
+        expect(Math.abs(part.y + part.height - parts[i]!.y)).toBeLessThan(0.5);
+      });
       // And each part keeps the colour the design gives it.
       for (const segment of bar)
         expect(segment.fill).toBe(COLOURS[segment.name as keyof typeof COLOURS]);
@@ -145,8 +176,10 @@ test(
     // January 350 → 420: the scale reads to 500, and the tallest bar still sits under the ceiling.
     const chart = await openChart(page, { body: januaryRaisedBy(70) });
     expect(await yLabels(chart)).toEqual(['500', '400', '300', '200', '100', '0']);
-    const { months } = await readBars(chart);
-    expect(months[11]!.total).toBe(420);
+    const { bars, perClient } = await readBars(chart);
+    const january = figuresOf(januaryRaisedBy(70))[11]!;
+    expect(january.total).toBe(420);
+    expectBarShows(bars[11]!, january, perClient, 'Jan 2025');
     const drawn = await readDrawing(chart);
     expect(Math.min(...drawn.bars.flat().map(({ y }) => y))).toBeGreaterThan(
       Math.min(...drawn.gridlines),
@@ -160,7 +193,10 @@ test(
   async ({ page }) => {
     const chart = await openChart(page, { body: januaryRaisedBy(50) });
     expect(await yLabels(chart)).toEqual(['500', '400', '300', '200', '100', '0']);
-    expect((await readBars(chart)).months[11]!.total).toBe(400);
+    const { bars, perClient } = await readBars(chart);
+    const january = figuresOf(januaryRaisedBy(50))[11]!;
+    expect(january.total).toBe(400);
+    expectBarShows(bars[11]!, january, perClient, 'Jan 2025');
   },
 );
 
@@ -181,7 +217,7 @@ const readLegend = (chart: Chart) =>
   });
 
 test(
-  'FR3-AC1: a legend centred beneath the chart names Existing clients, New organic and New paid, each with a small swatch',
+  'FR3-AC1: a legend centred beneath the chart names exactly the three parts, each with a small swatch',
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
@@ -236,5 +272,68 @@ test(
     }
     await expect(chart.legend.getByRole('button')).toHaveCount(0);
     expect(await readDrawing(chart)).toEqual(before);
+  },
+);
+
+test(
+  'FR4-AC1: a one-client part is about 4 px tall, and a two-client part visibly taller, at about 6.34 px',
+  { tag: '@regression' },
+  async ({ page }) => {
+    const chart = await openChart(page);
+    const { bars } = await readDrawing(chart);
+    const { perClient } = await readBars(chart);
+    const months = figuresOf(shippedClients());
+    // To scale, 2 clients would be under LIFT_PX: that is why the curve exists.
+    expect(2 * perClient).toBeLessThan(LIFT_PX);
+    const heights: Record<1 | 2, number[]> = { 1: [], 2: [] };
+    bars.forEach((bar, i) => {
+      for (const part of ['New organic', 'New paid'] as const) {
+        const clients = months[i]![part];
+        if (clients !== 1 && clients !== 2) continue;
+        const segment = bar.find(({ name }) => name === part);
+        heights[clients].push(segment?.height ?? 0);
+      }
+    });
+    // The supplied data has both, several times over.
+    expect(heights[1].length).toBeGreaterThan(0);
+    expect(heights[2].length).toBeGreaterThan(0);
+    for (const height of heights[1]) expect(Math.abs(height - 4)).toBeLessThan(0.05);
+    for (const height of heights[2])
+      expect(Math.abs(height - liftedPx(2, perClient))).toBeLessThan(0.05);
+    // The assertion a flat floor fails: two clients are visibly taller than one — by two pixels
+    // and more, not the same height (FR4-AC1). The shortest two against the tallest one.
+    expect(Math.min(...heights[2]) - Math.max(...heights[1])).toBeGreaterThan(2);
+  },
+);
+
+test(
+  'FR4-AC1: July 2024’s new organic and new paid are both drawn, neither covering the other, and the bar is still 334',
+  { tag: '@regression' },
+  async ({ page }) => {
+    const chart = await openChart(page);
+    const july = (await readDrawing(chart)).bars[5]!;
+    const { perClient } = await readBars(chart);
+    const organic = july.find(({ name }) => name === 'New organic')!;
+    const paid = july.find(({ name }) => name === 'New paid')!;
+    // Two clients organic, one paid: each on the curve.
+    expect(Math.abs(organic.height - liftedPx(2, perClient))).toBeLessThan(0.05);
+    expect(Math.abs(paid.height - liftedPx(1, perClient))).toBeLessThan(0.05);
+    // Neither covers the other: New paid starts where New organic ends.
+    expect(Math.abs(paid.y + paid.height - organic.y)).toBeLessThan(0.01);
+    // And the lift was borrowed, not added: the bar reaches exactly 334 (FR4-AC2).
+    const { bars } = await readBars(chart);
+    expect(Math.abs(bars[5]!.reach - 334)).toBeLessThan(0.05);
+  },
+);
+
+test(
+  'FR4-AC2: February 2024, where nobody was newly acquired, draws no new organic or new paid part at all',
+  { tag: '@regression' },
+  async ({ page }) => {
+    const chart = await openChart(page);
+    const february = (await readDrawing(chart)).bars[0]!;
+    expect(february.filter(({ height }) => height > 0).map(({ name }) => name)).toEqual([
+      'Existing clients',
+    ]);
   },
 );

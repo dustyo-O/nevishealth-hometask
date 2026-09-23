@@ -13,9 +13,10 @@ import {
   expectTintOver,
   FEBRUARY_PANEL,
   FEBRUARY_SAID,
+  expectBarsShow,
+  figuresOf,
   hoverMonth,
   openChart,
-  readBars,
   readDrawing,
   readPanel,
   type Chart,
@@ -68,7 +69,7 @@ test(
 );
 
 test(
-  'FR5-AC2 / FR6-AC1: arriving reads February — its column tinted, its panel shown, and "Feb 2024" with all four numbers announced',
+  'FR5-AC2 / FR6-AC1: arriving reads February — its column tinted, its panel shown, and "Feb 2024" with every part and the total announced',
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
@@ -106,7 +107,7 @@ test(
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
-    const { months } = await readBars(chart);
+    const months = figuresOf(shippedClients());
     await tabToChart(page, chart);
     await page.keyboard.press('ArrowRight');
     await expectReading(chart, '2024-03');
@@ -121,7 +122,8 @@ test(
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
-    const { months } = await readBars(chart);
+    const months = figuresOf(shippedClients());
+    await expectBarsShow(chart, months);
     await tabToChart(page, chart);
     for (const [index, heading] of MONTH_HEADINGS.entries()) {
       if (index > 0) await page.keyboard.press('ArrowRight');
@@ -234,11 +236,13 @@ test(
 );
 
 test(
-  'FR6-AC2: the chart’s figures are also a table of twelve rows, one per month, with existing, organic, paid and total',
+  'FR6-AC2: the chart’s figures are also a table of twelve rows, one per month, with each part and the total',
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
-    const { months } = await readBars(chart);
+    // The figures the served data implies; the drawing shows them, totals exactly, parts on the curve (FR4).
+    const months = figuresOf(shippedClients());
+    await expectBarsShow(chart, months);
     await expect(chart.table.getByRole('columnheader')).toHaveText([
       'Month',
       'Existing clients',

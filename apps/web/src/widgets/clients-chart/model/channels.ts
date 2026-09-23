@@ -1,4 +1,4 @@
-/** The three acquisition channels the chart knows how to colour (FR1, FR3). */
+/** The three acquisition channels the chart knows how to colour (003 FR1, FR3; 004 FR3). */
 export type ChannelKey = 'existing' | 'organic' | 'paid';
 
 const KEYS: Readonly<Record<string, ChannelKey>> = {

@@ -106,8 +106,10 @@ test(
     await open(page, 'reduce');
     const final = await settledHeight(page);
     const frames = await framesOf(page);
-    const drawn = frames.filter(({ segments }) => segments === 36);
-    expect(drawn.length).toBeGreaterThan(0);
+    // No part appears late: every frame with bars in it draws the same parts. Never a fixed
+    // count — a part that is zero that month draws no rectangle (004 §2.7).
+    expect(frames.length).toBeGreaterThan(0);
+    expect(new Set(frames.map(({ segments }) => segments)).size).toBe(1);
     // The very first frame with bars in it already holds their final height.
     expect(frames[0]!.heights).toBeCloseTo(final, 2);
     expect(new Set(frames.map(({ heights }) => heights.toFixed(2))).size).toBe(1);

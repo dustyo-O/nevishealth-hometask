@@ -23,7 +23,8 @@ test(
     const { bars } = await readDrawing(chart);
     expect(bars).toHaveLength(12);
     for (const bar of bars) {
-      expect(bar).toHaveLength(3);
+      // Never a count of parts: a part that is zero that month draws nothing (004 §2.7).
+      expect(bar.length).toBeGreaterThan(0);
       for (const segment of bar) {
         expect(segment.width).toBeGreaterThan(0);
         expect(segment.height).toBeGreaterThan(0);

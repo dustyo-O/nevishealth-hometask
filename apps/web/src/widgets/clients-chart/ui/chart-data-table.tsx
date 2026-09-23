@@ -8,8 +8,8 @@ type ChartDataTableProps = {
 
 /**
  * The chart's figures as text (003 FR6-AC2): a month per row, its three parts in stacking order
- * and the total. Not shown on screen, and never hidden from assistive technology either — it is
- * the second deliberate route to the figures beside the announcement, not a duplicate to
+ * and the total (004 FR5). Not shown on screen, and never hidden from assistive technology either
+ * — it is the second deliberate route to the figures beside the announcement, not a duplicate to
  * suppress. It lives outside the drawing's `aria-hidden` wrapper and outside the focus stop.
  */
 export const ChartDataTable = ({ series, caption }: ChartDataTableProps) => (
