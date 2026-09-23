@@ -1,6 +1,10 @@
 /* Centred beneath the plot (Figma `1:2814`): an 8 px swatch before each label. The mockup's
    labels measure 12 px Inter in the muted grey, like the axis. */
 .legend {
+  /* It is a <ul>: the UA's 40 px padding-inline-start shifts the flex content box, so
+     `justify-content: center` centres the entries 20 px right of the element's centre. The
+     global reset zeroes margin but not padding (found by the acceptance suite, FR3-AC1). */
+  padding: 0;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
