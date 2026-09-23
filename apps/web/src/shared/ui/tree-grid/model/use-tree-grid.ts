@@ -14,7 +14,7 @@ import { useFocusCursor } from './use-focus-cursor';
 import { useRevealOnOpen } from './use-reveal-on-open';
 
 export type UseTreeGridOptions = {
-  /** The same id given to `<TreeGrid>`: both sides name elements through `treeGridIds` (D-11). */
+  /** Names every element through `treeGridIds` (D-11); handed on to `<TreeGrid>` by `gridProps`. */
   id: string;
   /** The rows that are showing, in the order they are shown. */
   rows: readonly TreeGridRow[];
@@ -35,8 +35,14 @@ export type TreeGridApi = {
   activeColIndexOf: (rowId: string) => number | null;
   /** Opens or closes a row, remembering which — a collapse may have to recover from it (D-10). */
   toggle: (id: string) => void;
-  /** For the `<table>`: the keyboard model of FR3, attached once and stable for its lifetime. */
+  /**
+   * Spread on `<TreeGrid>`: the id and column count this hook was given — so the two can never
+   * disagree, which would leave focus silently stuck — and the keyboard model of FR3, attached
+   * once and stable for its lifetime.
+   */
   gridProps: {
+    id: string;
+    columnCount: number;
     onKeyDown: (event: KeyboardEvent<HTMLElement>) => void;
     onFocus: (event: FocusEvent<HTMLElement>) => void;
   };
@@ -155,8 +161,8 @@ export const useTreeGrid = ({
   );
 
   const gridProps = useMemo(
-    () => ({ onKeyDown: handleKeyDown, onFocus: handleFocus }),
-    [handleKeyDown, handleFocus],
+    () => ({ id, columnCount, onKeyDown: handleKeyDown, onFocus: handleFocus }),
+    [id, columnCount, handleKeyDown, handleFocus],
   );
 
   return { cursor, activeColIndexOf, toggle, gridProps };

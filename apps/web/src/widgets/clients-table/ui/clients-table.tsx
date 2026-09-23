@@ -37,16 +37,13 @@ export const ClientsTable = ({ data }: ClientsTableProps) => {
 
   return (
     <TreeGrid
-      id={GRID_ID}
+      {...grid.gridProps}
       label="Clients by month"
       className={styles.grid}
-      columnCount={months.length}
-      onKeyDown={grid.gridProps.onKeyDown}
-      onFocus={grid.gridProps.onFocus}
       head={
         <TreeGrid.Head>
           {/* Blank in the design, and still named for a screen reader (FR4-AC3). */}
-          <TreeGrid.ColumnHeader name>
+          <TreeGrid.ColumnHeader nameColumn>
             <VisuallyHidden>Name</VisuallyHidden>
           </TreeGrid.ColumnHeader>
           {months.map((month, colIndex) => (

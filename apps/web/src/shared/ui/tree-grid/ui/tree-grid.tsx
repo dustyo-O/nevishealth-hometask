@@ -19,7 +19,10 @@ import { TreeGridToggle } from './tree-grid-toggle';
 import styles from './tree-grid.module.css';
 
 export type TreeGridProps = {
-  /** Namespaces every header id, so two grids on one page never collide. */
+  /**
+   * Namespaces every header id, so two grids on one page never collide. With `columnCount`,
+   * `onKeyDown` and `onFocus`, it comes from `useTreeGrid`'s `gridProps`, spread here.
+   */
   id: string;
   label: string;
   /** How many figure columns follow the name column. */

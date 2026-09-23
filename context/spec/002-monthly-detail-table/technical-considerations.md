@@ -53,7 +53,7 @@ Three layers, exactly as architecture §6 requires:
 | `index.ts` | the only import path, and only what is imported outside the slice: `TreeGrid`, `useTreeGrid`, `useExpandedIds`, the `TreeGridRow` type _(amended by 005 shared F6)_ |
 | `model/types.ts` | `TreeGridRow { id, parentId, level, posInSet, setSize, hasChildren }` (1-based level/position), `TreeGridCursor { rowId, colIndex }` (`-1` = the row itself). `UseTreeGridOptions { id, rows, columnCount, expandedIds, onToggle }` and `TreeGridApi` live beside the hook in `model/use-tree-grid.ts` _(amended by 005 shared F4: the grid `id` is taken, not a `cellId`)_ |
 | `model/keyboard.ts` | **pure** `reduceKey(cursor, key, rows, columnCount) → { cursor } \| { toggle: id } \| null` — no DOM, no React; the whole §2.2 key table. No `expandedIds`: since the FR3 amendment no rule asks whether a row is open; `columnCount` bounds the figures _(amended by 005 shared F4)_ |
-| `model/use-tree-grid.ts` | cursor state, collapse recovery (D-10), key dispatch, cursor-follows-focus; returns `{ cursor, activeColIndexOf, toggle, gridProps }` _(amended by 005 shared F1)_ |
+| `model/use-tree-grid.ts` | cursor state, collapse recovery (D-10), key dispatch, cursor-follows-focus; returns `{ cursor, activeColIndexOf, toggle, gridProps }` _(amended by 005 shared F1)_; `gridProps` is `{ id, columnCount, onKeyDown, onFocus }`, spread on `<TreeGrid>` so the id and column count are given once _(005 shared F5)_ |
 | `model/use-focus-cursor.ts` | the focus `useLayoutEffect` (D-9) and scroll-into-view (D-7); runs before the reveal |
 | `model/use-reveal-on-open.ts` | scroll-to-reveal after a row opens (FR2, amended); returns `markOpening(id)` |
 | `model/use-row-motion.ts` | registers the row slide on the `<tbody>` (D-16) |
@@ -62,7 +62,7 @@ Three layers, exactly as architecture §6 requires:
 | `ui/tree-grid-row.tsx` | `<tr>` with `aria-level` / `aria-posinset` / `aria-setsize`, and `aria-expanded` **only when `hasChildren`** |
 | `ui/tree-grid-row-header.tsx` | the sticky `<th scope="row">`; sets `--tree-grid-level` for the indent |
 | `ui/tree-grid-cell.tsx` | `<td>` with `headers` (D-11) |
-| `ui/tree-grid-head.tsx` | `TreeGrid.Head` / `TreeGrid.ColumnHeader` (`<th scope="col">` with ids) |
+| `ui/tree-grid-head.tsx` | `TreeGrid.Head` / `TreeGrid.ColumnHeader` (`<th scope="col">` with ids; `nameColumn` marks the pinned heading over the row names — `name` until 005 shared F8) |
 | `ui/tree-grid-toggle.tsx` | the chevron — "expandable" is a tree concept, so it belongs here |
 | `ui/tree-grid.module.css` | sticky, borders, focus ring, hover, scroll-padding, the edge shadow |
 
