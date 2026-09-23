@@ -60,8 +60,8 @@ export const BarPlot = memo(function BarPlot({ series, initialDimension }: BarPl
           tickLine={false}
           axisLine={false}
         />
-        {/* Stacked bottom-up in the series' own order: Not recorded when the year has any (004
-            FR3), then Existing, then New organic, then New paid. */}
+        {/* Stacked bottom-up in the series' own order: Existing, then New organic, then New paid
+            (004 FR3). */}
         {series.channels.map((name) => (
           <Bar
             key={name}

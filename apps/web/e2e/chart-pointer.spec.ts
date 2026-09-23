@@ -17,13 +17,13 @@ import {
   readBars,
   readDrawing,
   readPanel,
-  SEGMENTS,
+  CHANNELS,
 } from './support/chart';
 import { MONTHS } from './support/clients-double';
 import { MONTH_HEADINGS } from './support/table';
 
 test(
-  'FR4-AC1: pointing at February 2024 opens a panel reading "Feb 2024", 225, 25, 0, 0 and a total of 250, in stacking order',
+  'FR4-AC1: pointing at February 2024 opens a panel reading "Feb 2024", 250, 0, 0 and a total of 250, in stacking order',
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
@@ -103,8 +103,7 @@ test(
       await expectReading(chart, MONTHS[index]!);
       const panel = await readPanel(chart);
       expect(panel.month).toBe(heading);
-      // 004 slice 3 replaces the parts; the arithmetic stays.
-      expect(panel.rows.map(([name]) => name)).toEqual([...SEGMENTS, 'Total']);
+      expect(panel.rows.map(([name]) => name)).toEqual([...CHANNELS, 'Total']);
       const values = panel.rows.map(([, value]) => value);
       const total = values.pop();
       expect(values.reduce((sum, value) => sum + value, 0)).toBe(total);

@@ -649,7 +649,9 @@ describe('ClientsChart, when the data records the channel of only part of the co
     const user = userEvent.setup();
     const { container } = renderChart();
     const svg = drawingOf(container);
-    const fills = new Set([...svg.querySelectorAll('path[fill]')].map((p) => p.getAttribute('fill')));
+    const fills = new Set(
+      [...svg.querySelectorAll('path[fill]')].map((p) => p.getAttribute('fill')),
+    );
     expect([...fills].filter((fill) => fill?.startsWith('var(--color-channel-'))).toEqual(
       expect.arrayContaining(KEYS.map((key) => `var(--color-channel-${key})`)),
     );

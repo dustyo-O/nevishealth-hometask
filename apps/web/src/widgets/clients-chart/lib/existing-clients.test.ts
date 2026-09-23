@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { toMonthlySeries, type MonthlyPoint, type MonthlySeries } from '@/entities/clients';
-import { shippedClients } from '@/test/fixtures/shipped-clients';
 import { EXISTING, existingClients, withExistingClients } from './existing-clients';
+import { shippedClients } from '@/test/fixtures/shipped-clients';
 
 const CHANNELS = ['Existing clients', 'New organic', 'New paid'];
 
@@ -29,9 +29,9 @@ describe('existingClients', () => {
   });
 
   it('is the company figure less the newly acquired, month by month (FR3-AC2)', () => {
-    expect(existingClients(seriesOf([250, [25, 0, 0]], [301, [30, 1, 0]], [10, [10, 0, 0]]))).toEqual(
-      [250, 300, 10],
-    );
+    expect(
+      existingClients(seriesOf([250, [25, 0, 0]], [301, [30, 1, 0]], [10, [10, 0, 0]])),
+    ).toEqual([250, 300, 10]);
   });
 
   it('ignores the recorded Existing figure, even where it exceeds the company (§2.3)', () => {
@@ -61,7 +61,9 @@ describe('withExistingClients', () => {
   it('puts Existing clients first even when the tree records none (FR3-AC1)', () => {
     const series: MonthlySeries = {
       channels: ['New organic', 'New paid'],
-      points: [{ month: '2024-02', byChannel: { 'New organic': 1, 'New paid': 2 }, total: 3, company: 10 }],
+      points: [
+        { month: '2024-02', byChannel: { 'New organic': 1, 'New paid': 2 }, total: 3, company: 10 },
+      ],
     };
     const { channels, points } = withExistingClients(series);
     expect(channels).toEqual(CHANNELS);
@@ -69,7 +71,9 @@ describe('withExistingClients', () => {
   });
 
   it("makes each month's parts add up to its total, and the total its company figure (FR3-AC2)", () => {
-    const series = withExistingClients(seriesOf([250, [25, 0, 0]], [301, [30, 1, 0]], [20, [15, 10, 5]]));
+    const series = withExistingClients(
+      seriesOf([250, [25, 0, 0]], [301, [30, 1, 0]], [20, [15, 10, 5]]),
+    );
     expect(series.points.map((point) => point.total)).toEqual([250, 301, 20]);
     expect(sumOfParts(series)).toEqual([250, 301, 20]);
   });

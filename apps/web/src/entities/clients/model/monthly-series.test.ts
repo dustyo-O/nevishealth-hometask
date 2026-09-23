@@ -10,8 +10,7 @@ describe('toMonthlySeries', () => {
     expect(points.map((p) => p.month)).toEqual(data.months);
   });
 
-  // 004 slice 3 replaces the chart's input (the rows the table shows, not the channels); until
-  // then this records what the channel series says about the supplied data.
+  // What the tree records; the chart derives Existing clients from the Company row (004 §2.3).
   it('totals only what the channels record: Anna Blackwood’s, a tenth of the company (004 FR1)', () => {
     const data = shippedClients();
     const { points } = toMonthlySeries(data);

@@ -129,7 +129,7 @@ test(
       await expectTintOver(chart, index);
       const figures = months[index]!;
       await expect(chart.live).toHaveText(
-        `${heading}: not recorded ${figures['Not recorded']}, existing clients ${figures['Existing clients']}, new organic ${figures['New organic']}, new paid ${figures['New paid']}, total ${figures.total}`,
+        `${heading}: existing clients ${figures['Existing clients']}, new organic ${figures['New organic']}, new paid ${figures['New paid']}, total ${figures.total}`,
       );
     }
   },
@@ -239,10 +239,8 @@ test(
   async ({ page }) => {
     const chart = await openChart(page);
     const { months } = await readBars(chart);
-    // 004 slice 3 replaces the columns (the rows the table shows); Total stays the Company row.
     await expect(chart.table.getByRole('columnheader')).toHaveText([
       'Month',
-      'Not recorded',
       'Existing clients',
       'New organic',
       'New paid',
@@ -255,7 +253,6 @@ test(
       await expect(row.getByRole('rowheader')).toHaveText(heading);
       const m = months[i]!;
       await expect(row.getByRole('cell')).toHaveText([
-        String(m['Not recorded']),
         String(m['Existing clients']),
         String(m['New organic']),
         String(m['New paid']),

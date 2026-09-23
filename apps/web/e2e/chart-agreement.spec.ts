@@ -10,7 +10,7 @@
 // card that drifts is caught by both comparisons. The second test serves figures that are not the
 // shipped ones, so neither card can pass by holding a copy of the shipped year.
 import { expect, test, type Page } from '@playwright/test';
-import { openChart, readBars, reshaped, SEGMENTS, type Chart } from './support/chart';
+import { openChart, readBars, reshaped, CHANNELS, type Chart } from './support/chart';
 import { figureOf, MONTH_HEADINGS, shippedClients, type ClientsBody } from './support/table';
 
 const tableCompanyRow = async (chart: Chart): Promise<number[]> => {
@@ -35,8 +35,8 @@ const expectAgreement = async (page: Page, body: ClientsBody): Promise<void> => 
 
   MONTH_HEADINGS.forEach((month, i) => {
     const bar = months[i]!;
-    // The remainder counts (004 R-3): without "Not recorded" the parts are a tenth of the bar.
-    const parts = SEGMENTS.reduce((sum, part) => sum + bar[part], 0);
+    // Existing clients is the Company row less the newly acquired (004 §2.3), so the three do.
+    const parts = CHANNELS.reduce((sum, part) => sum + bar[part], 0);
     // The parts add up to the whole bar, and the whole bar to the table's Company row.
     expect(parts, `${month}: the parts add up to the bar`).toBe(bar.total);
     expect(bar.total, `${month}: chart against table`).toBe(table[i]);

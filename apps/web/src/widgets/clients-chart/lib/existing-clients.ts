@@ -11,8 +11,8 @@ export const EXISTING = 'Existing clients';
  * more than the company's figure reads 0, not a negative (spec review F1). Pure: no charting
  * library, no DOM.
  *
- * Slice 1 computed `company − Σ channels` here as "Not recorded"; it is exactly what Existing now
- * absorbs on top of the recorded `Existing clients` nodes.
+ * Where the channels do not overshoot, this is the recorded `Existing clients` plus
+ * `company − Σ channels`: the clients no adviser's figures break down, all of them existing.
  */
 export const existingClients = ({ channels, points }: MonthlySeries): number[] =>
   points.map((point) => {
@@ -35,7 +35,7 @@ export const withExistingClients = (series: MonthlySeries): MonthlySeries => {
   return {
     channels,
     points: series.points.map((point, i) => {
-      const byChannel = { ...point.byChannel, [EXISTING]: values[i] ?? 0 };
+      const byChannel: Record<string, number> = { ...point.byChannel, [EXISTING]: values[i] ?? 0 };
       const total = channels.reduce((sum, name) => sum + (byChannel[name] ?? 0), 0);
       return { ...point, byChannel, total };
     }),

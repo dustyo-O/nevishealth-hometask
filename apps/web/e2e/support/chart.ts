@@ -9,32 +9,23 @@ import { openTable, shippedClients, type ClientsBody } from './table';
  * figure "on the chart" means a height a sighted user could measure, not a number in the DOM.
  */
 
-/*
- * 004 slice 3 replaces everything below that names a part — SEGMENTS, FEBRUARY, FEBRUARY_SAID,
- * FEBRUARY_PANEL: the bars will be divided by the rows the table shows (Branch 1 147, Branch 2 76,
- * Branch 3 27 in February at load), not by channel. Until then they describe what the supplied
- * data draws on the channel model: Anna Blackwood's channels on a grey base of everything else.
+/**
+ * The three parts of every bar, bottom-up (FR1-AC5): Existing clients is the Company row less the
+ * newly acquired, which the data records as New organic and New paid (004 §2.3).
  */
-
-/** The three acquisition channels, bottom-up (FR1-AC5). */
 export const CHANNELS = ['Existing clients', 'New organic', 'New paid'] as const;
+export type Part = (typeof CHANNELS)[number];
 
-/** Every part a bar can hold, bottom-up: what no channel records, then the channels (004 FR3). */
-export const SEGMENTS = ['Not recorded', ...CHANNELS] as const;
-export type Part = (typeof SEGMENTS)[number];
-
-/** February 2024 on the supplied data: 25 of the company's 250 have a recorded channel. */
+/** February 2024 on the supplied data: nobody newly acquired, all 250 existing (004 FR3-AC3). */
 export const FEBRUARY = {
-  'Not recorded': 225,
-  'Existing clients': 25,
+  'Existing clients': 250,
   'New organic': 0,
   'New paid': 0,
   total: 250,
 };
 
 /** The live region's sentence for February (FR6-AC1), exactly as `describeMonth` words it. */
-export const FEBRUARY_SAID =
-  'Feb 2024: not recorded 225, existing clients 25, new organic 0, new paid 0, total 250';
+export const FEBRUARY_SAID = 'Feb 2024: existing clients 250, new organic 0, new paid 0, total 250';
 
 export const CHART_NAME = 'Clients per month by acquisition channel, Feb 2024 to Jan 2025';
 
@@ -182,7 +173,7 @@ export const readBars = async (
   let exactness = 0;
   const months = drawn.bars.map((segments) => {
     const figures = { total: 0 } as MonthFigures;
-    for (const part of SEGMENTS) {
+    for (const part of CHANNELS) {
       // A part missing from the drawing is a part that is zero that month.
       const segment = segments.find(({ name }) => name === part);
       const raw = segment === undefined ? 0 : segment.height / perClient;
@@ -234,8 +225,7 @@ export const readPanel = (chart: Chart) =>
 export const FEBRUARY_PANEL = {
   month: 'Feb 2024',
   rows: [
-    ['Not recorded', 225],
-    ['Existing clients', 25],
+    ['Existing clients', 250],
     ['New organic', 0],
     ['New paid', 0],
     ['Total', 250],
