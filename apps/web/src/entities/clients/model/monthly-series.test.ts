@@ -31,6 +31,7 @@ describe('toMonthlySeries', () => {
       month: '2024-02',
       byChannel: { 'Existing clients': 221, 'New organic': 15, 'New paid': 14 },
       total: 250,
+      company: 250,
     });
   });
 
@@ -41,6 +42,26 @@ describe('toMonthlySeries', () => {
     expect(points.filter((p) => p.total === max).map((p) => p.month)).toEqual([
       '2024-08',
       '2025-01',
+    ]);
+  });
+
+  it("carries the Company row's own figure for every month, as served (004 §2.3)", () => {
+    const data = shippedClients();
+    const { points } = toMonthlySeries(data);
+    expect(points.map((p) => p.company)).toEqual(data.company.values);
+  });
+
+  it("keeps the company's figure when the channels account for only part of it, or overshoot it", () => {
+    const anna = makeNode('e1', 'Anna', { channels: [makeNode('c1', 'Web')] });
+    const company = makeNode('co', 'Company', {
+      branches: [makeNode('b1', 'Branch 1', { employees: [anna, makeNode('e2', 'Ben')] })],
+    });
+    company.values = [10, 0];
+    anna.channels![0]!.values = [3, 4];
+    const { points } = toMonthlySeries({ months: ['2024-02', '2024-03'], company });
+    expect(points).toEqual([
+      { month: '2024-02', byChannel: { Web: 3 }, total: 3, company: 10 },
+      { month: '2024-03', byChannel: { Web: 4 }, total: 4, company: 0 },
     ]);
   });
 
@@ -66,6 +87,7 @@ describe('toMonthlySeries', () => {
       month: '2024-02',
       byChannel: { Web: 1, Paid: 2 },
       total: 3,
+      company: 1,
     });
   });
 });

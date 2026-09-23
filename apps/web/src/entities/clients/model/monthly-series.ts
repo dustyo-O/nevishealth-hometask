@@ -7,8 +7,14 @@ export type MonthlyPoint = {
   month: string;
   /** The company's figure for each channel, keyed by the channel's name. */
   byChannel: Readonly<Record<string, number>>;
-  /** The sum of `byChannel` — the height of the whole bar. */
+  /** The sum of `byChannel`: every client the data attributes to a channel that month. */
   total: number;
+  /**
+   * The Company row's own figure for the month, as served (004 §2.3). Not recalculated and not
+   * reconciled with `total`: where the channels account for only part of the company, the two
+   * differ, and saying what to draw for the difference is the widget's business, not the data's.
+   */
+  company: number;
 };
 
 export type MonthlySeries = {
@@ -43,7 +49,7 @@ export const toMonthlySeries = ({ months, company }: ClientsData): MonthlySeries
       channels.map((name) => [name, totals.get(name)?.[i] ?? 0]),
     );
     const total = Object.values(byChannel).reduce((sum, value) => sum + value, 0);
-    return { month, byChannel, total };
+    return { month, byChannel, total, company: company.values[i] ?? 0 };
   });
   return { channels, points };
 };
