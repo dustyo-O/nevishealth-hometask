@@ -108,7 +108,11 @@ Measured: a `ResponsiveContainer` in a parent with **no height renders no SVG at
 
 ### 2.7 Pointer, touch and motion (FR4, FR7)
 
-One controlled state, written by both input paths — `Tooltip active={open} defaultIndex={index}`, `BarChart onMouseMove/onClick → show(activeTooltipIndex)`, `onMouseLeave → hide`, `onBlur → hide`, keyboard handlers writing the same reducer. A half-controlled variant produced one unreproducible stuck tooltip during the consult, which is why the fully controlled shape is specified.
+One controlled state, `{ index, open }`, written by both input paths — the pointer, the keyboard, taps — and read by the panel, the tint and the live region alike.
+
+**The library's `<Tooltip>` is not used at all** (amended 2026-09-23 by slice 2 and 3's measurements; this section originally specified a fully controlled `Tooltip active={open} defaultIndex={index}`). Once the tint had to be ours (tech review F1) and the panel's text had to come from our state rather than the library's payload (R-4), the component was carrying no content of its own — and it still brought its own contradicting state: `TooltipBoundingBox.js` keeps a "dismissed" flag tied to a coordinate, so Escape followed by Right at January would have stayed hidden, and it hides itself whenever its payload is empty. The panel is our own HTML inside the `aria-hidden` wrapper, positioned from `lib/plot-geometry.ts` — a pure module that also answers "which month is under this x?", tested with no DOM. It opens to the right of its column for Feb–Jul and to the left for Aug–Jan, and stays inside the card at 1440 and 375 for all twelve months.
+
+The live region speaks **only while the chart has focus**, so a pointer sweeping the year does not announce twelve months at a screen-reader user.
 
 - **Tint — ours, not Recharts'.** `<Tooltip cursor={{ fill: … }} />` follows Recharts' *own* active index, which the measurement showed can disagree with ours: with the pointer resting on August, Tab put the panel on August while the live region announced February. FR5-AC2 requires February's column tinted on arrival, so the cursor is turned **off** (`cursor={false}`) and the tint is drawn by us, positioned from the widget's `index`.
 
