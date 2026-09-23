@@ -32,7 +32,8 @@ const readTree = async (url: URL): Promise<TreeNode> =>
 
 const named = (nodes: readonly TreeNode[], name: string): TreeNode => {
   const node = nodes.find((candidate) => candidate.name === name);
-  if (node === undefined) throw new Error(`no "${name}" among ${nodes.map((n) => n.name)}`);
+  if (node === undefined)
+    throw new Error(`no "${name}" among ${nodes.map((n) => n.name).join(', ')}`);
   return node;
 };
 
@@ -51,22 +52,24 @@ const endsOfLine = (node: TreeNode, depth = 0, path: string[] = []): string[] =>
   return children.flatMap((child) => endsOfLine(child, depth + 1, here));
 };
 
+const twelve = (value: number): number[] => Array.from({ length: 12 }, () => value);
+
 /** A uniform company, the shape we must never serve again: every level broken down fully. */
 const uniformCompany = (): TreeNode => {
-  const leaf = (name: string): TreeNode => ({ id: name, name, values: Array(12).fill(1) });
+  const leaf = (name: string): TreeNode => ({ id: name, name, values: twelve(1) });
   const adviser = (name: string): TreeNode => ({
     ...leaf(name),
-    values: Array(12).fill(3),
+    values: twelve(3),
     channels: ['Existing clients', 'New organic', 'New paid'].map(leaf),
   });
   const branch = (name: string): TreeNode => ({
     ...leaf(name),
-    values: Array(12).fill(6),
+    values: twelve(6),
     employees: [adviser(`${name} A`), adviser(`${name} B`)],
   });
   return {
     ...leaf('Company'),
-    values: Array(12).fill(18),
+    values: twelve(18),
     branches: ['Branch 1', 'Branch 2', 'Branch 3'].map(branch),
   };
 };
