@@ -18,13 +18,10 @@ export type TreeGridRowProps = {
 };
 
 /**
- * Every row and figure is focusable, because the keyboard walks them — and so, left alone, a
- * click would focus one too, and the keyboard's place would move under the user without their
- * asking (code review F1: a clicked figure took focus, the next Enter closed the Company row).
- * The pointer never moves the outline: a figure is no click target at all (FR2-AC5), and a name
- * still opens and closes on `click`, which this does not cancel, while the outline stays where
- * the keyboard left it (FR2-AC6/AC7). The price is that a drag cannot start a text selection
- * inside the grid.
+ * The pointer never moves the outline (FR2-AC5..AC7, code review F1). Every row and figure is
+ * focusable because the keyboard walks them, so left alone a click would focus one and move the
+ * keyboard's place without asking. A name still opens and closes on `click`, which this does not
+ * cancel. The price: a drag cannot start a text selection inside the grid.
  */
 const keepFocus = (event: MouseEvent) => event.preventDefault();
 

@@ -50,13 +50,10 @@ const keyframesFor = (
  * true, and a screen reader's virtual cursor can land on a row that is logically gone.
  * `pointer-events: none` (which the library applies itself) and `tabindex="-1"` do neither.
  *
- * It gives up its ids on the way out for the same reason. Re-opening a row inside the ~250 ms
- * its old rows take to leave puts two elements with the same id in the document, and
- * `document.getElementById` — which the keyboard resolves the element to focus by (D-9/D-11) —
- * answers with the one that comes first, which may be the departing one. Measured in Chrome
- * 153: closing and re-opening a row quickly and then pressing Down left the outline nowhere,
- * focus still on the row before it while the grid's single `tabindex="0"` had moved on, because
- * `focus()` on an `inert` element does nothing at all.
+ * It gives up its ids on the way out too: re-opening a row while its old rows are still leaving
+ * puts two elements with one id in the document, and `document.getElementById` — which the
+ * keyboard resolves the element to focus by (D-9/D-11) — may answer with the departing, `inert`
+ * one, on which `focus()` does nothing.
  */
 const retireLeavingRow = (el: Element) => {
   el.setAttribute('aria-hidden', 'true');

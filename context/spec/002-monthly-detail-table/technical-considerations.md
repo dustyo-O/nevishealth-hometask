@@ -50,10 +50,13 @@ Three layers, exactly as architecture §6 requires:
 
 | Path | Responsibility |
 |---|---|
-| `index.ts` | the only import path: components, `useTreeGrid`, `useExpandedIds`, the types |
-| `model/types.ts` | `TreeGridRow { id, parentId, level, posInSet, setSize, hasChildren }` (1-based level/position), `TreeGridCursor { rowId, colIndex }` (`-1` = the row itself), `UseTreeGridOptions { rows, columnCount, expandedIds, onToggle, cellId }`, `TreeGridApi` |
-| `model/keyboard.ts` | **pure** `(cursor, key, rows, expandedIds) → { cursor } \| { toggle: id } \| null` — no DOM, no React; the whole §2.2 key table |
-| `model/use-tree-grid.ts` | cursor state, `getTreeGridProps` / `getRowProps` / `getRowHeaderProps` / `getCellProps` / `moveTo`, the focus `useLayoutEffect` (D-9), scroll-into-view (D-7), collapse recovery (D-10) |
+| `index.ts` | the only import path, and only what is imported outside the slice: `TreeGrid`, `useTreeGrid`, `useExpandedIds`, the `TreeGridRow` type _(amended by 005 shared F6)_ |
+| `model/types.ts` | `TreeGridRow { id, parentId, level, posInSet, setSize, hasChildren }` (1-based level/position), `TreeGridCursor { rowId, colIndex }` (`-1` = the row itself). `UseTreeGridOptions { id, rows, columnCount, expandedIds, onToggle }` and `TreeGridApi` live beside the hook in `model/use-tree-grid.ts` _(amended by 005 shared F4: the grid `id` is taken, not a `cellId`)_ |
+| `model/keyboard.ts` | **pure** `reduceKey(cursor, key, rows, columnCount) → { cursor } \| { toggle: id } \| null` — no DOM, no React; the whole §2.2 key table. No `expandedIds`: since the FR3 amendment no rule asks whether a row is open; `columnCount` bounds the figures _(amended by 005 shared F4)_ |
+| `model/use-tree-grid.ts` | cursor state, collapse recovery (D-10), key dispatch, cursor-follows-focus; returns `{ cursor, activeColIndexOf, toggle, gridProps }` _(amended by 005 shared F1)_ |
+| `model/use-focus-cursor.ts` | the focus `useLayoutEffect` (D-9) and scroll-into-view (D-7); runs before the reveal |
+| `model/use-reveal-on-open.ts` | scroll-to-reveal after a row opens (FR2, amended); returns `markOpening(id)` |
+| `model/use-row-motion.ts` | registers the row slide on the `<tbody>` (D-16) |
 | `model/use-expanded-ids.ts` | generic `Set<string>` + `toggle` with descendant pruning (D-6) |
 | `ui/tree-grid.tsx` | the scroller `<div>` + `<table role="treegrid">` + a context of **stable** values only (`columnCount`, `cellId`, `onToggle`, the keydown handler) — never the cursor (D-9) |
 | `ui/tree-grid-row.tsx` | `<tr>` with `aria-level` / `aria-posinset` / `aria-setsize`, and `aria-expanded` **only when `hasChildren`** |

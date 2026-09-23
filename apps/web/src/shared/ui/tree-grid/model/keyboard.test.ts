@@ -23,15 +23,13 @@ const ROWS: readonly TreeGridRow[] = [
   { id: 'last', parentId: 'root', level: 2, posInSet: 3, setSize: 3, hasChildren: false },
 ];
 
-const EXPANDED: ReadonlySet<string> = new Set(['root', 'open']);
 const COLUMNS = 12;
 const LAST_COLUMN = COLUMNS - 1;
 
 const onRow = (rowId: string): TreeGridCursor => ({ rowId, colIndex: ROW_COL_INDEX });
 const onFigure = (rowId: string, colIndex: number): TreeGridCursor => ({ rowId, colIndex });
 
-const press = (cursor: TreeGridCursor, key: string, expanded = EXPANDED) =>
-  reduceKey(cursor, key, ROWS, expanded, COLUMNS);
+const press = (cursor: TreeGridCursor, key: string) => reduceKey(cursor, key, ROWS, COLUMNS);
 
 describe('reduceKey — on a row (FR3)', () => {
   it('moves down and up through the rows that are showing', () => {
@@ -73,7 +71,6 @@ describe('reduceKey — on a row (FR3)', () => {
 
   it('stays put on Left at the top, open or closed — nothing is above the root (FR3-AC11)', () => {
     expect(press(onRow('root'), 'ArrowLeft')).toEqual({ cursor: onRow('root') });
-    expect(press(onRow('root'), 'ArrowLeft', new Set(['open']))).toEqual({ cursor: onRow('root') });
   });
 
   /**
@@ -85,9 +82,7 @@ describe('reduceKey — on a row (FR3)', () => {
   it('never changes the table’s shape with an arrow, whatever the row’s state (FR3)', () => {
     for (const { id } of ROWS) {
       for (const key of ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown']) {
-        for (const expanded of [EXPANDED, new Set<string>(), new Set(ROWS.map((r) => r.id))]) {
-          expect(press(onRow(id), key, expanded)).not.toHaveProperty('toggle');
-        }
+        expect(press(onRow(id), key)).not.toHaveProperty('toggle');
       }
     }
   });
