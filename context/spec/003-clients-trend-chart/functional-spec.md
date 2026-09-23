@@ -124,13 +124,14 @@ When the figures arrive, the bars grow up from the bottom of the plot once, so t
 
 Thirteen months' worth of labels cannot fit across a phone, but the shape of the year can. On a narrow screen all twelve bars stay visible and simply become thinner; the plot keeps its height, so the difference between a good month and a bad one is as easy to see on a phone as on a laptop.
 
-Only the month labels give way: below the width at which all twelve fit, the axis thins them to every third month, each keeping its full "Feb 2024" form. At 375 px that leaves four — April, July, October and January 2025 — evenly spaced and clear of one another. February is not named there, and that is accepted: the labels are a scale to read the bars against, and the exact month behind any bar is one tap away.
+Only the month labels give way, and they thin in steps as the space shrinks, each label keeping its full "Feb 2024" form and the set always ending at January 2025. All twelve are named from about 900 px; between roughly 500 and 880 px every second month is named; below that every third. At 375 px that leaves four — April, July, October and January 2025. At no width do two labels touch. February is not named on a phone, and that is accepted: the labels are a scale to read the bars against, and the exact month behind any bar is one tap away.
 
 The chart itself never scrolls sideways, and neither does the page.
 
 - **Acceptance Criteria:**
   - [ ] When the page is viewed at 375 px wide, then all twelve bars are visible inside the card and none is cut off.
-  - [x] When the page is viewed at 375 px wide, then the month labels read "Apr 2024", "Jul 2024", "Oct 2024" and "Jan 2025", evenly spaced, and no labels overlap.
+  - [ ] When the page is viewed at 375 px wide, then the month labels read "Apr 2024", "Jul 2024", "Oct 2024" and "Jan 2025", evenly spaced, and no labels overlap.
+  - [ ] When the page is viewed at any width from 375 px to 1440 px, then the month labels never overlap, the set always ends at "Jan 2025", and the number shown only grows as the chart gets wider.
   - [ ] When the page is viewed at 375 px wide, then the plot is the same height as at the design's width and the page has no horizontal scrollbar.
   - [ ] When the user tries to scroll the chart sideways at any width, then nothing moves, because the whole year is already shown.
   - [ ] When the page is viewed at the design's width, then all twelve months are named beneath their bars.
@@ -178,6 +179,8 @@ The chart appears inside the card that spec 001 already fills: the placeholder b
 ---
 
 ## Change Log
+
+- [2026-09-23] — the cross-vendor code review of the implementation (`reviews/code-codex-20260923-1359.md`, F1) — **FR8: the labels thin in steps, not straight to every third month.** The requirement claimed the axis goes to every third month as soon as twelve will not fit. Measured across ten widths on the built chart, that is untrue in the middle of the range: 375–420 px show every third month, **500–780 px show every second**, and twelve appear from about 900 px. No two labels touch at any width. The owner had already declined building explicit label selection ("we can skip improvements here"), so the requirement now describes the stepping that actually happens, and a new criterion pins what matters at every width — no overlap, the set always ending at January, and the count only growing with width.
 
 - [2026-09-23] — the owner's judgement on the rendered chart — **FR8: the narrow-screen labels are every third month in full, not five abbreviated ones.** Measured on the built chart at 375 px, the axis already thins itself to "Apr 2024", "Jul 2024", "Oct 2024", "Jan 2025" — four labels, evenly spaced, clear by 11 px, with all twelve bars inside the card, no horizontal scroll and the plot the same 338 px as at 1440. The owner looked at it and judged it good enough ("currently labels in chart on 375 are good enough… we can skip improvements here"), so the criterion now describes what is drawn instead of a five-label set that would have needed a custom tick renderer. The cost, stated plainly: February is not labelled on a phone. The two superseded amendments below record how the wording got there.
 
