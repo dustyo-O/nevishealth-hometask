@@ -156,6 +156,16 @@ export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
           onPointerMove={handlePointerMove}
           onPointerLeave={handlePointerLeave}
         >
+          {/* The tint is ours, placed from the widget's index: the library's cursor follows its
+              own hover index, measured disagreeing with ours after hover-then-Tab (tech review
+              F1). Before the drawing, so the bars paint over it. */}
+          {point !== undefined && (
+            <div
+              data-month={point.month}
+              className={styles.tint}
+              style={{ '--month-index': reader.index } as CSSProperties}
+            />
+          )}
           <BarPlot series={series} initialDimension={initialDimension} />
           {point !== undefined && (
             <MonthPanel

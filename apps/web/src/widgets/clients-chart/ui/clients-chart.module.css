@@ -46,3 +46,15 @@
   position: relative;
   height: 100%;
 }
+
+/* One month's whole column, from the top of the plot to the month labels: left = the y-axis +
+   index × pitch, width = pitch (003 §2.7). The table's own hover tint (FR4-AC2). */
+.tint {
+  position: absolute;
+  top: var(--plot-top);
+  bottom: var(--plot-bottom);
+  left: calc(var(--columns-left) + var(--month-index) * var(--pitch));
+  width: var(--pitch);
+  background: var(--color-row-hover);
+  pointer-events: none;
+}

@@ -93,6 +93,19 @@ const JUN = 4;
 const hover = (drawing: HTMLElement, month: number) =>
   fireEvent.pointerMove(drawing, { ...columnOf(month), pointerType: 'mouse' });
 
+/**
+ * What the drawing shows about a month — the tint, then the panel — each marked with the month
+ * it stands on.
+ */
+const shownIn = (drawing: HTMLElement) =>
+  [...drawing.querySelectorAll<HTMLElement>('[data-month]')].map((node) => ({
+    month: node.dataset['month'],
+    panel: node.querySelector('dl') !== null,
+  }));
+
+const tintIn = (drawing: HTMLElement) =>
+  drawing.querySelector<HTMLElement>('[data-month]:not(:has(dl))');
+
 const panelIn = (drawing: HTMLElement) => drawing.querySelector('dl')?.parentElement ?? null;
 
 describe('ClientsChart', () => {
@@ -335,6 +348,59 @@ describe('ClientsChart', () => {
     expect(panelIn(drawing)).toHaveAttribute('data-month', '2024-02');
     await user.tab();
     expect(panelIn(drawing)).toBeNull();
+  });
+
+  it('hover June, then Tab: the tint, the panel and the live region all say February (FR5-AC2, tech review F1)', async () => {
+    const user = userEvent.setup();
+    const drawing = drawingBox(renderChart().container);
+    hover(drawing, JUN);
+    expect(shownIn(drawing)).toEqual([
+      { month: '2024-06', panel: false },
+      { month: '2024-06', panel: true },
+    ]);
+
+    // The pointer stays on June; the outline arrives.
+    await user.tab();
+    expect(shownIn(drawing)).toEqual([
+      { month: '2024-02', panel: false },
+      { month: '2024-02', panel: true },
+    ]);
+    expect(panelIn(drawing)?.querySelector('p')).toHaveTextContent('Feb 2024');
+    expect(screen.getByRole('status')).toHaveTextContent(/^Feb 2024: /);
+  });
+
+  it("tints the month being read, in that month's column only, and follows the keys (FR4-AC2, FR5-AC3)", async () => {
+    const user = userEvent.setup();
+    const drawing = drawingBox(renderChart().container);
+    expect(tintIn(drawing)).toBeNull();
+
+    hover(drawing, 6);
+    const tint = tintIn(drawing);
+    expect(tint).toHaveAttribute('data-month', '2024-08');
+    // One column, placed by the widget's own index: the stylesheet turns it into pixels.
+    expect(tint?.style.getPropertyValue('--month-index')).toBe('6');
+    expect(drawing.querySelectorAll('[data-month]')).toHaveLength(2);
+
+    fireEvent.pointerLeave(drawing, { pointerType: 'mouse' });
+    await user.tab();
+    await user.keyboard('{ArrowRight}');
+    expect(tintIn(drawing)?.style.getPropertyValue('--month-index')).toBe('1');
+  });
+
+  it("draws no tint of the library's own: its cursor follows its index, not ours (tech review F1)", () => {
+    const drawing = drawingBox(renderChart().container);
+    hover(drawing, JUN);
+    expect(drawing.querySelector('.recharts-tooltip-cursor')).toBeNull();
+  });
+
+  it('takes the tint away with the panel on Escape, and keeps the outline (FR5-AC6)', async () => {
+    const user = userEvent.setup();
+    const drawing = drawingBox(renderChart().container);
+    await user.tab();
+    expect(tintIn(drawing)).not.toBeNull();
+    await user.keyboard('{Escape}');
+    expect(shownIn(drawing)).toEqual([]);
+    expect(screen.getByRole('group')).toHaveFocus();
   });
 
   it('has no accessibility violations while a month is being read', async () => {
