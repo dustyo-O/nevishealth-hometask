@@ -2,7 +2,6 @@ export const API_CONFIG = Symbol('API_CONFIG');
 
 export type ApiConfig = {
   port: number;
-  isProduction: boolean;
   devSwitches: {
     /** `?delay=` / `?fail=1` are honoured only outside production (tech doc D-5). */
     enabled: boolean;
@@ -24,7 +23,6 @@ export const loadConfig = (env: NodeJS.ProcessEnv): ApiConfig => {
   const isProduction = env.NODE_ENV === 'production';
   return {
     port: parsePort(env.PORT),
-    isProduction,
     devSwitches: { enabled: !isProduction, maxDelayMs: 30_000 },
     corsOrigin: isProduction ? false : 'http://localhost:5173',
   };
