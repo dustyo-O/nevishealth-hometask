@@ -69,11 +69,17 @@ The floor at zero still matters: if a payload's recorded channels ever exceeded 
 
 **Not `minPointSize`.** Slice 3 shipped it and the owner found the result still unreadable; measuring July showed why. Recharts floors a part's drawn height but leaves the stack offsets on the true figures, so the part above begins where the floored part's *figure* ends and paints over the difference: New organic drew 2 px and showed 1.51 px. Raising the floor does not help — only the topmost floored part ever gains, because every other one is covered by its neighbour.
 
-So the floor moves into the **values the stack is built from**, and it is **borrowed, not added**:
+So the lift moves into the **values the stack is built from**, it follows a **curve rather than a flat floor**, and it is **borrowed, not added**:
+
+```
+drawnPx(v) = max( v × pxPerClient,  LIFT × log2(v + 1) )     // LIFT = 4 px
+```
+
+`log2(v+1)` gives 0 at zero clients (so zero stays absent for free), 4 px at one, 6.34 px at two, 8 px at three, and tails off; `max` with the true height means the curve only ever **lifts**, never shrinks — above about 24 clients the true height wins and the curve stops mattering. Converted back to client units, the lift is what the drawing borrows:
 
 ```
 for each month:
-  lifted        = every part with clients, raised to at least FLOOR (in client units)
+  lifted        = every part with clients, raised to drawnPx(v) converted to client units
   borrowed      = Σ (lifted − true) over those parts
   existing      = true existing − borrowed        // the largest part pays
   bar total     = company figure, unchanged

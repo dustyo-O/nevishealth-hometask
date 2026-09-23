@@ -69,13 +69,19 @@ The newly acquired are the figures the business records: every "New organic" and
 
 ### FR4 — Small parts stay visible
 
-The newly acquired are a very small share of this company — never more than two clients in a month against two hundred and fifty or more. Drawn to scale they would be under two pixels and effectively invisible, so **any part with clients in it is drawn at least four pixels tall**, and the height it borrows is **taken from the largest part of the same bar** rather than added on top.
+The newly acquired are a very small share of this company — never more than two clients in a month against two hundred and fifty or more. Drawn to scale they would be under two pixels and effectively invisible.
 
-So the bar's total height is still exactly the figure the table shows on its Company row, and the parts above a lifted one begin where it is drawn rather than where its figure alone would put them, so nothing is covered. What gives way is the existing-clients part, by a few pixels out of two hundred and fifty — invisible where it happens, and the only place in the bar where a few pixels mean nothing. A part with no clients in it is not drawn at all, and a month with no newly acquired clients is drawn exactly to its figures.
+So a part with clients in it is drawn on a **stretched scale that gives the smallest numbers the most room**: one client is four pixels, two are about six, three are eight, and the gain tails off from there. A part is never drawn smaller than its true size — for a part big enough to be seen on its own, its true height wins and the stretch does nothing. A part with no clients in it is not drawn at all.
+
+The height a stretched part gains is **taken from the largest part of the same bar**, so the bar's total height is still exactly the figure the table shows on its Company row. What gives way is the existing-clients part, by at most a few pixels out of two hundred and fifty. A month with no newly acquired clients is drawn exactly to its figures.
+
+This is a deliberate distortion and it is worth naming: on the stretched scale two clients do not look twice one client, they look about one and a half times. It buys the only thing that matters here — that a month with new clients can be told from a month without. **Every figure the user reads is exact**: the stretch lives only in the drawing.
 
 - **Acceptance Criteria:**
-  - [ ] When the user looks at July 2024, where two clients were won organically and one was paid for, then both parts are drawn at least four pixels tall and neither is covered by the other.
-  - [ ] When the user looks at any month, then the bar's total height is the figure the table shows on its Company row, whether or not any part has been lifted.
+  - [ ] When the user looks at a month where one client was newly acquired, then that part is about four pixels tall.
+  - [ ] When the user looks at a month where two clients were newly acquired, then that part is visibly taller than a part of one client, at about six pixels.
+  - [ ] When the user looks at July 2024, where two clients were won organically and one was paid for, then both parts are visible and neither is covered by the other.
+  - [ ] When the user looks at any month, then the bar's total height is the figure the table shows on its Company row, whether or not any part has been stretched.
   - [ ] When the user looks at February 2024, where no clients were newly acquired, then no new organic or new paid part is drawn at all.
   - [ ] When the user reads any month's figures, in the panel or as a screen reader, then they are the exact figures and are not adjusted for drawing.
 
@@ -120,6 +126,8 @@ The legend names the three parts beneath the chart, always. The panel that appea
 ---
 
 ## Change Log
+
+- [2026-09-23] — the owner judging the built chart a second time — **FR4: small parts are drawn on a stretched scale rather than lifted to one flat height.** A flat four-pixel floor made one client and two clients identical on screen, which threw away the only comparison the newly-acquired parts can offer. They are now drawn so that one client is four pixels, two about six and three about eight, tailing off, and never smaller than the part's true height. The borrowing is unchanged, so the bar's total still equals the Company row exactly. Stated plainly in the requirement: on that scale two clients look about one and a half times one client, not twice — the figures stay exact wherever they are read.
 
 - [2026-09-23] — the owner looking at the built chart, and a measurement of how the parts paint — **FR4: the minimum height is four pixels, and it is borrowed from the largest part rather than added to the bar.** At two pixels the owner found the newly-acquired parts still too thin to read. Measured on July: a floored part is drawn from its own true base, so the part above begins where that part's *figure* ends and covers the difference — New organic showed 1.51 px of its 2 px, and would have shown 1.51 px however large the floor grew, because only the topmost part ever benefits. The height a lifted part needs now comes out of the existing-clients part of the same bar, so **the bar's total still equals the Company row exactly** and only the one part large enough not to notice gives way.
 
