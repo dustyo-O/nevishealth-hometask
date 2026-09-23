@@ -160,6 +160,15 @@ tr[aria-expanded='false'] .chevron {
   rotate: -90deg;
 }
 
+/* Whatever the page scrolls to — a row or a figure the outline moves onto, or the rows an
+   opening reveals — comes to rest clear of the window's edge rather than flush against it
+   (FR3, amended). Block only: sideways the scroller's own padding already keeps a figure out
+   from under the name column (D-7), and the scroller's edge is the card's, not the window's. */
+.row,
+.cell {
+  scroll-margin-block: var(--table-scroll-margin-block);
+}
+
 /*
  * D-4, measured: an `outline` on the `<tr>` is painted *over* by the opaque sticky name cell —
  * the ring visibly starts at x = 280, a third of the way into the row. The row's ring is drawn

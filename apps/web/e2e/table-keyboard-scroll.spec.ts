@@ -6,7 +6,8 @@
 // 'nearest', inline: 'nearest' })` with `scroll-padding-inline-start` equal to the name column,
 // so a month moved into view lands exactly beside the sticky column, never beneath it; and the
 // page moves vertically only when the row is not already fully in view, and then only as far as
-// it takes to show that row.
+// it takes to show that row — clear of the window's edge by the row's scroll margin (FR3,
+// amended 2026-09-23), never flush against it.
 //
 // Run in Chromium by the gate, and in WebKit on demand (D-15): `E2E_WEBKIT=1`.
 import { expect, test, type Locator, type Page } from '@playwright/test';
@@ -165,15 +166,18 @@ test.describe('on a phone held with less height to spare', () => {
         const cell = row.getByRole('gridcell').first();
         await expect(cell).toBeFocused();
 
-        // Vertically: just far enough to show the row — the cut, and not a pixel more.
+        // Vertically: just far enough to show the row clear of the edge (FR3, amended
+        // 2026-09-23) — the cut plus the row's scroll margin, and not a pixel more.
+        const margin = await cell.evaluate((td) => parseFloat(getComputedStyle(td).scrollMarginTop));
+        expect(margin, 'the outline has room to rest clear of the edge').toBeGreaterThan(0);
         const after = await rectOf(row);
         const moved = (await scrollY(page)) - before;
         if (edge === 'bottom') {
-          expect(Math.abs(after.bottom - innerHeight)).toBeLessThanOrEqual(TOLERANCE);
-          expect(Math.abs(moved - cut)).toBeLessThanOrEqual(TOLERANCE);
+          expect(Math.abs(innerHeight - after.bottom - margin)).toBeLessThanOrEqual(TOLERANCE);
+          expect(Math.abs(moved - (cut + margin))).toBeLessThanOrEqual(TOLERANCE);
         } else {
-          expect(Math.abs(after.top)).toBeLessThanOrEqual(TOLERANCE);
-          expect(Math.abs(moved + cut)).toBeLessThanOrEqual(TOLERANCE);
+          expect(Math.abs(after.top - margin)).toBeLessThanOrEqual(TOLERANCE);
+          expect(Math.abs(moved + (cut + margin))).toBeLessThanOrEqual(TOLERANCE);
         }
         // Sideways: back to Feb 2024, beside the name column.
         await expectBesideStickyColumn(ui, row, cell);
