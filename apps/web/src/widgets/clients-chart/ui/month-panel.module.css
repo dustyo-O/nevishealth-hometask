@@ -1,0 +1,83 @@
+/* The design shows no panel, so it takes the card's own language: white, the line colour for its
+   edge, the card's radius, the axis's 12 px type, tabular figures so the four numbers align.
+   Placed from the column geometry the drawing wrapper publishes (`--columns-left`, `--pitch`,
+   `--plot-top`), and from `--month-index`, the widget's month — never the library's. */
+.panel {
+  position: absolute;
+  top: calc(var(--plot-top) + var(--space-2));
+  z-index: 1;
+  min-width: 128px;
+  padding: var(--space-2);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-chart-panel);
+  font-size: var(--font-size-footnote);
+  line-height: var(--line-height-footnote);
+  color: var(--color-text);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* The first half of the year opens to the right of its column, the second half to the left. */
+.after {
+  left: calc(var(--columns-left) + (var(--month-index) + 1) * var(--pitch) + var(--space-2));
+}
+
+.before {
+  left: calc(var(--columns-left) + var(--month-index) * var(--pitch) - var(--space-2));
+  transform: translateX(-100%);
+}
+
+.month {
+  margin: 0 0 4px;
+}
+
+.figures {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.total {
+  margin-block-start: 2px;
+  padding-block-start: 4px;
+  border-block-start: 1px solid var(--color-line);
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text-muted);
+}
+
+.value {
+  margin: 0;
+  font-feature-settings: var(--font-numeric);
+}
+
+.swatch {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.existing {
+  background: var(--color-channel-existing);
+}
+
+.organic {
+  background: var(--color-channel-organic);
+}
+
+.paid {
+  background: var(--color-channel-paid);
+}

@@ -38,7 +38,11 @@
   outline-offset: calc(2 * var(--focus-ring-width));
 }
 
-/* The responsive container measures this box, so it takes the plot's full definite height. */
+/* The responsive container measures this box, so it takes the plot's full definite height. It
+   is also what the panel is placed in: `--pitch` is one month's column, from the geometry the
+   widget publishes on it (`plot-geometry.ts`). */
 .drawing {
+  --pitch: calc((100% - var(--columns-left) - var(--columns-right)) / var(--months));
+  position: relative;
   height: 100%;
 }

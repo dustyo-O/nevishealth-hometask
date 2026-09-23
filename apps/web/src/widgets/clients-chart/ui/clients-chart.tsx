@@ -1,4 +1,13 @@
-import { useId, useMemo, useReducer, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import {
+  useId,
+  useMemo,
+  useReducer,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent,
+} from 'react';
 import {
   formatMonth,
   readDevSwitches,
@@ -8,11 +17,19 @@ import {
 } from '@/entities/clients';
 import { VisuallyHidden } from '@/shared/ui/visually-hidden';
 import { describeMonth } from '../lib/describe-month';
+import {
+  COLUMNS_LEFT,
+  COLUMNS_RIGHT,
+  PLOT_MARGIN,
+  X_AXIS_HEIGHT,
+  monthAt,
+} from '../lib/plot-geometry';
 import { CLOSED, readMonth } from '../model/month-reader';
 import { BarPlot, type PlotDimension } from './bar-plot';
 import { ChartDataTable } from './chart-data-table';
 import { ChartLegend } from './chart-legend';
 import styles from './clients-chart.module.css';
+import { MonthPanel } from './month-panel';
 
 export type ClientsChartProps = {
   /**
@@ -39,6 +56,25 @@ const nameOf = ({ points }: MonthlySeries): string => {
  */
 const keepFocusOutOfTheDrawing = (event: MouseEvent) => event.preventDefault();
 
+/** The month under the pointer, from the drawing's own geometry (003 §2.7). */
+const monthUnder = (event: PointerEvent<HTMLElement>, months: number) => {
+  const box = event.currentTarget.getBoundingClientRect();
+  return monthAt({ x: event.clientX - box.left, y: event.clientY - box.top }, box, months);
+};
+
+/**
+ * Where the drawing puts its columns, handed to the stylesheet so the panel stands beside the
+ * same column the library draws. Values from `plot-geometry`, which lays out the drawing too.
+ */
+const columnsOf = (months: number) =>
+  ({
+    '--months': months,
+    '--columns-left': `${COLUMNS_LEFT}px`,
+    '--columns-right': `${COLUMNS_RIGHT}px`,
+    '--plot-top': `${PLOT_MARGIN.top}px`,
+    '--plot-bottom': `${PLOT_MARGIN.bottom + X_AXIS_HEIGHT}px`,
+  }) as CSSProperties;
+
 /**
  * The upper card of the dashboard: the company's twelve months as stacked bars, one part per
  * acquisition channel, with the legend beneath (spec 003 FR1–FR3). Company-wide always — the
@@ -55,14 +91,17 @@ export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
   // Memoised so a refetch with the same figures hands the drawing the same series (FR7-AC1).
   const series = useMemo(() => (data === undefined ? undefined : toMonthlySeries(data)), [data]);
   const [reader, dispatch] = useReducer(readMonth, CLOSED);
+  // The live region speaks for the outline only; a pointer sweeping the year is for the eye.
+  const [focused, setFocused] = useState(false);
   const hintId = useId();
 
   // The page only mounts the chart once the figures are here; this is the belt to that braces.
   if (series === undefined) return null;
 
   const name = nameOf(series);
+  const months = series.points.length;
   const point = reader.open ? series.points[reader.index] : undefined;
-  const announcement = point === undefined ? '' : describeMonth(point, series.channels);
+  const announcement = point === undefined || !focused ? '' : describeMonth(point, series.channels);
 
   const handleKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
@@ -71,7 +110,19 @@ export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
     }
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
     event.preventDefault();
-    dispatch({ type: 'key', key: event.key, months: series.points.length });
+    dispatch({ type: 'key', key: event.key, months });
+  };
+
+  // A touch has no hover, and its pointer leaves the moment the finger lifts: taps are their own.
+  const handlePointerMove = (event: PointerEvent<HTMLElement>) => {
+    if (event.pointerType === 'touch') return;
+    const index = monthUnder(event, months);
+    dispatch(index === undefined ? { type: 'leave' } : { type: 'hover', index });
+  };
+
+  const handlePointerLeave = (event: PointerEvent<HTMLElement>) => {
+    if (event.pointerType === 'touch') return;
+    dispatch({ type: 'leave' });
   };
 
   return (
@@ -86,13 +137,34 @@ export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
         aria-label={name}
         aria-describedby={hintId}
         className={styles.plot}
-        onFocus={() => dispatch({ type: 'focus' })}
-        onBlur={() => dispatch({ type: 'blur' })}
+        onFocus={() => {
+          setFocused(true);
+          dispatch({ type: 'focus' });
+        }}
+        onBlur={() => {
+          setFocused(false);
+          dispatch({ type: 'blur' });
+        }}
         onKeyDown={handleKeyDown}
       >
         {/* The drawing carries no readable text of its own (FR6-AC4). */}
-        <div aria-hidden="true" className={styles.drawing} onMouseDown={keepFocusOutOfTheDrawing}>
+        <div
+          aria-hidden="true"
+          className={styles.drawing}
+          style={columnsOf(months)}
+          onMouseDown={keepFocusOutOfTheDrawing}
+          onPointerMove={handlePointerMove}
+          onPointerLeave={handlePointerLeave}
+        >
           <BarPlot series={series} initialDimension={initialDimension} />
+          {point !== undefined && (
+            <MonthPanel
+              point={point}
+              channels={series.channels}
+              index={reader.index}
+              months={months}
+            />
+          )}
         </div>
       </div>
       {/* eslint-enable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex */}

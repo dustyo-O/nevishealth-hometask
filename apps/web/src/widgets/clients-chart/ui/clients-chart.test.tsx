@@ -68,6 +68,33 @@ const drawingOf = (container: HTMLElement) => {
 const textsOf = (svg: SVGSVGElement) =>
   [...svg.querySelectorAll('text')].map((text) => text.textContent);
 
+/**
+ * The `aria-hidden` wrapper around everything drawn. jsdom lays nothing out, so it is given the
+ * size the drawing was given, at the viewport's origin — the pointer's coordinates then mean what
+ * they mean in a browser.
+ */
+const drawingBox = (container: HTMLElement) => {
+  const drawing = drawingOf(container).closest<HTMLElement>('[aria-hidden="true"]');
+  if (drawing === null) throw new Error('The drawing is not hidden');
+  vi.spyOn(drawing, 'getBoundingClientRect').mockReturnValue(
+    new DOMRect(0, 0, SIZE.width, SIZE.height),
+  );
+  return drawing;
+};
+
+/** The middle of a month's column: 32 px of y-axis on the left, 16 px of margin on the right. */
+const columnOf = (month: number) => ({
+  clientX: 32 + (month + 0.5) * ((SIZE.width - 32 - 16) / 12),
+  clientY: SIZE.height / 2,
+});
+
+const JUN = 4;
+
+const hover = (drawing: HTMLElement, month: number) =>
+  fireEvent.pointerMove(drawing, { ...columnOf(month), pointerType: 'mouse' });
+
+const panelIn = (drawing: HTMLElement) => drawing.querySelector('dl')?.parentElement ?? null;
+
 describe('ClientsChart', () => {
   it('draws an SVG at the size it is given', () => {
     const svg = drawingOf(renderChart().container);
@@ -256,6 +283,58 @@ describe('ClientsChart', () => {
         .getAllByRole('cell')
         .map((td) => td.textContent),
     ).toEqual(['221', '15', '14', '250']);
+  });
+
+  it("shows the pointed month's panel: the month, its three parts bottom-up, then the total (FR4-AC1/AC9)", () => {
+    const drawing = drawingBox(renderChart().container);
+    expect(panelIn(drawing)).toBeNull();
+
+    hover(drawing, 0);
+    const panel = panelIn(drawing);
+    expect(panel).toHaveAttribute('data-month', '2024-02');
+    expect(panel?.querySelector('p')).toHaveTextContent('Feb 2024');
+    const rows = [...(panel?.querySelectorAll('dl > div') ?? [])].map((row) => [
+      row.querySelector('dt')?.textContent,
+      row.querySelector('dd')?.textContent,
+    ]);
+    expect(rows).toEqual([
+      ['Existing clients', '221'],
+      ['New organic', '15'],
+      ['New paid', '14'],
+      ['Total', '250'],
+    ]);
+  });
+
+  it('moves the panel with the pointer and hides it when the pointer leaves (FR4-AC3)', () => {
+    const drawing = drawingBox(renderChart().container);
+    hover(drawing, JUN);
+    expect(panelIn(drawing)).toHaveAttribute('data-month', '2024-06');
+    hover(drawing, 6);
+    expect(panelIn(drawing)).toHaveAttribute('data-month', '2024-08');
+    fireEvent.pointerLeave(drawing, { pointerType: 'mouse' });
+    expect(panelIn(drawing)).toBeNull();
+  });
+
+  it('hides the panel when the pointer moves onto the axes, off every column (FR4-AC3)', () => {
+    const drawing = drawingBox(renderChart().container);
+    hover(drawing, JUN);
+    fireEvent.pointerMove(drawing, { clientX: 10, clientY: SIZE.height / 2, pointerType: 'mouse' });
+    expect(panelIn(drawing)).toBeNull();
+  });
+
+  it('shows nothing to the pointer that the live region would say: pointing is for the eye (FR6-AC3)', () => {
+    const drawing = drawingBox(renderChart().container);
+    hover(drawing, JUN);
+    expect(screen.getByRole('status')).toHaveTextContent(/^$/);
+  });
+
+  it('closes the panel when the outline leaves (FR4-AC8)', async () => {
+    const user = userEvent.setup();
+    const drawing = drawingBox(renderChart().container);
+    await user.tab();
+    expect(panelIn(drawing)).toHaveAttribute('data-month', '2024-02');
+    await user.tab();
+    expect(panelIn(drawing)).toBeNull();
   });
 
   it('has no accessibility violations while a month is being read', async () => {

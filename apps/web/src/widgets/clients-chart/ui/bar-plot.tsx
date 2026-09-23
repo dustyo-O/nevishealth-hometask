@@ -1,5 +1,6 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 import { formatMonth, type MonthlyPoint, type MonthlySeries } from '@/entities/clients';
+import { PLOT_MARGIN, X_AXIS_HEIGHT, Y_AXIS_WIDTH } from '../lib/plot-geometry';
 import { yScale } from '../lib/y-scale';
 import { channelColour } from '../model/channels';
 import styles from './bar-plot.module.css';
@@ -13,10 +14,7 @@ type BarPlotProps = {
 };
 
 /** Left at 0 so the plot starts exactly at the y-axis; right 16 or January's label clips (§2.5). */
-const MARGIN = { top: 5, right: 16, bottom: 0, left: 0 };
-const Y_AXIS_WIDTH = 32;
-/** Fixed, so the plot keeps its height whichever way the month labels are drawn (FR8-AC3). */
-const X_AXIS_HEIGHT = 30;
+const MARGIN = { ...PLOT_MARGIN };
 const STACK = 'clients';
 /** The design rounds the top of each bar only. */
 const TOP_RADIUS: [number, number, number, number] = [2, 2, 0, 0];
