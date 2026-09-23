@@ -31,7 +31,10 @@ export const COMPANY_AND_BRANCHES = ['Company', 'Branch 1', 'Branch 2', 'Branch 
 
 export type ClientsPage = {
   heading: Locator;
-  /** The live region for assistive technology — reads "Loading clients…" only while loading. */
+  /**
+   * The page's own live region — reads "Loading clients…" only while loading. Not the chart's,
+   * which announces the month being read inside its card (spec 003 FR6-AC1).
+   */
   status: Locator;
   /** The container of the two cards / the error panel; `aria-busy` while loading. */
   grid: Locator;
@@ -53,7 +56,7 @@ export const clientsPage = (page: Page): ClientsPage => {
 
   return {
     heading: page.getByRole('heading', { level: 1, name: TEXT.heading }),
-    status: page.getByRole('status'),
+    status: page.getByRole('main').locator(':scope > [role="status"]'),
     grid: page.locator('[aria-busy]'),
     chartCard: page.getByRole('region', { name: 'Clients chart' }),
     chart: page.getByRole('region', { name: 'Clients chart' }).locator('svg'),

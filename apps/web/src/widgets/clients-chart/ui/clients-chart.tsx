@@ -1,6 +1,16 @@
-import { useMemo, useState } from 'react';
-import { readDevSwitches, toMonthlySeries, useClientsQuery } from '@/entities/clients';
+import { useId, useMemo, useReducer, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import {
+  formatMonth,
+  readDevSwitches,
+  toMonthlySeries,
+  useClientsQuery,
+  type MonthlySeries,
+} from '@/entities/clients';
+import { VisuallyHidden } from '@/shared/ui/visually-hidden';
+import { describeMonth } from '../lib/describe-month';
+import { CLOSED, readMonth } from '../model/month-reader';
 import { BarPlot, type PlotDimension } from './bar-plot';
+import { ChartDataTable } from './chart-data-table';
 import { ChartLegend } from './chart-legend';
 import styles from './clients-chart.module.css';
 
@@ -12,10 +22,31 @@ export type ClientsChartProps = {
   initialDimension?: PlotDimension;
 };
 
+const HINT = 'Use Left and Right to read each month.';
+
+/** "Clients per month by acquisition channel, Feb 2024 to Jan 2025", from the months shown. */
+const nameOf = ({ points }: MonthlySeries): string => {
+  const first = points.at(0);
+  const last = points.at(-1);
+  const period = first && last ? `, ${formatMonth(first.month)} to ${formatMonth(last.month)}` : '';
+  return `Clients per month by acquisition channel${period}`;
+};
+
+/**
+ * Recharts renders twelve `<g tabindex="-1">` layers, so a click or a tap would move focus into
+ * the `aria-hidden` drawing. Load-bearing: without it focus lands inside the hidden subtree
+ * (003 §2.4, consult Q5).
+ */
+const keepFocusOutOfTheDrawing = (event: MouseEvent) => event.preventDefault();
+
 /**
  * The upper card of the dashboard: the company's twelve months as stacked bars, one part per
  * acquisition channel, with the legend beneath (spec 003 FR1–FR3). Company-wide always — the
  * table's drill-down never reaches it.
+ *
+ * Recharts draws and the widget owns the semantics (003 §2.4): one focus stop named for what it
+ * shows, Left and Right reading a month at a time into a polite live region, and the same
+ * figures as a hidden table beside it (FR5, FR6).
  */
 export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
   // Read once, like the page: changing a switch means changing the address, which reloads.
@@ -23,15 +54,57 @@ export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
   const { data } = useClientsQuery(switches);
   // Memoised so a refetch with the same figures hands the drawing the same series (FR7-AC1).
   const series = useMemo(() => (data === undefined ? undefined : toMonthlySeries(data)), [data]);
+  const [reader, dispatch] = useReducer(readMonth, CLOSED);
+  const hintId = useId();
 
   // The page only mounts the chart once the figures are here; this is the belt to that braces.
   if (series === undefined) return null;
+
+  const name = nameOf(series);
+  const point = reader.open ? series.points[reader.index] : undefined;
+  const announcement = point === undefined ? '' : describeMonth(point, series.channels);
+
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      dispatch({ type: 'escape' });
+      return;
+    }
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    event.preventDefault();
+    dispatch({ type: 'key', key: event.key, months: series.points.length });
+  };
+
   return (
     <div className={styles.chart}>
-      {/* The drawing carries no readable text of its own (FR6-AC4). */}
-      <div aria-hidden="true" className={styles.plot}>
-        <BarPlot series={series} initialDimension={initialDimension} />
+      {/* eslint-disable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex --
+          A chart has no interactive ARIA role; a focusable named group that owns Left, Right and
+          Escape is the specified structure (003 §2.4), measured with axe at zero violations. */}
+      <div
+        tabIndex={0}
+        role="group"
+        aria-roledescription="chart"
+        aria-label={name}
+        aria-describedby={hintId}
+        className={styles.plot}
+        onFocus={() => dispatch({ type: 'focus' })}
+        onBlur={() => dispatch({ type: 'blur' })}
+        onKeyDown={handleKeyDown}
+      >
+        {/* The drawing carries no readable text of its own (FR6-AC4). */}
+        <div aria-hidden="true" className={styles.drawing} onMouseDown={keepFocusOutOfTheDrawing}>
+          <BarPlot series={series} initialDimension={initialDimension} />
+        </div>
       </div>
+      {/* eslint-enable jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex */}
+      {/* Referenced as the group's description only; `hidden` keeps it out of reading order. */}
+      <span id={hintId} hidden>
+        {HINT}
+      </span>
+      {/* Polite, and empty while nothing is being read: one announcement per move (FR6-AC1/AC3). */}
+      <VisuallyHidden as="p" role="status">
+        {announcement}
+      </VisuallyHidden>
+      <ChartDataTable series={series} caption={name} />
       <ChartLegend channels={series.channels} className={styles.legend} />
     </div>
   );

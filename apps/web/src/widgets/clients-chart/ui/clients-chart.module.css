@@ -26,3 +26,19 @@
 .legend {
   margin-inline-end: calc(var(--space-4) - var(--space-6));
 }
+
+/* `Card` clips its overflow, so a ring outside the focus stop is only seen while the card's
+   padding (16 px at its narrowest, on the left) has room for it — which it has: measured in
+   Chromium at 1440, the ring is whole. It is not painted inset, as the consult suggested for a
+   stop filling the card: the axis's top label reaches 2.7 px above this box and 1.1 px from its
+   left edge, so an inset ring runs through "400". Four pixels out clears that label's box; the
+   ring then needs 6 px of padding around the plot box, or `Card` clips it. */
+.plot:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: calc(2 * var(--focus-ring-width));
+}
+
+/* The responsive container measures this box, so it takes the plot's full definite height. */
+.drawing {
+  height: 100%;
+}
