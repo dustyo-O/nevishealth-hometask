@@ -27,7 +27,8 @@ The other three decisions worth stating once: the y-axis is computed by a pure f
 | `widgets/clients-chart/lib/month-ticks.ts` | `sparseMonthIndices(n)` → `[0, 3, 6, 9, n-1]`, and the short label for the middle three (FR8). |
 | `widgets/clients-chart/lib/describe-month.ts` | `describeMonth(point)` → "Feb 2024: existing clients 221, new organic 15, new paid 14, total 250" (FR6-AC1). |
 | `widgets/clients-chart/model/month-reader.ts` | The reducer: `{ index, open }` × `focus / blur / key / hover / leave / tap / outside / escape`. Every FR4 and FR5 rule lives here, testable with no DOM. |
-| `widgets/clients-chart/ui/clients-chart.tsx` | The frame: focus target, key handling, live region, outside-pointer listener; composes the rest. |
+| `widgets/clients-chart/model/use-month-reader.ts` | `useMonthReader(series)` → `{ index, point, announcement, plotProps, drawingProps }`: runs the reducer, the key handling, the pointer handlers, the outside-pointer listener and the native `pointerleave` listener, and works out the announcement. Called only by `clients-chart.tsx` (005 chart F2). |
+| `widgets/clients-chart/ui/clients-chart.tsx` | The frame: derives the two series, renders the focus target, the live region and the hidden table, and spreads `useMonthReader`'s props on the plot and the drawing; composes the rest. |
 | `widgets/clients-chart/ui/bar-plot.tsx` | **The only file that imports `recharts`.** Inside the `aria-hidden` wrapper. |
 | `widgets/clients-chart/ui/month-panel.tsx` | The panel's content, rendered from the widget's own state — not from Recharts' payload (see §3 R-4). |
 | `widgets/clients-chart/ui/chart-legend.tsx` | Static HTML `<ul>` with token swatches (FR3). |

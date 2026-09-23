@@ -1,15 +1,4 @@
-import {
-  useEffect,
-  useId,
-  useMemo,
-  useReducer,
-  useRef,
-  useState,
-  type CSSProperties,
-  type KeyboardEvent,
-  type MouseEvent,
-  type PointerEvent,
-} from 'react';
+import { useId, useMemo, useState, type CSSProperties } from 'react';
 import {
   formatMonth,
   readDevSwitches,
@@ -18,17 +7,10 @@ import {
   type MonthlySeries,
 } from '@/entities/clients';
 import { VisuallyHidden } from '@/shared/ui/visually-hidden';
-import { describeMonth } from '../lib/describe-month';
 import { toDrawing } from '../lib/drawn-series';
 import { withExistingClients } from '../lib/existing-clients';
-import {
-  COLUMNS_LEFT,
-  COLUMNS_RIGHT,
-  PLOT_MARGIN,
-  X_AXIS_HEIGHT,
-  monthAt,
-} from '../lib/plot-geometry';
-import { CLOSED, readMonth } from '../model/month-reader';
+import { COLUMNS_LEFT, COLUMNS_RIGHT, PLOT_MARGIN, X_AXIS_HEIGHT } from '../lib/plot-geometry';
+import { useMonthReader } from '../model/use-month-reader';
 import { BarPlot, type PlotDimension } from './bar-plot';
 import { ChartDataTable } from './chart-data-table';
 import { ChartLegend } from './chart-legend';
@@ -51,19 +33,6 @@ const nameOf = ({ points }: MonthlySeries): string => {
   const last = points.at(-1);
   const period = first && last ? `, ${formatMonth(first.month)} to ${formatMonth(last.month)}` : '';
   return `Clients per month by acquisition channel${period}`;
-};
-
-/**
- * Recharts renders twelve `<g tabindex="-1">` layers, so a click or a tap would move focus into
- * the `aria-hidden` drawing. Load-bearing: without it focus lands inside the hidden subtree
- * (003 §2.4, consult Q5).
- */
-const keepFocusOutOfTheDrawing = (event: MouseEvent) => event.preventDefault();
-
-/** The month under the pointer, from the drawing's own geometry (003 §2.7). */
-const monthUnder = (event: PointerEvent<HTMLElement>, months: number) => {
-  const box = event.currentTarget.getBoundingClientRect();
-  return monthAt({ x: event.clientX - box.left, y: event.clientY - box.top }, box, months);
 };
 
 /**
@@ -92,6 +61,8 @@ export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
   // Read once, like the page: changing a switch means changing the address, which reloads.
   const [switches] = useState(() => readDevSwitches(window.location.search));
   const { data } = useClientsQuery(switches);
+  // The page mounts the chart only once the figures are in the cache (`dashboard-page.tsx`).
+  if (data === undefined) throw new Error('The clients chart was mounted before its figures');
   // Memoised so a refetch with the same figures hands the drawing the same series (FR7-AC1).
   // Existing clients is derived here, from the Company row less the newly acquired (004 §2.3).
   //
@@ -99,76 +70,12 @@ export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
   // and the announcement read it, exactly. `drawing` is what the bars are built from: small parts
   // lifted to four pixels, Existing clients short by what they borrowed (004 FR4, §2.4). They are
   // different types so neither can be handed where the other belongs; do not merge them.
-  const series = useMemo(
-    () => (data === undefined ? undefined : withExistingClients(toMonthlySeries(data))),
-    [data],
-  );
-  const drawing = useMemo(() => (series === undefined ? undefined : toDrawing(series)), [series]);
-  const [reader, dispatch] = useReducer(readMonth, CLOSED);
-  // The live region speaks for the outline only; a pointer sweeping the year is for the eye.
-  const [focused, setFocused] = useState(false);
+  const series = useMemo(() => withExistingClients(toMonthlySeries(data)), [data]);
+  const drawing = useMemo(() => toDrawing(series), [series]);
+  const { index, point, announcement, plotProps, drawingProps } = useMonthReader(series);
   const hintId = useId();
-  const drawingRef = useRef<HTMLDivElement>(null);
-
-  // A tap anywhere outside the plot box closes the month: the legend, the card's padding, the
-  // table card (FR4-AC6/AC7). Scoped to the plot box, not the widget root, or a tap on our own
-  // legend would leave it open (tech review F2). Listening only while open costs nothing else.
-  useEffect(() => {
-    if (!reader.open) return undefined;
-    const closeOutside = (event: globalThis.PointerEvent) => {
-      if (event.target instanceof Node && drawingRef.current?.contains(event.target)) return;
-      dispatch({ type: 'outside' });
-    };
-    document.addEventListener('pointerdown', closeOutside);
-    return () => document.removeEventListener('pointerdown', closeOutside);
-  }, [reader.open]);
-
-  // The pointer moving off the chart closes the month (FR4-AC3). A native listener, not React's
-  // `onPointerLeave`: React builds that from `pointerout`, and Chromium sends none when the node
-  // under the pointer has been replaced — measured, twenty fast exits left the panel behind. A
-  // touch is ignored: its pointer leaves the moment the finger lifts, and a tap must stay open.
-  const drawn = series !== undefined;
-  useEffect(() => {
-    const drawing = drawingRef.current;
-    if (!drawn || drawing === null) return undefined;
-    const leave = (event: globalThis.PointerEvent) => {
-      if (event.pointerType !== 'touch') dispatch({ type: 'leave' });
-    };
-    drawing.addEventListener('pointerleave', leave);
-    return () => drawing.removeEventListener('pointerleave', leave);
-  }, [drawn]);
-
-  // The page only mounts the chart once the figures are here; this is the belt to that braces.
-  if (series === undefined || drawing === undefined) return null;
-
   const name = nameOf(series);
   const months = series.points.length;
-  const point = reader.open ? series.points[reader.index] : undefined;
-  const announcement = point === undefined || !focused ? '' : describeMonth(point, series.channels);
-
-  const handleKeyDown = (event: KeyboardEvent) => {
-    if (event.key === 'Escape') {
-      dispatch({ type: 'escape' });
-      return;
-    }
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-    event.preventDefault();
-    dispatch({ type: 'key', key: event.key, months });
-  };
-
-  // A touch has no hover, and its pointer leaves the moment the finger lifts: taps are their own.
-  const handlePointerMove = (event: PointerEvent<HTMLElement>) => {
-    if (event.pointerType === 'touch') return;
-    const index = monthUnder(event, months);
-    dispatch(index === undefined ? { type: 'leave' } : { type: 'hover', index });
-  };
-
-  // A tap or a click inside the plot box: a column selects its month, above the bar as much as on
-  // it; the axes around the columns count as outside (FR4).
-  const handlePointerDown = (event: PointerEvent<HTMLElement>) => {
-    const index = monthUnder(event, months);
-    dispatch(index === undefined ? { type: 'outside' } : { type: 'tap', index });
-  };
 
   return (
     <div className={styles.chart}>
@@ -182,25 +89,16 @@ export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
         aria-label={name}
         aria-describedby={hintId}
         className={styles.plot}
-        onFocus={() => {
-          setFocused(true);
-          dispatch({ type: 'focus' });
-        }}
-        onBlur={() => {
-          setFocused(false);
-          dispatch({ type: 'blur' });
-        }}
-        onKeyDown={handleKeyDown}
+        onFocus={plotProps.onFocus}
+        onBlur={plotProps.onBlur}
+        onKeyDown={plotProps.onKeyDown}
       >
         {/* The drawing carries no readable text of its own (FR6-AC4). */}
         <div
-          ref={drawingRef}
           aria-hidden="true"
           className={styles.drawing}
           style={columnsOf(months)}
-          onMouseDown={keepFocusOutOfTheDrawing}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
+          {...drawingProps}
         >
           {/* The tint is ours, placed from the widget's index: the library's cursor follows its
               own hover index, measured disagreeing with ours after hover-then-Tab (tech review
@@ -209,17 +107,12 @@ export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
             <div
               data-month={point.month}
               className={styles.tint}
-              style={{ '--month-index': reader.index } as CSSProperties}
+              style={{ '--month-index': index } as CSSProperties}
             />
           )}
           <BarPlot drawing={drawing} initialDimension={initialDimension} />
           {point !== undefined && (
-            <MonthPanel
-              point={point}
-              channels={series.channels}
-              index={reader.index}
-              months={months}
-            />
+            <MonthPanel point={point} channels={series.channels} index={index} months={months} />
           )}
         </div>
       </div>
