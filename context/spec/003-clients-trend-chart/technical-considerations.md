@@ -131,7 +131,7 @@ The live region speaks **only while the chart has focus**, so a pointer sweeping
 
 ### 2.8 Page changes
 
-`dashboard-page.tsx` renders `<ClientsChart data={data} />` _(the `data` prop since 005 app F3: the page owns the one query and hands both widgets its figures)_ in place of `<p>{formatPeriod(data.months)}</p>`, and `<ClientsChartSkeleton />` in place of `<ChartCardSkeleton />`. `formatPeriod` and its tests are deleted with it (FR9-AC3); `formatBranchCount` stays. The card keeps `label="Clients chart"`.
+`dashboard-page.tsx` renders `<ClientsChart data={data} />` _(the `data` prop since 005 app F3: the page owns the one query and hands both widgets its figures)_ in place of `<p>{formatPeriod(data.months)}</p>`, and `<ClientsChartSkeleton />` in place of `<ChartCardSkeleton />`. `formatPeriod` and its tests are deleted with it (FR9-AC3); `formatBranchCount` stays _(until 005 app F1: the table had replaced its line in 002, so nothing called it and it was deleted with its tests)_. The card keeps `label="Clients chart"`.
 
 ---
 
