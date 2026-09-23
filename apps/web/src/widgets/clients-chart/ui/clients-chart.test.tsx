@@ -798,10 +798,7 @@ describe('ClientsChart, whatever channels the payload records (004 code review F
       const cells = within(row)
         .getAllByRole('cell')
         .map((td) => Number(td.textContent));
-      expect(cells).toEqual([
-        ...Object.values(expected(data, month)),
-        data.company.values[month],
-      ]);
+      expect(cells).toEqual([...Object.values(expected(data, month)), data.company.values[month]]);
     });
   });
 
