@@ -138,7 +138,7 @@ const Grid = ({ open }: { open: boolean }) => (
     columnCount={1}
     head={
       <TreeGrid.Head>
-        <TreeGrid.ColumnHeader name>Name</TreeGrid.ColumnHeader>
+        <TreeGrid.ColumnHeader nameColumn>Name</TreeGrid.ColumnHeader>
         <TreeGrid.ColumnHeader colIndex={0}>One</TreeGrid.ColumnHeader>
       </TreeGrid.Head>
     }

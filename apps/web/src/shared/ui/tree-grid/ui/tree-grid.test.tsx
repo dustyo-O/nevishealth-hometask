@@ -67,7 +67,7 @@ const Grid = ({ expanded = new Set(['root', 'open']) }: { expanded?: ReadonlySet
     columnCount={COLUMNS.length}
     head={
       <TreeGrid.Head>
-        <TreeGrid.ColumnHeader name>Name</TreeGrid.ColumnHeader>
+        <TreeGrid.ColumnHeader nameColumn>Name</TreeGrid.ColumnHeader>
         {COLUMNS.map((column, colIndex) => (
           <TreeGrid.ColumnHeader key={column} colIndex={colIndex}>
             {column}
@@ -233,7 +233,7 @@ const KeyboardGrid = ({ initial }: { initial: readonly string[] }) => {
       onKeyDown={grid.gridProps.onKeyDown}
       head={
         <TreeGrid.Head>
-          <TreeGrid.ColumnHeader name>Name</TreeGrid.ColumnHeader>
+          <TreeGrid.ColumnHeader nameColumn>Name</TreeGrid.ColumnHeader>
           {COLUMNS.map((column, colIndex) => (
             <TreeGrid.ColumnHeader key={column} colIndex={colIndex}>
               {column}

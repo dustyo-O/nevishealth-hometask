@@ -1,45 +1,28 @@
-import { useMemo, useState } from 'react';
-import {
-  flattenVisibleRows,
-  formatMonth,
-  readDevSwitches,
-  useClientsQuery,
-  type ClientsData,
-} from '@/entities/clients';
+import { useMemo } from 'react';
+import { flattenVisibleRows, formatMonth, type ClientsData } from '@/entities/clients';
 import { TreeGrid, useExpandedIds, useTreeGrid } from '@/shared/ui/tree-grid';
 import { VisuallyHidden } from '@/shared/ui/visually-hidden';
 import { ClientsRow } from './clients-row';
+import styles from './clients-table.module.css';
 
 const GRID_ID = 'clients-table';
+
+type ClientsTableProps = {
+  data: ClientsData;
+};
 
 /**
  * The monthly detail table: one column per month, one row per part of the company, the company
  * already open when the page appears (FR1). The only place `shared/ui/tree-grid` and
  * `entities/clients` meet — the grid knows rows and columns, the entity knows the tree, and the
- * client-shaped name cell is built here (architecture §6).
+ * client-shaped name cell is built here (architecture §6). The page owns the query and mounts
+ * this only once the figures are here, so the open company can seed the first render.
+ *
+ * The open rows live here rather than inside the grid because flattening needs them *before*
+ * the grid renders (D-6); the hook beneath them is generic, and the seed is this widget's
+ * business.
  */
-export const ClientsTable = () => {
-  // Read once, like the page: changing a switch means changing the address, which reloads.
-  const [switches] = useState(() => readDevSwitches(window.location.search));
-  const { data } = useClientsQuery(switches);
-
-  // The page only mounts the table once the figures are here; this is the belt to that braces.
-  // It is also what lets the grid below be seeded with the company id at its own first render.
-  if (data === undefined) return null;
-  return <ClientsGrid data={data} />;
-};
-
-type ClientsGridProps = {
-  data: ClientsData;
-};
-
-/**
- * Holds which rows are open, and lets `useTreeGrid` hold where the outline is. The ids live
- * here rather than inside the grid because flattening needs them *before* the grid renders
- * (D-6); the hook beneath them is generic, and the seed — the company, open when the page
- * appears (FR1) — is this widget's business.
- */
-const ClientsGrid = ({ data }: ClientsGridProps) => {
+export const ClientsTable = ({ data }: ClientsTableProps) => {
   const { company, months } = data;
   const { expandedIds, toggle } = useExpandedIds(() => [company.id]);
   const rows = useMemo(() => flattenVisibleRows(company, expandedIds), [company, expandedIds]);
@@ -54,15 +37,13 @@ const ClientsGrid = ({ data }: ClientsGridProps) => {
 
   return (
     <TreeGrid
-      id={GRID_ID}
+      {...grid.gridProps}
       label="Clients by month"
-      columnCount={months.length}
-      onKeyDown={grid.gridProps.onKeyDown}
-      onFocus={grid.gridProps.onFocus}
+      className={styles.grid}
       head={
         <TreeGrid.Head>
           {/* Blank in the design, and still named for a screen reader (FR4-AC3). */}
-          <TreeGrid.ColumnHeader name>
+          <TreeGrid.ColumnHeader nameColumn>
             <VisuallyHidden>Name</VisuallyHidden>
           </TreeGrid.ColumnHeader>
           {months.map((month, colIndex) => (

@@ -5,7 +5,7 @@ import { ROW_COL_INDEX, type TreeGridCursor, type TreeGridRow } from './types';
  *
  * - `{ cursor }` — where the outline goes, which is sometimes exactly where it already is:
  *   nothing wraps (FR3-AC10), and saying so as a cursor rather than as `null` is what lets the
- *   caller swallow the key. An arrow that fell through to the browser would scroll the months
+ *   caller swallow the key. An arrow that fell through to the browser would scroll the figures
  *   sideways under a stationary outline, and Space would scroll the page (FR3-AC9).
  * - `{ toggle }` — open or close that row, which only Enter and Space ever ask for. The cursor
  *   does not move with it; where it ends up depends on rows this pure function has not seen
@@ -43,7 +43,7 @@ export const reduceKey = (
   const at = (rowId: string, colIndex: number): TreeGridKeyResult => ({
     cursor: { rowId, colIndex },
   });
-  /** The row `offset` away, keeping the column: the same month, one row up or down (FR3-AC7). */
+  /** The row `offset` away, keeping the column: the same column, one row up or down (FR3-AC7). */
   const step = (offset: number): TreeGridKeyResult => {
     const next = rows[index + offset];
     return next === undefined ? stay : at(next.id, cursor.colIndex);
@@ -64,7 +64,7 @@ export const reduceKey = (
       return columnCount > 0 ? at(row.id, 0) : stay;
 
     case 'ArrowLeft': {
-      // From the first month back to the name, which `colIndex - 1` already spells (FR3-AC6).
+      // From the first figure back to the name, which `colIndex - 1` already spells (FR3-AC6).
       if (!onRow) return at(row.id, cursor.colIndex - 1);
       // Up a level, whatever state the row is in — it never closes one (FR3-AC12/AC13). The
       // root has nowhere above it to go, so the outline stays (FR3-AC11).
