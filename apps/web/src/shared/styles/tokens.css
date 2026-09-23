@@ -71,6 +71,9 @@
   --color-channel-existing: #b29df8;
   --color-channel-organic: #f4beb4;
   --color-channel-paid: #a75e6e;
+  /* 004 §2.4 — clients no channel accounts for: absence, not a fourth channel. No hue, mixed from
+     the text over the surface; light enough to fill ~90% of a bar under the colours above. */
+  --color-channel-not-recorded: color-mix(in srgb, var(--color-text) 12%, var(--color-surface));
   /* The plot's own height, independent of the legend beneath it, so a wrapping legend can never
      take height from the bars (003 §2.6, tech review F3). Measured 338 at 1440 and at 375. */
   --chart-plot-h: 338px;
