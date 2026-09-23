@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { ClientsChart, ClientsChartSkeleton } from '@/widgets/clients-chart';
 import { ClientsTable, ClientsTableSkeleton } from '@/widgets/clients-table';
 import { readDevSwitches, useClientsQuery } from '@/entities/clients';
@@ -6,9 +6,9 @@ import { describeError } from '@/shared/api';
 import { Card } from '@/shared/ui/card';
 import { ErrorPanel } from '@/shared/ui/error-panel';
 import { VisuallyHidden } from '@/shared/ui/visually-hidden';
+import { useDelayedFlag } from '../model/use-delayed-flag';
+import { toView } from '../model/view';
 import styles from './dashboard-page.module.css';
-
-type View = 'loading' | 'loaded' | 'error';
 
 const LOAD_FAILED_MESSAGE = "We couldn't load the clients data.";
 const LOADING_MESSAGE = 'Loading clients…';
@@ -32,27 +32,15 @@ export const DashboardPage = () => {
   const [switches] = useState(() => readDevSwitches(window.location.search));
   const headingRef = useRef<HTMLHeadingElement>(null);
   const { data, error, status, isFetching, refetch } = useClientsQuery(switches);
-  // The panel shows only once the query has settled in error. On Retry without data, query-core
-  // 5.103 resets status to 'pending' (its `fetchState`), so Retry is 'loading' by status alone;
-  // the `!isFetching` guard keeps that true should a future version keep 'error' while fetching.
-  const view: View = data ? 'loaded' : status === 'error' && !isFetching ? 'error' : 'loading';
+  const view = toView({ hasData: data !== undefined, status, isFetching });
   const loading = view === 'loading';
 
   // Live regions report changes, not the content they mount with: the status node renders empty
   // and gets its text only once the wait has lasted LOADING_ANNOUNCE_DELAY_MS, so the first
   // "Loading clients…" is a change assistive technology announces — and one it is free to hear
-  // (FR3-AC1/AC3, code review F2 + the VoiceOver device check). The timer is cleared and the
-  // flag reset whenever loading ends, so a fast load stays silent and Retry announces the same
-  // way, its own wait starting again from zero.
-  const [announced, setAnnounced] = useState(false);
-  useEffect(() => {
-    if (!loading) return undefined;
-    const timer = setTimeout(() => setAnnounced(true), LOADING_ANNOUNCE_DELAY_MS);
-    return () => {
-      clearTimeout(timer);
-      setAnnounced(false);
-    };
-  }, [loading]);
+  // (FR3-AC1/AC3, code review F2 + the VoiceOver device check). A fast load stays silent, and
+  // Retry announces the same way, its own wait starting again from zero.
+  const announced = useDelayedFlag(loading, LOADING_ANNOUNCE_DELAY_MS);
 
   // Retry unmounts its own button under the keyboard user, so focus moves to the heading first
   // (tech doc D-11); the panel's alert itself never moves focus.
@@ -68,7 +56,7 @@ export const DashboardPage = () => {
       </h1>
       {/* Persistent node outside the busy container: AT may suppress content inside aria-busy. */}
       <VisuallyHidden as="p" role="status" aria-atomic="true">
-        {loading && announced ? LOADING_MESSAGE : null}
+        {announced ? LOADING_MESSAGE : null}
       </VisuallyHidden>
       <div aria-busy={loading} className={styles.grid}>
         {view === 'error' ? (
