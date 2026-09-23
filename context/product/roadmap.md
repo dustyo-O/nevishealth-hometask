@@ -23,11 +23,11 @@ _The highest priority features that form the core foundation of the product — 
   - [x] **Stacked Monthly Bar Chart by Channel:** One bar per month, stacked by acquisition channel (Existing clients / New organic / New paid) with a legend, on a clients y-axis, matching the design; totals agree with the table.
   - [x] **Data-to-Chart Mapping Tests:** Automated tests prove the served tree maps into the right bars and segments, including the company-level channel split summed from the tree.
 
-- [ ] **Ship-Ready**
-  - [ ] **Nothing Breaks at 375 px:** The page stays usable and nothing overflows down to a 375 px wide viewport (full responsiveness is not a goal).
-  - [ ] **README for Reviewers:** How to run and test in two commands, every assumption and open question with its reasoning (including where we think the brief, design or data was wrong and what we changed in the data), and what we would do next.
+- [x] **Ship-Ready**
+  - [x] **Nothing Breaks at 375 px:** The page stays usable and nothing overflows down to a 375 px wide viewport (full responsiveness is not a goal).
+  - [x] **README for Reviewers:** How to run and test in two commands, every assumption and open question with its reasoning (including where we think the brief, design or data was wrong and what we changed in the data), and what we would do next.
 
-  - [ ] **Say What A Screen-Reader User Will Hear:** the README notes that VoiceOver repeats its own "You are currently on a cell, inside a tree grid…" instruction on every cell — Apple's hint, on by default (Verbosity → Hints → Speak instructions), not something a page can suppress, and the price of making each figure announce its row and month. Confirmed in Safari on 2026-09-22.
+  - [x] **Say What A Screen-Reader User Will Hear:** the README notes that VoiceOver repeats its own "You are currently on a cell, inside a tree grid…" instruction on every cell — Apple's hint, on by default (Verbosity → Hints → Speak instructions), not something a page can suppress, and the price of making each figure announce its row and month. Confirmed in Safari on 2026-09-22.
 - [ ] **Component Review — the last thing before the work is sent**
   - [ ] **Read Every Component As A Reviewer Would:** with all three features built, go through the components once against the brief's own criterion — "composable, with clear boundaries" — and judge each on whether it is concise, does one thing, and would be understood by someone meeting it for the first time. This is deliberately last: duplication and the wrong seams are only visible once the table and the chart both exist.
   - [ ] **Split What Is Doing Two Jobs:** a component that renders *and* decides, or that is large enough to need scrolling to understand, gets split — the reusable part into `shared/ui`, the feature-specific part staying with its widget. Anything in `shared` that turns out to be used once and shaped by one caller is not shared; move it back.
