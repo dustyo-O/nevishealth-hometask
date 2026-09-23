@@ -1,7 +1,9 @@
 import {
+  useEffect,
   useId,
   useMemo,
   useReducer,
+  useRef,
   useState,
   type CSSProperties,
   type KeyboardEvent,
@@ -94,6 +96,20 @@ export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
   // The live region speaks for the outline only; a pointer sweeping the year is for the eye.
   const [focused, setFocused] = useState(false);
   const hintId = useId();
+  const drawingRef = useRef<HTMLDivElement>(null);
+
+  // A tap anywhere outside the plot box closes the month: the legend, the card's padding, the
+  // table card (FR4-AC6/AC7). Scoped to the plot box, not the widget root, or a tap on our own
+  // legend would leave it open (tech review F2). Listening only while open costs nothing else.
+  useEffect(() => {
+    if (!reader.open) return undefined;
+    const closeOutside = (event: globalThis.PointerEvent) => {
+      if (event.target instanceof Node && drawingRef.current?.contains(event.target)) return;
+      dispatch({ type: 'outside' });
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    return () => document.removeEventListener('pointerdown', closeOutside);
+  }, [reader.open]);
 
   // The page only mounts the chart once the figures are here; this is the belt to that braces.
   if (series === undefined) return null;
@@ -118,6 +134,13 @@ export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
     if (event.pointerType === 'touch') return;
     const index = monthUnder(event, months);
     dispatch(index === undefined ? { type: 'leave' } : { type: 'hover', index });
+  };
+
+  // A tap or a click inside the plot box: a column selects its month, above the bar as much as on
+  // it; the axes around the columns count as outside (FR4).
+  const handlePointerDown = (event: PointerEvent<HTMLElement>) => {
+    const index = monthUnder(event, months);
+    dispatch(index === undefined ? { type: 'outside' } : { type: 'tap', index });
   };
 
   const handlePointerLeave = (event: PointerEvent<HTMLElement>) => {
@@ -149,10 +172,12 @@ export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
       >
         {/* The drawing carries no readable text of its own (FR6-AC4). */}
         <div
+          ref={drawingRef}
           aria-hidden="true"
           className={styles.drawing}
           style={columnsOf(months)}
           onMouseDown={keepFocusOutOfTheDrawing}
+          onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerLeave={handlePointerLeave}
         >

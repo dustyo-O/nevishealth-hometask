@@ -106,6 +106,11 @@ const shownIn = (drawing: HTMLElement) =>
 const tintIn = (drawing: HTMLElement) =>
   drawing.querySelector<HTMLElement>('[data-month]:not(:has(dl))');
 
+const tap = (
+  target: Element,
+  at: { clientX: number; clientY: number } = { clientX: 0, clientY: 0 },
+) => fireEvent.pointerDown(target, { ...at, pointerType: 'touch' });
+
 const panelIn = (drawing: HTMLElement) => drawing.querySelector('dl')?.parentElement ?? null;
 
 describe('ClientsChart', () => {
@@ -401,6 +406,72 @@ describe('ClientsChart', () => {
     await user.keyboard('{Escape}');
     expect(shownIn(drawing)).toEqual([]);
     expect(screen.getByRole('group')).toHaveFocus();
+  });
+
+  it('opens a tapped month, and a tap on another month replaces it (FR4-AC4/AC5)', () => {
+    const drawing = drawingBox(renderChart().container);
+    tap(drawing, columnOf(0));
+    expect(shownIn(drawing).map(({ month }) => month)).toEqual(['2024-02', '2024-02']);
+    tap(drawing, columnOf(6));
+    expect(shownIn(drawing).map(({ month }) => month)).toEqual(['2024-08', '2024-08']);
+  });
+
+  it('selects a month tapped anywhere in its column, above its bar too (FR4)', () => {
+    const drawing = drawingBox(renderChart().container);
+    // Six pixels below the top of the plot: every bar ends far lower (the tallest is 350 of 400).
+    tap(drawing, { clientX: columnOf(JUN).clientX, clientY: 11 });
+    expect(panelIn(drawing)).toHaveAttribute('data-month', '2024-06');
+  });
+
+  it('keeps a tapped panel when the finger lifts: a touch pointer leaving is not the pointer moving off (FR4-AC4)', () => {
+    const drawing = drawingBox(renderChart().container);
+    tap(drawing, columnOf(JUN));
+    fireEvent.pointerUp(drawing, { ...columnOf(JUN), pointerType: 'touch' });
+    fireEvent.pointerLeave(drawing, { pointerType: 'touch' });
+    expect(panelIn(drawing)).toHaveAttribute('data-month', '2024-06');
+  });
+
+  it('dismisses on a tap on the legend (FR4-AC6)', () => {
+    const drawing = drawingBox(renderChart().container);
+    tap(drawing, columnOf(JUN));
+    tap(within(screen.getByRole('list')).getByText('New organic'));
+    expect(shownIn(drawing)).toEqual([]);
+  });
+
+  it("dismisses on a tap on the card's padding around the chart (FR4-AC7)", () => {
+    const { container } = renderChart();
+    const drawing = drawingBox(container);
+    tap(drawing, columnOf(JUN));
+    // The widget's own root: the padding between the card's edge and the plot.
+    tap(container.firstElementChild!);
+    expect(shownIn(drawing)).toEqual([]);
+  });
+
+  it('dismisses on a tap anywhere else on the page, such as the table card (FR4)', () => {
+    const drawing = drawingBox(renderChart().container);
+    tap(drawing, columnOf(JUN));
+    tap(document.body);
+    expect(shownIn(drawing)).toEqual([]);
+  });
+
+  it('dismisses on a tap on the axes, inside the plot box but in no month (FR4)', () => {
+    const drawing = drawingBox(renderChart().container);
+    tap(drawing, columnOf(JUN));
+    tap(drawing, { clientX: columnOf(JUN).clientX, clientY: SIZE.height - 10 });
+    expect(shownIn(drawing)).toEqual([]);
+  });
+
+  it('listens to the document only while a month is open', () => {
+    const add = vi.spyOn(document, 'addEventListener');
+    const remove = vi.spyOn(document, 'removeEventListener');
+    const drawing = drawingBox(renderChart().container);
+    const pointerdowns = (spy: typeof add) =>
+      spy.mock.calls.filter(([type]) => type === 'pointerdown').length;
+    expect(pointerdowns(add)).toBe(0);
+    tap(drawing, columnOf(JUN));
+    expect(pointerdowns(add)).toBe(1);
+    tap(document.body);
+    expect(pointerdowns(remove)).toBe(1);
   });
 
   it('has no accessibility violations while a month is being read', async () => {
