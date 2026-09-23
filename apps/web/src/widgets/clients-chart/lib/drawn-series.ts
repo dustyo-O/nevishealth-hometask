@@ -11,56 +11,70 @@ import { yScale, type YScale } from './y-scale';
  */
 export type DrawnBar = {
   month: string;
-  /** Each part's drawn height, in clients: lifted to the floor, or the figure where untouched. */
+  /** Each part's drawn height, in clients: lifted onto the curve, or the figure where untouched. */
   heights: Readonly<Record<string, number>>;
 };
 
 export type DrawnSeries = {
   channels: readonly string[];
   bars: readonly DrawnBar[];
-  /** The scale the floor was worked out against, from the true totals. */
+  /** The scale the curve was worked out against, from the true totals. */
   scale: YScale;
 };
 
-/** The least a part with clients in it is drawn (004 FR4). */
-export const MIN_PART_PX = 4;
+/**
+ * How far the curve lifts a small part, in pixels: `LIFT_PX × log2(clients + 1)` (004 FR4). That
+ * is nothing at zero clients, 4 px at one, 6.34 at two, 8 at three, and tails off.
+ */
+export const LIFT_PX = 4;
 
 /** How tall the scale's full domain is drawn: the plot box less its top margin and month labels. */
 export const BARS_HEIGHT = PLOT_HEIGHT - PLOT_MARGIN.top - PLOT_MARGIN.bottom - X_AXIS_HEIGHT;
 
+/** Pixels per client on a scale whose top reads `top`: the lift is pixels, not clients (§2.4). */
+export const pxPerClientFor = (top: number): number => BARS_HEIGHT / top;
+
 /**
- * The floor in clients, as a share of the scale's domain: four pixels of `BARS_HEIGHT`, whatever
- * the top of the scale reads (§2.4). 400 → 5.28 clients.
+ * A part's drawn height in pixels: its true height, or the curve where that is taller. The `max`
+ * is the point — the curve only ever **lifts**; above about 24 clients the true height wins and
+ * the curve stops applying. The ratio between parts is deliberately not linear: two clients look
+ * about one and a half times one, so that a month with new clients can be told from one without.
  */
-export const floorFor = (top: number): number => (top * MIN_PART_PX) / BARS_HEIGHT;
+export const drawnPx = (clients: number, pxPerClient: number): number =>
+  Math.max(clients * pxPerClient, LIFT_PX * Math.log2(clients + 1));
 
 /**
  * The series the bars are built from (004 §2.4). Every part with clients in it, other than
- * Existing clients, is lifted to the floor, and what that adds is **taken from Existing clients**
- * in the same bar — so the stack's offsets follow the lifted parts and nothing is covered, and
- * each bar's total is still exactly its figure. A month with no newly acquired clients is drawn
- * exactly to its figures. Where Existing clients could not pay without falling below the floor
- * itself (or below zero), the floor gives way and the month is drawn to its figures.
+ * Existing clients, is lifted onto the curve (`drawnPx`), and what that adds is **taken from
+ * Existing clients** in the same bar — so the stack's offsets follow the lifted parts and nothing
+ * is covered, and each bar's total is still exactly its figure. A month with no newly acquired
+ * clients is drawn exactly to its figures. Where Existing clients could not pay without falling
+ * below its own curve (or below zero), the lift gives way and the month is drawn to its figures.
  *
  * Only the drawing reads this. The figures a person reads stay in the `MonthlySeries` it came
  * from, which is left untouched. Pure: no charting library, no DOM.
  */
-export const toDrawing = (series: MonthlySeries, floorOf = floorFor): DrawnSeries => {
+export const toDrawing = (series: MonthlySeries, pxPerClientOf = pxPerClientFor): DrawnSeries => {
   const scale = yScale(series);
-  const floor = floorOf(scale.top);
+  const px = pxPerClientOf(scale.top);
+  /** A part's drawn height, converted back to clients: what the stack is built from. */
+  const lifted = (clients: number) => drawnPx(clients, px) / px;
   const bars = series.points.map(({ month, byChannel }): DrawnBar => {
     const heights: Record<string, number> = {};
     for (const name of series.channels) heights[name] = byChannel[name] ?? 0;
     let borrowed = 0;
     for (const name of series.channels) {
       const value = heights[name] ?? 0;
-      if (name === EXISTING || value <= 0 || value >= floor) continue;
-      borrowed += floor - value;
-      heights[name] = floor;
+      if (name === EXISTING || value <= 0) continue;
+      const height = lifted(value);
+      borrowed += height - value;
+      heights[name] = height;
     }
     const existing = byChannel[EXISTING] ?? 0;
     if (borrowed === 0) return { month, heights };
-    if (existing - borrowed < floor) return { month, heights: { ...byChannel } };
+    if (existing - borrowed < (LIFT_PX * Math.log2(existing + 1)) / px) {
+      return { month, heights: { ...byChannel } };
+    }
     heights[EXISTING] = existing - borrowed;
     return { month, heights };
   });

@@ -154,22 +154,24 @@ const overshootingClients = (): ClientsResponse => {
 };
 
 /**
- * The least a part with clients in it is drawn, in pixels (004 FR4, §2.4). The newly acquired are
- * 0–2 clients a month, under two pixels to scale, so the drawing lifts them to this — and takes
- * what it adds from Existing clients in the same bar. So a bar's total is drawn **exactly** to its
- * figure; only its parts give way: a new part is `max(to scale, FLOOR_PX)`, Existing clients is
- * short by what the others borrowed. Figures — panel, table, announcement — are asserted exactly.
+ * How far a part with clients in it is lifted, in pixels (004 FR4, §2.4): `LIFT_PX × log2(v + 1)`
+ * — 4 px for one client, 6.34 for two, 8 for three — or its true height where that is taller. The
+ * newly acquired are 0–2 clients a month, under two pixels to scale, so the drawing lifts them onto
+ * that curve and takes what it adds from Existing clients in the same bar. So a bar's total is
+ * drawn **exactly** to its figure; only its parts give way. The ratio between parts is deliberately
+ * not linear — two clients look about 1.5× one — so that one and two can be told apart at all.
+ * Figures — panel, table, announcement — are asserted exactly.
  */
-const FLOOR_PX = 4;
+const LIFT_PX = 4;
 
 type Parts = { existing: number; organic: number; paid: number };
 
 /**
  * Each part's drawn height in pixels, worked out here and not by the widget: a new part with
- * clients in it lifted to the floor, 0 staying 0, and Existing clients paying for both.
+ * clients in it lifted onto the curve, 0 staying 0, and Existing clients paying for both.
  */
 const drawnPx = ({ existing, organic, paid }: Parts, pxPerClient: number): Parts => {
-  const lift = (value: number) => (value > 0 ? Math.max(value * pxPerClient, FLOOR_PX) : 0);
+  const lift = (value: number) => Math.max(value * pxPerClient, LIFT_PX * Math.log2(value + 1));
   const borrowed = lift(organic) - organic * pxPerClient + (lift(paid) - paid * pxPerClient);
   return { existing: existing * pxPerClient - borrowed, organic: lift(organic), paid: lift(paid) };
 };
@@ -248,7 +250,7 @@ describe('ClientsChart', () => {
         KEYS.filter((key) => rects.some((rect) => rect.key === key)),
       );
       // Each part starts exactly where the part beneath it is drawn to end — a lifted part moves
-      // the ones above it up rather than being covered by them (FLOOR_PX).
+      // the ones above it up rather than being covered by them (LIFT_PX).
       let beneath = 0;
       for (const rect of ordered) {
         expect(rect.top + rect.height).toBeCloseTo(baseline - beneath, 3);
@@ -604,18 +606,19 @@ describe('ClientsChart, when the data records the channel of only part of the co
     expect(february.filter((rect) => rect.key === 'existing')).toHaveLength(1);
   });
 
-  it("draws July's new organic and new paid at least FLOOR_PX tall, not hairlines (FR4-AC1)", () => {
+  it("draws July's two new organic at about 6.34 px and its one new paid at 4 px, not hairlines (FR4-AC1)", () => {
     const { pxPerClient, months } = barsIn(drawingOf(renderChart().container));
     // To scale they would be 2 and 1 clients: about 1.5 px and 0.76 px at this size.
-    expect(2 * pxPerClient).toBeLessThan(FLOOR_PX);
+    expect(2 * pxPerClient).toBeLessThan(LIFT_PX);
     const july = months[JUL_2024]!;
-    for (const key of ['organic', 'paid'] as const) {
-      const [part] = july.filter((rect) => rect.key === key);
-      expect(part?.height).toBeGreaterThanOrEqual(FLOOR_PX - 1e-6);
-    }
+    const heightOf = (key: string) => july.find((rect) => rect.key === key)?.height ?? 0;
+    expect(heightOf('organic')).toBeCloseTo(LIFT_PX * Math.log2(3), 3);
+    expect(heightOf('paid')).toBeCloseTo(LIFT_PX, 3);
+    // Two clients visibly taller than one: the comparison a flat floor threw away.
+    expect(heightOf('organic') - heightOf('paid')).toBeGreaterThan(2);
   });
 
-  it('floors no month with a new client in it below FLOOR_PX, and draws every zero as nothing (FR4)', () => {
+  it('draws every new part on the curve — one client 4 px, two about 6.34 — and every zero as nothing (FR4)', () => {
     const data = shippedClients();
     const { months } = barsIn(drawingOf(renderChart(data).container));
     months.forEach((rects, month) => {
@@ -628,7 +631,7 @@ describe('ClientsChart, when the data records the channel of only part of the co
           .filter((rect) => rect.key === key)
           .reduce((sum, r) => sum + r.height, 0);
         if (value === 0) expect(height).toBe(0);
-        else expect(height).toBeGreaterThanOrEqual(FLOOR_PX - 1e-6);
+        else expect(height).toBeCloseTo(LIFT_PX * Math.log2(value + 1), 3);
       }
     });
   });
