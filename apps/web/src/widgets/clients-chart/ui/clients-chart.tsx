@@ -19,7 +19,7 @@ import {
 } from '@/entities/clients';
 import { VisuallyHidden } from '@/shared/ui/visually-hidden';
 import { describeMonth } from '../lib/describe-month';
-import { withNotRecorded } from '../lib/not-recorded';
+import { withExistingClients } from '../lib/existing-clients';
 import {
   COLUMNS_LEFT,
   COLUMNS_RIGHT,
@@ -92,10 +92,11 @@ export const ClientsChart = ({ initialDimension }: ClientsChartProps) => {
   const [switches] = useState(() => readDevSwitches(window.location.search));
   const { data } = useClientsQuery(switches);
   // Memoised so a refetch with the same figures hands the drawing the same series (FR7-AC1).
-  // "Not recorded" is decided here, once for the whole year (004 §2.3): the drawing, the legend,
-  // the panel, the hidden table and the announcement all read this one series.
+  // Existing clients is derived here, from the Company row less the newly acquired (004 §2.3):
+  // the drawing, the legend, the panel, the hidden table and the announcement all read this one
+  // series.
   const series = useMemo(
-    () => (data === undefined ? undefined : withNotRecorded(toMonthlySeries(data))),
+    () => (data === undefined ? undefined : withExistingClients(toMonthlySeries(data))),
     [data],
   );
   const [reader, dispatch] = useReducer(readMonth, CLOSED);

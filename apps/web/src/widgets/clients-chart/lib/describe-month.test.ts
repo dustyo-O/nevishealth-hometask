@@ -1,17 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { toMonthlySeries } from '@/entities/clients';
 import { describeMonth } from './describe-month';
-import { withNotRecorded } from './not-recorded';
+import { withExistingClients } from './existing-clients';
 import { shippedClients } from '@/test/fixtures/shipped-clients';
 
 describe('describeMonth', () => {
-  // The series the widget announces: the channels plus what they leave unrecorded (004 slice 1).
-  const series = withNotRecorded(toMonthlySeries(shippedClients()));
+  // The series the widget announces: Existing clients derived from the Company row (004 §2.3).
+  const series = withExistingClients(toMonthlySeries(shippedClients()));
 
-  // 004 slice 3 replaces the parts (branches, not channels); the sentence's shape stays.
   it('says February 2024 as one sentence: month, its parts bottom-up, then the total (FR6-AC1)', () => {
     expect(describeMonth(series.points[0]!, series.channels)).toBe(
-      'Feb 2024: not recorded 225, existing clients 25, new organic 0, new paid 0, total 250',
+      'Feb 2024: existing clients 250, new organic 0, new paid 0, total 250',
     );
   });
 

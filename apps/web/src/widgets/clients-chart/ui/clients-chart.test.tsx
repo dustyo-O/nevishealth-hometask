@@ -1,4 +1,4 @@
-import type { ClientsResponse } from '@nevis/contracts';
+import type { ClientsResponse, TreeNode } from '@nevis/contracts';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -114,41 +114,47 @@ const tap = (
 
 const panelIn = (drawing: HTMLElement) => drawing.querySelector('dl')?.parentElement ?? null;
 
-const JUN_2024 = 4;
-const SEP_2024 = 7;
+const JUL_2024 = 5;
 
-/** What Anna Blackwood's channels — the only channels the supplied data records — come to. */
-const channelsIn = (data: ClientsResponse, month: number) =>
-  (data.company.branches?.[0]?.employees?.[0]?.channels ?? []).reduce(
-    (sum, channel) => sum + (channel.values[month] ?? 0),
-    0,
-  );
-
-/**
- * The shipped company, which already has the gaps the brief describes (004 FR1): only Anna
- * Blackwood has channels, so most of every month is attributed to none. June's company figure is
- * set to exactly what her channels come to — a month with nothing unrecorded — and September's to
- * less than they come to, the overshoot the chart must never draw below zero (FR3, spec review F1).
- */
-const gappedClients = (): ClientsResponse => {
-  const data = shippedClients();
-  data.company.values[JUN_2024] = channelsIn(data, JUN_2024);
-  data.company.values[SEP_2024] = channelsIn(data, SEP_2024) - 7;
-  return data;
+/** Every channel named `name` in the tree, added up for the month: what the data records. */
+const recorded = (data: ClientsResponse, name: string, month: number) => {
+  const walk = (node: TreeNode): number =>
+    node.name === name
+      ? (node.values[month] ?? 0)
+      : [...(node.branches ?? []), ...(node.employees ?? []), ...(node.channels ?? [])].reduce(
+          (sum, child) => sum + walk(child),
+          0,
+        );
+  return walk(data.company);
 };
 
 /**
- * A company whose every client has a recorded channel: the shipped tree with each month's company
- * figure set to what the channels come to. The shipped data can no longer be that company.
+ * The part of a month the data records as newly acquired; everyone else in the Company row is an
+ * existing client (004 §2.3). Never below 0 where the new clients alone exceed the company.
  */
-const completeClients = (): ClientsResponse => {
+const expected = (data: ClientsResponse, month: number) => {
+  const organic = recorded(data, 'New organic', month);
+  const paid = recorded(data, 'New paid', month);
+  return {
+    existing: Math.max(0, data.company.values[month]! - organic - paid),
+    organic,
+    paid,
+  };
+};
+
+/**
+ * The shipped company with July's figure set below what it newly acquired that month (2 + 1): the
+ * overshoot the chart must never draw below zero (§2.3, spec review F1). Cannot happen with the
+ * supplied figures.
+ */
+const overshootingClients = (): ClientsResponse => {
   const data = shippedClients();
-  data.company.values = data.company.values.map((_, month) => channelsIn(data, month));
+  data.company.values[JUL_2024] = 2;
   return data;
 };
 
-const FOUR = ['Not recorded', 'Existing clients', 'New organic', 'New paid'];
-const KEYS = ['not-recorded', 'existing', 'organic', 'paid'];
+const THREE = ['Existing clients', 'New organic', 'New paid'];
+const KEYS = ['existing', 'organic', 'paid'] as const;
 
 /**
  * Every drawn rectangle, grouped into its month by its column. Segments are never counted: a
@@ -196,25 +202,18 @@ describe('ClientsChart', () => {
     expect(svg).toHaveAttribute('height', String(SIZE.height));
   });
 
-  // 004 slice 3 replaces what a bar is divided into (the rows the table shows). Until then the
-  // shipped data draws Anna Blackwood's channels on a grey base of everything else.
-  it('draws each month by series and value: Not recorded, then the three channels (FR1-AC1)', () => {
+  it('draws each month by series and value: Existing clients derived, the new ones as recorded (FR3-AC1/AC5)', () => {
     const data = shippedClients();
     const { pxPerClient, months } = barsIn(drawingOf(renderChart(data).container));
-    const anna = data.company.branches![0]!.employees![0]!;
-    const [existing, organic, paid] = anna.channels!.map((channel) => channel.values);
     expect(months).toHaveLength(12);
     months.forEach((rects, month) => {
       const valueOf = (key: string) =>
         rects.filter((rect) => rect.key === key).reduce((sum, rect) => sum + rect.height, 0) /
         pxPerClient;
-      expect(valueOf('not-recorded')).toBeCloseTo(
-        data.company.values[month]! - channelsIn(data, month),
-        1,
-      );
-      expect(valueOf('existing')).toBeCloseTo(existing![month]!, 1);
-      expect(valueOf('organic')).toBeCloseTo(organic![month]!, 1);
-      expect(valueOf('paid')).toBeCloseTo(paid![month]!, 1);
+      const { existing, organic, paid } = expected(data, month);
+      expect(valueOf('existing')).toBeCloseTo(existing, 1);
+      expect(valueOf('organic')).toBeCloseTo(organic, 1);
+      expect(valueOf('paid')).toBeCloseTo(paid, 1);
     });
   });
 
@@ -267,11 +266,10 @@ describe('ClientsChart', () => {
     expect(screen.queryByText('400', readable)).toBeNull();
   });
 
-  // 004 slice 3 replaces the legend's entries (Branch 1, Branch 2, Branch 3 at load).
   it('names the parts in a legend, bottom-up order, each with its swatch (FR3-AC1)', () => {
     renderChart();
     const items = within(screen.getByRole('list')).getAllByRole('listitem');
-    expect(items.map((item) => item.textContent)).toEqual(FOUR);
+    expect(items.map((item) => item.textContent)).toEqual(THREE);
     for (const item of items) {
       expect(item.querySelector('[aria-hidden="true"]')).not.toBeNull();
     }
@@ -312,9 +310,8 @@ describe('ClientsChart', () => {
 
     await user.tab();
     expect(screen.getByRole('group')).toHaveFocus();
-    // 004 slice 3 replaces the parts; the month and the total are the Company row's.
     expect(status).toHaveTextContent(
-      'Feb 2024: not recorded 225, existing clients 25, new organic 0, new paid 0, total 250',
+      'Feb 2024: existing clients 250, new organic 0, new paid 0, total 250',
     );
     await user.keyboard('{ArrowRight}');
     expect(status).toHaveTextContent(/^Mar 2024: .*, total 267$/);
@@ -358,8 +355,7 @@ describe('ClientsChart', () => {
 
     const [header, ...rows] = within(table).getAllByRole('row');
     const columns = within(header!).getAllByRole('columnheader');
-    // 004 slice 3 replaces the columns (the rows the table shows); Total stays the Company row.
-    expect(columns.map((th) => th.textContent)).toEqual(['Month', ...FOUR, 'Total']);
+    expect(columns.map((th) => th.textContent)).toEqual(['Month', ...THREE, 'Total']);
     for (const th of columns) expect(th).toHaveAttribute('scope', 'col');
 
     expect(rows).toHaveLength(12);
@@ -371,15 +367,15 @@ describe('ClientsChart', () => {
       const cells = within(row)
         .getAllByRole('cell')
         .map((td) => Number(td.textContent));
-      expect(cells).toHaveLength(5);
-      expect(cells[0]! + cells[1]! + cells[2]! + cells[3]!).toBe(cells[4]);
-      expect(cells[4]).toBe(company[month]);
+      expect(cells).toHaveLength(4);
+      expect(cells[0]! + cells[1]! + cells[2]!).toBe(cells[3]);
+      expect(cells[3]).toBe(company[month]);
     });
     expect(
       within(rows[0]!)
         .getAllByRole('cell')
         .map((td) => td.textContent),
-    ).toEqual(['225', '25', '0', '0', '250']);
+    ).toEqual(['250', '0', '0', '250']);
   });
 
   it("shows the pointed month's panel: the month, its parts bottom-up, then the total (FR4-AC1/AC9)", () => {
@@ -394,10 +390,8 @@ describe('ClientsChart', () => {
       row.querySelector('dt')?.textContent,
       row.querySelector('dd')?.textContent,
     ]);
-    // 004 slice 3 replaces the parts (Branch 1 147, Branch 2 76, Branch 3 27 at load).
     expect(rows).toEqual([
-      ['Not recorded', '225'],
-      ['Existing clients', '25'],
+      ['Existing clients', '250'],
       ['New organic', '0'],
       ['New paid', '0'],
       ['Total', '250'],
@@ -576,17 +570,15 @@ describe('ClientsChart', () => {
   });
 });
 
-describe('ClientsChart, when the channels account for only part of the company (004)', () => {
-  it("draws every bar to its Company row's figure, with Not recorded at the base (FR3-AC1/AC2)", () => {
-    const data = gappedClients();
+describe('ClientsChart, when the data records the channel of only part of the company (004)', () => {
+  it("draws every bar to its Company row's figure, Existing clients at the base (FR3-AC1/AC2)", () => {
+    const data = shippedClients();
     const { baseline, pxPerClient, months } = barsIn(drawingOf(renderChart(data).container));
     expect(months).toHaveLength(12);
-    const channels = (month: number) => channelsIn(data, month);
     months.forEach((rects, month) => {
       const drawn = rects.reduce((sum, rect) => sum + rect.height, 0) / pxPerClient;
-      // As tall as the Company row — or, where the channels overshoot it, as tall as they are.
-      expect(drawn).toBeCloseTo(Math.max(data.company.values[month]!, channels(month)), 1);
-      // Bottom-up in the order Not recorded, Existing, New organic, New paid; each on the last.
+      expect(drawn).toBeCloseTo(data.company.values[month]!, 1);
+      // Bottom-up in the order Existing, New organic, New paid; each resting on the last.
       const drawnKeys = KEYS.filter((key) => rects.some((rect) => rect.key === key));
       const ordered = [...rects].sort((a, b) => b.top - a.top);
       expect(ordered.map((rect) => rect.key)).toEqual(drawnKeys);
@@ -595,107 +587,86 @@ describe('ClientsChart, when the channels account for only part of the company (
         expect(rect.top + rect.height).toBeCloseTo(ordered[i]!.top, 3);
       });
     });
-    // February is mostly unrecorded; June and September have nothing unrecorded to draw.
-    const unrecorded = (month: number) =>
-      months[month]!.filter((rect) => rect.key === 'not-recorded').reduce(
-        (sum, rect) => sum + rect.height / pxPerClient,
-        0,
-      );
-    expect(unrecorded(0)).toBeCloseTo(225, 1);
-    expect(unrecorded(JUN_2024)).toBe(0);
-    expect(unrecorded(SEP_2024)).toBe(0);
   });
 
-  it('names four entries in the legend, Not recorded first, each with its swatch (FR4-AC1)', () => {
-    renderChart(gappedClients());
-    expect(legendOf()).toEqual(FOUR);
-    const swatch = within(screen.getByRole('list'))
-      .getByText('Not recorded')
-      .querySelector('[aria-hidden="true"]');
-    expect(swatch?.className).toMatch(/not-recorded/);
-  });
-
-  it('lists Not recorded in the panel, reading 0 in a month with nothing unrecorded (FR4-AC2/AC3/AC4)', () => {
-    const drawing = drawingBox(renderChart(gappedClients()).container);
+  it('reads February 250 / 0 / 0 and July 331 / 2 / 1 in the panel, the total its Company row (FR3-AC3/AC4, FR5-AC2/AC4)', () => {
+    const drawing = drawingBox(renderChart().container);
     hover(drawing, 0);
     expect(panelRows(drawing)).toEqual([
-      ['Not recorded', '225'],
-      ['Existing clients', '25'],
+      ['Existing clients', '250'],
       ['New organic', '0'],
       ['New paid', '0'],
       ['Total', '250'],
     ]);
-    hover(drawing, JUN_2024);
-    expect(panelRows(drawing)[0]).toEqual(['Not recorded', '0']);
-    hover(drawing, SEP_2024);
+    hover(drawing, JUL_2024);
+    expect(panelIn(drawing)?.querySelector('p')).toHaveTextContent('Jul 2024');
     expect(panelRows(drawing)).toEqual([
-      ['Not recorded', '0'],
-      ['Existing clients', '25'],
-      ['New organic', '1'],
-      ['New paid', '2'],
-      ['Total', '28'],
+      ['Existing clients', '331'],
+      ['New organic', '2'],
+      ['New paid', '1'],
+      ['Total', '334'],
     ]);
   });
 
-  it('keeps the legend the same while the pointer moves from month to month (FR4-AC5)', () => {
-    const drawing = drawingBox(renderChart(gappedClients()).container);
-    for (let month = 0; month < 12; month += 1) {
-      hover(drawing, month);
-      expect(legendOf()).toEqual(FOUR);
-    }
-  });
-
-  it('gives the hidden table a Not recorded column, in every row, zero included (FR5-AC1)', () => {
-    renderChart(gappedClients());
-    const [header, ...rows] = within(screen.getByRole('table')).getAllByRole('row');
-    expect(
-      within(header!)
-        .getAllByRole('columnheader')
-        .map((th) => th.textContent),
-    ).toEqual(['Month', ...FOUR, 'Total']);
+  it('gives every hidden-table row three parts that add up to the Company row (FR5-AC3)', () => {
+    const data = shippedClients();
+    renderChart(data);
+    const [, ...rows] = within(screen.getByRole('table')).getAllByRole('row');
     const cells = rows.map((row) =>
       within(row)
         .getAllByRole('cell')
-        .map((td) => td.textContent),
+        .map((td) => Number(td.textContent)),
     );
     expect(cells).toHaveLength(12);
-    expect(cells[0]).toEqual(['225', '25', '0', '0', '250']);
-    expect(cells[JUN_2024]?.[0]).toBe('0');
-    for (const row of cells) {
-      const [notRecorded, existing, organic, paid, total] = row.map(Number);
-      expect(notRecorded! + existing! + organic! + paid!).toBe(total);
+    cells.forEach(([existing, organic, paid, total], month) => {
+      expect([existing, organic, paid]).toEqual(Object.values(expected(data, month)));
+      expect(existing! + organic! + paid!).toBe(total);
+      expect(total).toBe(data.company.values[month]);
+    });
+  });
+
+  it('names exactly three parts in the legend, the same while the pointer moves (FR3-AC6, FR5-AC1)', () => {
+    const drawing = drawingBox(renderChart().container);
+    expect(legendOf()).toEqual(THREE);
+    for (let month = 0; month < 12; month += 1) {
+      hover(drawing, month);
+      expect(legendOf()).toEqual(THREE);
     }
   });
 
-  it('announces Not recorded first when a screen-reader user moves to a month (FR5-AC2)', async () => {
-    const user = userEvent.setup();
-    renderChart(gappedClients());
-    await user.tab();
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Feb 2024: not recorded 225, existing clients 25, new organic 0, new paid 0, total 250',
-    );
+  it('never draws Existing clients below zero where the new clients exceed the company (§2.3)', () => {
+    const drawing = drawingBox(renderChart(overshootingClients()).container);
+    hover(drawing, JUL_2024);
+    expect(panelRows(drawing)).toEqual([
+      ['Existing clients', '0'],
+      ['New organic', '2'],
+      ['New paid', '1'],
+      ['Total', '3'],
+    ]);
   });
 
-  it('has no accessibility violations', async () => {
-    const { container } = renderChart(gappedClients());
-    expect(await axe(container)).toHaveNoViolations();
-  });
-});
-
-describe('ClientsChart, when every client has a recorded channel (004 FR6)', () => {
-  it('mentions Not recorded nowhere: not drawn, not in the legend, panel, table or announcement', async () => {
+  it('mentions Not recorded nowhere: not drawn, not in the legend, panel, table or announcement (004 slice 3)', async () => {
     const user = userEvent.setup();
-    const { container } = renderChart(completeClients());
+    const { container } = renderChart();
     const svg = drawingOf(container);
-    expect(svg.querySelector('path[fill="var(--color-channel-not-recorded)"]')).toBeNull();
-    expect(legendOf()).toEqual(['Existing clients', 'New organic', 'New paid']);
+    const fills = new Set([...svg.querySelectorAll('path[fill]')].map((p) => p.getAttribute('fill')));
+    expect([...fills].filter((fill) => fill?.startsWith('var(--color-channel-'))).toEqual(
+      expect.arrayContaining(KEYS.map((key) => `var(--color-channel-${key})`)),
+    );
+    expect([...fills].some((fill) => /not-recorded/.test(fill ?? ''))).toBe(false);
     const drawing = drawingBox(container);
     for (let month = 0; month < 12; month += 1) {
       hover(drawing, month);
       expect(panelRows(drawing).map(([name]) => name)).not.toContain('Not recorded');
     }
-    expect(screen.queryAllByText('Not recorded')).toEqual([]);
+    expect(container).not.toHaveTextContent(/not recorded/i);
+    expect(container.innerHTML).not.toMatch(/not-recorded/);
     await user.tab();
-    expect(screen.getByRole('status')).not.toHaveTextContent(/not recorded/);
+    expect(screen.getByRole('status')).not.toHaveTextContent(/not recorded/i);
+  });
+
+  it('has no accessibility violations', async () => {
+    const { container } = renderChart(overshootingClients());
+    expect(await axe(container)).toHaveNoViolations();
   });
 });
