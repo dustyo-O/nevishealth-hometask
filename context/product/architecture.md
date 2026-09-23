@@ -85,4 +85,4 @@ apps/api/src/
 packages/contracts/    types + zod schema for the wire format, MONTHS
 ```
 
-**Boundary rules that reviewers can check:** `shared/ui/tree-grid` knows nothing about clients, months or channels (it takes rows with `id`, `parentId`, `level`, `hasChildren` and renders what it is given). `entities/clients` knows the data but no DOM. `widgets` are the only place the two meet. The API and the UI share one type definition and nothing else.
+**Boundary rules that reviewers can check:** `shared/ui/tree-grid` knows nothing about clients, months or channels (it takes rows with `id`, `parentId`, `level`, `hasChildren` and renders what it is given). `entities/clients` knows the data but no DOM. `widgets` are the only place the two meet — at runtime: `entities/clients` names the tree-grid's row *type* (type-only, a lower layer, so legal under FSD) so its flattened rows are tree-grid rows by construction (005 app F7). The API and the UI share one type definition and nothing else.
