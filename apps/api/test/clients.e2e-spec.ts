@@ -85,7 +85,7 @@ describe('GET /api/clients (e2e)', () => {
     const { company } = res.body as ClientsResponse;
     const nodes = allNodes(company);
 
-    expect(nodes).toHaveLength(44);
+    expect(nodes).toHaveLength(12); // Company, 3 branches, 5 advisers, Anna's 3 channels (spec 004)
     expect(nodes.every((node) => node.values.length === 12)).toBe(true);
   });
 
