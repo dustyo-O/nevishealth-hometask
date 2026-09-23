@@ -157,19 +157,29 @@ export const readDrawing = (chart: Chart): Promise<Drawn> =>
 export type MonthFigures = Record<Part, number> & { total: number };
 
 /**
- * The least a part with clients in it is drawn, in pixels (004 FR4, §2.4). The newly acquired are
- * 0–2 clients a month — about a pixel and a half to scale — so the chart lifts them to this, and
- * takes what it adds **from Existing clients in the same bar**.
+ * How far a small part is lifted, in pixels (004 FR4, §2.4). A part with clients in it is drawn on
+ * a stretched curve, `LIFT_PX × log2(clients + 1)` — 4 px for one client, 6.34 for two, 8 for
+ * three — or at its true height wherever that is taller: the curve only ever lifts, and above about
+ * 24 clients it stops applying. What a part gains is taken **from Existing clients in the same
+ * bar**. The newly acquired are 0–2 clients a month, about a pixel and a half to scale.
+ *
+ * WHY THE RATIO IS NOT LINEAR: on the curve two clients look about 1.5× one, not 2×. That is the
+ * deliberate distortion FR4 names — it buys the one comparison these parts can offer, a month with
+ * one new client against a month with two, which a flat floor drew identically. Do not "fix" it to
+ * scale: to scale both are under two pixels and neither can be seen.
  *
  * WHAT IS EXACT AND WHAT GIVES WAY: a bar's total is drawn exactly to its figure — `reach` is
  * checked to within PRECISION, as spec 003's suite checked it before slice 3 widened it; do not
- * widen it again. Only the parts give way: a new part is at least FLOOR_PX and never more than the
- * floor above its figure, and Existing clients is short by what the others borrowed. Checking the
- * parts "exactly to scale" fails every month with a new client in it, because FR4 asks the drawing
- * to differ there. The figures a person reads — the panel, the hidden table, the announcement —
- * are still asserted exactly, and a month with nobody new is drawn to its figures to PRECISION.
+ * widen it again. Only the parts give way: each new part sits on the curve, and Existing clients is
+ * short by exactly what the others borrowed. The figures a person reads — the panel, the hidden
+ * table, the announcement — are still asserted exactly, and a month with nobody new is drawn to its
+ * figures to PRECISION.
  */
-export const FLOOR_PX = 4;
+export const LIFT_PX = 4;
+
+/** A part of `clients` as drawn, in pixels: the curve, or its true height where that is taller. */
+export const liftedPx = (clients: number, perClient: number): number =>
+  Math.max(clients * perClient, LIFT_PX * Math.log2(clients + 1));
 
 /** How close a drawn edge must be to where the figures put it, in clients: a hundredth-ish. */
 const PRECISION = 0.05;
@@ -180,7 +190,7 @@ export type BarReading = Record<Part, number> & { reach: number };
 /**
  * Every bar's parts as numbers of clients, read as a person reads a chart: each segment's height
  * against the distance between the "0" and the top gridline and what the top label says. Not
- * rounded: with the floor (FLOOR_PX) a reading is not a whole number of clients, so a rounded one
+ * rounded: with the curve (LIFT_PX) a reading is not a whole number of clients, so a rounded one
  * would be a figure the chart never showed. Compare it to figures with `expectBarShows`.
  */
 export const readBars = async (
@@ -207,9 +217,10 @@ export const readBars = async (
 
 /**
  * The bar shows these figures: its total exactly (FR4-AC2); a zero part not drawn at all; a new
- * part with clients in it at least FLOOR_PX and no more than the floor above its figure; Existing
- * clients short by no more than the two new parts borrowed (FR4-AC1). A month with no newly
- * acquired clients borrows nothing, so its every part is exact.
+ * part with clients in it on the curve (`liftedPx`); Existing clients short by exactly what the two
+ * new parts borrowed (FR4-AC1). A month with no newly acquired clients borrows nothing, so its every
+ * part is exact — and so is one whose Existing clients could not pay without falling below its own
+ * curve, where the lift gives way.
  */
 export const expectBarShows = (
   bar: BarReading,
@@ -217,23 +228,25 @@ export const expectBarShows = (
   perClient: number,
   month: string,
 ): void => {
-  const floor = FLOOR_PX / perClient;
+  const lifted = (clients: number) => liftedPx(clients, perClient) / perClient;
   expect(Math.abs(bar.reach - figures.total), `${month}: the bar reaches its total`).toBeLessThan(
     PRECISION,
   );
-  const lifted = figures['New organic'] > 0 || figures['New paid'] > 0;
+  const existing = figures['Existing clients'];
+  const borrowed = (['New organic', 'New paid'] as const)
+    .map((part) => lifted(figures[part]) - figures[part])
+    .reduce((sum, lift) => sum + lift, 0);
+  const paid = existing - borrowed >= (LIFT_PX * Math.log2(existing + 1)) / perClient;
   for (const part of CHANNELS) {
     const figure = figures[part];
-    const drawn = `${month}: ${part} drawn as ${figure}`;
+    const expected = !paid
+      ? figure
+      : part === 'Existing clients'
+        ? figure - borrowed
+        : lifted(figure);
+    const drawn = `${month}: ${part} (${figure}) drawn as ${expected.toFixed(2)}`;
     if (figure === 0) expect(bar[part], drawn).toBeLessThan(PRECISION);
-    else if (!lifted) expect(Math.abs(bar[part] - figure), drawn).toBeLessThan(PRECISION);
-    else if (part === 'Existing clients') {
-      expect(bar[part], drawn).toBeLessThan(figure + PRECISION);
-      expect(bar[part], drawn).toBeGreaterThan(figure - 2 * floor - PRECISION);
-    } else {
-      expect(bar[part], drawn).toBeGreaterThan(Math.max(figure, floor) - PRECISION);
-      expect(bar[part], drawn).toBeLessThan(figure + floor + PRECISION);
-    }
+    else expect(Math.abs(bar[part] - expected), drawn).toBeLessThan(PRECISION);
   }
 };
 

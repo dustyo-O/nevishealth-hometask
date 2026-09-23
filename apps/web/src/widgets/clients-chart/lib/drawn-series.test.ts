@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { toMonthlySeries, type MonthlyPoint, type MonthlySeries } from '@/entities/clients';
-import { BARS_HEIGHT, floorFor, MIN_PART_PX, toDrawing } from './drawn-series';
+import { BARS_HEIGHT, drawnPx, LIFT_PX, pxPerClientFor, toDrawing } from './drawn-series';
 import { withExistingClients } from './existing-clients';
 import { PLOT_HEIGHT } from './plot-geometry';
 import { yScale } from './y-scale';
@@ -24,33 +24,64 @@ const seriesOf = (...parts: [number, number, number][]): MonthlySeries => ({
 const sum = (heights: Readonly<Record<string, number>>) =>
   Object.values(heights).reduce((total, value) => total + value, 0);
 
-describe('the floor (004 FR4, §2.4)', () => {
-  it('is four pixels', () => {
-    expect(MIN_PART_PX).toBe(4);
+describe('the curve (004 FR4, §2.4)', () => {
+  it('lifts by four pixels times log2(clients + 1)', () => {
+    expect(LIFT_PX).toBe(4);
   });
 
   // The token is not readable from here (vitest hands CSS back empty); the browser suite catches a
-  // drift, since a shorter plot box would draw July's parts under four pixels.
+  // drift, since a shorter plot box would draw July's parts under their curve.
   it('measures the bars against the plot box `--chart-plot-h` draws: 338 less 5 above and 30 of labels', () => {
     expect(PLOT_HEIGHT).toBe(338);
     expect(BARS_HEIGHT).toBe(303);
   });
 
-  it('is a share of the scale, not a number of clients: four pixels whatever the top reads', () => {
-    expect(floorFor(400) * (BARS_HEIGHT / 400)).toBeCloseTo(4, 9);
-    expect(floorFor(500) * (BARS_HEIGHT / 500)).toBeCloseTo(4, 9);
-    expect(floorFor(500)).toBeGreaterThan(floorFor(400));
+  it('is a share of the scale, not a number of clients: the same pixels whatever the top reads', () => {
+    expect(pxPerClientFor(400)).toBeCloseTo(303 / 400, 12);
+    expect(pxPerClientFor(500)).toBeLessThan(pxPerClientFor(400));
+    for (const top of [400, 500]) expect(drawnPx(1, pxPerClientFor(top))).toBeCloseTo(4, 9);
+  });
+
+  it('draws nobody as nothing, one client at 4 px, two at 6.34, three at 8 — tailing off', () => {
+    const px = pxPerClientFor(400);
+    expect(drawnPx(0, px)).toBe(0);
+    expect(drawnPx(1, px)).toBeCloseTo(4, 9);
+    expect(drawnPx(2, px)).toBeCloseTo(4 * Math.log2(3), 9);
+    expect(drawnPx(2, px)).toBeCloseTo(6.34, 2);
+    expect(drawnPx(3, px)).toBeCloseTo(8, 9);
+    // Two clients look taller than one — the comparison the flat floor threw away.
+    expect(drawnPx(2, px)).toBeGreaterThan(drawnPx(1, px) + 2);
+  });
+
+  it('only ever lifts: a part of 30 clients is drawn to its true height, not to the curve', () => {
+    const px = pxPerClientFor(400);
+    expect(4 * Math.log2(31)).toBeLessThan(30 * px);
+    expect(drawnPx(30, px)).toBeCloseTo(30 * px, 9);
+    for (const v of [1, 2, 5, 20, 24, 25, 100, 331])
+      expect(drawnPx(v, px)).toBeGreaterThanOrEqual(v * px);
   });
 });
 
 describe('toDrawing', () => {
-  const floor = floorFor(400);
+  const px = pxPerClientFor(400);
+  /** A part's drawn height in clients, at the scale a 334-client month puts the top at. */
+  const lifted = (clients: number) => drawnPx(clients, px) / px;
 
-  it('lifts every small part with clients in it to the floor, and borrows it from Existing clients', () => {
+  it('lifts every small part with clients in it onto the curve, and borrows it from Existing clients', () => {
     const [bar] = toDrawing(seriesOf([331, 2, 1])).bars;
-    expect(bar?.heights['New organic']).toBeCloseTo(floor, 9);
-    expect(bar?.heights['New paid']).toBeCloseTo(floor, 9);
-    expect(bar?.heights['Existing clients']).toBeCloseTo(331 - (floor - 2) - (floor - 1), 9);
+    expect(bar?.heights['New organic']).toBeCloseTo(lifted(2), 9);
+    expect(bar?.heights['New paid']).toBeCloseTo(lifted(1), 9);
+    expect(bar?.heights['Existing clients']).toBeCloseTo(
+      331 - (lifted(2) - 2) - (lifted(1) - 1),
+      9,
+    );
+  });
+
+  it('draws two clients visibly taller than one, not the same flat height', () => {
+    const [bar] = toDrawing(seriesOf([331, 2, 1])).bars;
+    const perPx = (clients: number | undefined) => (clients ?? 0) * px;
+    expect(perPx(bar?.heights['New organic'])).toBeCloseTo(6.34, 2);
+    expect(perPx(bar?.heights['New paid'])).toBeCloseTo(4, 9);
   });
 
   it("keeps each bar's total exactly its figure: borrowed, never added (FR4-AC2)", () => {
@@ -67,14 +98,14 @@ describe('toDrawing', () => {
     expect(toDrawing(series).bars[0]?.heights).toEqual(series.points[0]?.byChannel);
   });
 
-  it('leaves zero at zero and a part already taller than the floor at its figure', () => {
-    const [bar] = toDrawing(seriesOf([300, 0, 20])).bars;
-    expect(bar?.heights).toEqual({ 'Existing clients': 300, 'New organic': 0, 'New paid': 20 });
+  it('leaves zero at zero and a part already taller than its curve at its figure', () => {
+    const [bar] = toDrawing(seriesOf([300, 0, 30])).bars;
+    expect(bar?.heights).toEqual({ 'Existing clients': 300, 'New organic': 0, 'New paid': 30 });
   });
 
-  it('gives way where Existing clients cannot pay without falling below the floor itself', () => {
-    // A 334-client month puts the scale at 400 and the floor at 5.28 clients: 3 existing clients
-    // cannot pay 8.56 of them, and none at all cannot pay anything.
+  it('gives way where Existing clients cannot pay without falling below its own curve', () => {
+    // A 334-client month puts the scale at 400: 3 existing clients would pay 6.65 of them for a
+    // one- and a two-client part, and none at all cannot pay anything.
     const series = seriesOf([3, 1, 1], [0, 2, 1], [331, 2, 1]);
     expect(
       toDrawing(series)
@@ -90,7 +121,7 @@ describe('toDrawing', () => {
     }
   });
 
-  it('carries the scale the floor was worked out against, from the true totals', () => {
+  it('carries the scale the curve was worked out against, from the true totals', () => {
     const series = seriesOf([331, 2, 1]);
     expect(toDrawing(series).scale).toEqual(yScale(series));
   });
@@ -113,8 +144,8 @@ describe('toDrawing', () => {
     const { bars } = toDrawing(series);
     expect(bars[0]?.heights).toEqual({ 'Existing clients': 250, 'New organic': 0, 'New paid': 0 });
     const july = bars[5]?.heights ?? {};
-    expect(july['New organic']).toBeCloseTo(floor, 9);
-    expect(july['New paid']).toBeCloseTo(floor, 9);
+    expect(july['New organic']).toBeCloseTo(lifted(2), 9);
+    expect(july['New paid']).toBeCloseTo(lifted(1), 9);
     expect(sum(july)).toBeCloseTo(334, 9);
   });
 });

@@ -240,7 +240,7 @@ test(
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
-    // The figures the served data implies; the drawing shows them, totals exactly, parts within the floor (FR4).
+    // The figures the served data implies; the drawing shows them, totals exactly, parts on the curve (FR4).
     const months = figuresOf(shippedClients());
     await expectBarsShow(chart, months);
     await expect(chart.table.getByRole('columnheader')).toHaveText([

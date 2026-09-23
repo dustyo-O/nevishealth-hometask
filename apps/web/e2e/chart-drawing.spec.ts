@@ -10,8 +10,9 @@ import {
   CHANNELS,
   expectBarShows,
   figuresOf,
-  FLOOR_PX,
   januaryRaisedBy,
+  LIFT_PX,
+  liftedPx,
   openChart,
   readBars,
   readDrawing,
@@ -63,7 +64,7 @@ test(
   async ({ page }) => {
     const chart = await openChart(page);
     expect(figuresOf(shippedClients())[0]).toEqual(FEBRUARY);
-    // Nothing new to floor in February: its one part is drawn exactly to scale (FR4-AC2).
+    // Nothing new to lift in February: its one part is drawn exactly to scale (FR4-AC2).
     const { bars, perClient } = await readBars(chart);
     expectBarShows(bars[0]!, FEBRUARY, perClient, 'Feb 2024');
     expect(bars[0]!.reach).toBeCloseTo(250, 1);
@@ -77,7 +78,7 @@ test(
     const chart = await openChart(page);
     const { bars, perClient } = await readBars(chart);
     const figures = figuresOf(shippedClients());
-    // Read as drawn: every bar reaches exactly its total, the floor borrowed rather than added
+    // Read as drawn: every bar reaches exactly its total, the lift borrowed rather than added
     // (FR4-AC2) — so no other month (July, 334) comes near them.
     const byReach = bars.map(({ reach }, i) => ({ reach, i })).sort((a, b) => b.reach - a.reach);
     expect(
@@ -107,7 +108,7 @@ test(
       // In stacking order, whichever parts this month draws.
       expect(names).toEqual(CHANNELS.filter((part) => names.includes(part)));
       // Stacked, not overlapping: each part starts where the one beneath it ends. A part lifted
-      // to FLOOR_PX (FR4) moves the parts above it up; nothing covers it (FR4-AC1).
+      // onto the curve (LIFT_PX, FR4) moves the parts above it up; nothing covers it (FR4-AC1).
       expect(Math.abs(parts[0]!.y + parts[0]!.height - floor)).toBeLessThan(0.5);
       parts.slice(1).forEach((part, i) => {
         expect(Math.abs(part.y + part.height - parts[i]!.y)).toBeLessThan(0.5);
@@ -275,23 +276,51 @@ test(
 );
 
 test(
-  'FR4-AC1: July 2024’s new organic and new paid are each drawn at least FLOOR_PX tall, neither covering the other, and the bar is still 334',
+  'FR4-AC1: a one-client part is about 4 px tall, and a two-client part visibly taller, at about 6.34 px',
+  { tag: '@regression' },
+  async ({ page }) => {
+    const chart = await openChart(page);
+    const { bars } = await readDrawing(chart);
+    const { perClient } = await readBars(chart);
+    const months = figuresOf(shippedClients());
+    // To scale, 2 clients would be under LIFT_PX: that is why the curve exists.
+    expect(2 * perClient).toBeLessThan(LIFT_PX);
+    const heights: Record<1 | 2, number[]> = { 1: [], 2: [] };
+    bars.forEach((bar, i) => {
+      for (const part of ['New organic', 'New paid'] as const) {
+        const clients = months[i]![part];
+        if (clients !== 1 && clients !== 2) continue;
+        const segment = bar.find(({ name }) => name === part);
+        heights[clients].push(segment?.height ?? 0);
+      }
+    });
+    // The supplied data has both, several times over.
+    expect(heights[1].length).toBeGreaterThan(0);
+    expect(heights[2].length).toBeGreaterThan(0);
+    for (const height of heights[1]) expect(Math.abs(height - 4)).toBeLessThan(0.05);
+    for (const height of heights[2])
+      expect(Math.abs(height - liftedPx(2, perClient))).toBeLessThan(0.05);
+    // The assertion a flat floor fails: two clients are visibly taller than one — by two pixels
+    // and more, not the same height (FR4-AC1). The shortest two against the tallest one.
+    expect(Math.min(...heights[2]) - Math.max(...heights[1])).toBeGreaterThan(2);
+  },
+);
+
+test(
+  'FR4-AC1: July 2024’s new organic and new paid are both drawn, neither covering the other, and the bar is still 334',
   { tag: '@regression' },
   async ({ page }) => {
     const chart = await openChart(page);
     const july = (await readDrawing(chart)).bars[5]!;
     const { perClient } = await readBars(chart);
-    // To scale, 2 clients and 1 client would be under FLOOR_PX: that is why the floor exists.
-    expect(2 * perClient).toBeLessThan(FLOOR_PX);
-    for (const part of ['New organic', 'New paid']) {
-      const segment = july.find(({ name }) => name === part);
-      expect(segment?.height, part).toBeGreaterThanOrEqual(FLOOR_PX - 0.01);
-    }
-    // Neither covers the other: New paid starts where New organic ends.
     const organic = july.find(({ name }) => name === 'New organic')!;
     const paid = july.find(({ name }) => name === 'New paid')!;
+    // Two clients organic, one paid: each on the curve.
+    expect(Math.abs(organic.height - liftedPx(2, perClient))).toBeLessThan(0.05);
+    expect(Math.abs(paid.height - liftedPx(1, perClient))).toBeLessThan(0.05);
+    // Neither covers the other: New paid starts where New organic ends.
     expect(Math.abs(paid.y + paid.height - organic.y)).toBeLessThan(0.01);
-    // And the floor was borrowed, not added: the bar reaches exactly 334 (FR4-AC2).
+    // And the lift was borrowed, not added: the bar reaches exactly 334 (FR4-AC2).
     const { bars } = await readBars(chart);
     expect(Math.abs(bars[5]!.reach - 334)).toBeLessThan(0.05);
   },
