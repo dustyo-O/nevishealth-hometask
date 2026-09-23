@@ -14,8 +14,8 @@ export const PLOT_HEIGHT = 338;
 export const COLUMNS_LEFT = PLOT_MARGIN.left + Y_AXIS_WIDTH;
 export const COLUMNS_RIGHT = PLOT_MARGIN.right;
 
-export type Size = { width: number; height: number };
-export type Point = { x: number; y: number };
+type Size = { width: number; height: number };
+type Point = { x: number; y: number };
 
 /**
  * The month whose column holds `point` — anywhere in the column, above its bar too (FR4) — or

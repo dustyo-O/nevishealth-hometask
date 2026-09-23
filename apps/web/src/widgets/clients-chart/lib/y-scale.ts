@@ -16,9 +16,9 @@ export type YScale = {
  * 400, and 400 → 500 (tech review F5). An empty or all-zero series still gets one step. The
  * charting library's own "nice" ticks give 0/90/…/360 for this data, so the ticks are ours.
  */
-export const yScale = ({ points }: MonthlySeries, step = STEP): YScale => {
+export const yScale = ({ points }: MonthlySeries): YScale => {
   const max = Math.max(0, ...points.map((point) => point.total));
-  const top = (Math.floor(max / step) + 1) * step;
-  const ticks = Array.from({ length: top / step + 1 }, (_, i) => i * step);
+  const top = (Math.floor(max / STEP) + 1) * STEP;
+  const ticks = Array.from({ length: top / STEP + 1 }, (_, i) => i * STEP);
   return { top, ticks };
 };
