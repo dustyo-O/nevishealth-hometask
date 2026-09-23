@@ -124,7 +124,9 @@ When the figures arrive, the bars grow up from the bottom of the plot once, so t
 
 Thirteen months' worth of labels cannot fit across a phone, but the shape of the year can. On a narrow screen all twelve bars stay visible and simply become thinner; the plot keeps its height, so the difference between a good month and a bad one is as easy to see on a phone as on a laptop.
 
-Only the month labels give way, and they thin in steps as the space shrinks, each label keeping its full "Feb 2024" form and the set always ending at January 2025. All twelve are named from about 900 px; between roughly 500 and 880 px every second month is named; below that every third. At 375 px that leaves four — April, July, October and January 2025. At no width do two labels touch. February is not named on a phone, and that is accepted: the labels are a scale to read the bars against, and the exact month behind any bar is one tap away.
+Only the month labels give way. The axis names as many months as it can fit and drops the rest, always in order, always ending at January 2025, and never letting two labels touch. As the chart widens the set only grows, never shrinks. At 375 px it names four — April, July, October and January 2025 — and from about 850 px it names all twelve; in between it is whatever fits, and the spacing there is not always even.
+
+That is deliberately a promise about **properties, not a pattern**: the exact set at any given width is the drawing's business, and a swept measurement at every width from 375 to 1440 is what holds it to the three rules above. February is not named on a phone, and that is accepted — the labels are a scale to read the bars against, and the exact month behind any bar is one tap away.
 
 The chart itself never scrolls sideways, and neither does the page.
 

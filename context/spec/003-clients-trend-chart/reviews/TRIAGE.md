@@ -31,3 +31,15 @@ Review: `reviews/spec-codex-20260923-0053.md` — reviewer **codex**, effort low
 **Reviewer's verdict:** DO NOT SHIP — "The technical plan contradicts required selection, touch-dismissal and responsive-layout behavior."
 
 All three accepted; nothing rejected or deferred. Two are plan-only changes; F2 also amended the functional spec, which is why it carries a Change Log entry. Acceptance criteria went from 44 to 45.
+
+## Code review 2026-09-23
+
+Review: `reviews/code-codex-20260923-1359.md` — reviewer **codex**, effort low, kind code, base main. Cross-vendor, no fallback. Verdict **SHIP WITH FIXES**.
+
+| # | severity | verdict | rationale | applied in |
+|---|---|---|---|---|
+| F1 | minor | accepted, fixed differently | The finding is correct and understated: FR8 promised every-third-month labels as soon as twelve will not fit, and a ten-width measurement showed every *second* month between 500 and 780. But the reviewer's fix — select April, July, October and January explicitly — is the improvement the owner declined on 2026-09-23 ("currently labels in chart on 375 are good enough… we can skip improvements here"). So the spec moved to the truth and a swept test now guards it, rather than the chart gaining tick selection. The owner can overrule; it would be a small change to `bar-plot.tsx`. | `functional-spec.md` FR8 prose + a new criterion holding at every width + two Change Log entries; `apps/web/e2e/chart-label-sweep.spec.ts` (slice 7, commit f2cc1f3) |
+
+**Reviewer's verdict:** SHIP WITH FIXES — "The responsive label selection needs to match FR8 beyond the two tested widths."
+
+The fix corrected the spec **twice**: the first amendment claimed a regular every-second/every-third stepping, and the lane's 1 px sweep showed the count rising at 472, 481, 806, 835, 837, 847, 849 and 850 — uneven sets in the middle, all twelve from 850. FR8 now promises properties (no overlap, always ends at January, the count never falls) rather than a pattern, and the sweep is what holds it to them.
